@@ -5,7 +5,8 @@ export function useOrder() {
   const [draft, setDraft] = useState<OrderDraft>({
     items: [],
     total: 0,
-    subtotal: 0
+    subtotal: 0,
+    comments: null
   })
 
   const addItem = (item: OrderItem) => {
@@ -21,5 +22,16 @@ export function useOrder() {
     })
   }
 
-  return { draft, addItem }
+  const removeItem = (index: number) => {
+    const items = draft.items.filter((_, i) => i !== index);
+    const total = items.reduce((acc, i) => acc + i.subtotal, 0);
+    setDraft({
+      ...draft,
+      items,
+      total,
+      subtotal: total
+    });
+  }
+
+  return { draft, addItem, removeItem }
 }
