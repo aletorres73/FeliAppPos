@@ -1,9 +1,9 @@
 import { useState } from "react"
-import { ScannerInput } from "./components/scannerImput"
-import { OrderList } from "./components/orderList"
-import { ManualItemModal } from "./components/manualItemModal"
-import { useOrder } from "./hook/useOrder"
-import type { Product } from "./types/types"
+import { ScannerInput } from "../components/ScannerImput"
+import { OrderList } from "../components/OrderList"
+import { ManualItemModal } from "../components/ManualItemModal"
+import { useOrder } from "../hook/useOrder"
+import type { Product } from "../types/types"
 
 const productsCache: Record<string, Product> = {
   "779123": {
