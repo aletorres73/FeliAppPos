@@ -3,96 +3,77 @@ import { ScannerInput } from "../components/ScannerImput"
 import { OrderList } from "../components/OrderList"
 import { ManualItemModal } from "../components/ManualItemModal"
 import { useOrder } from "../hook/useOrder"
-import type { Product } from "../types/types"
+// import type { Product } from "../types//types"
+import { getProductById } from "../../data/repositories/ProductRepository"
 
-const productsCache: Record<string, Product> = {
-  "779123": {
-    id: "779123",
-    article: "Coca Cola",
-    price: 1000,
-    branch: "Bebidas",
-    cost: 0,
-    gains: 0,
-    stock: 0,
-    weight: 0,
-    active: true,
-    saleWeight: false,
-    quantitySold: 0,
-    createdAt: 0,
-    updatedAt: 0,
-    weightSold: 0
-  },
-  "F01": {
-    id: "F01",
-    article: "Jamón cocido",
-    price: 5000,
-    branch: "Fiambres",
-    cost: 0,
-    gains: 0,
-    stock: 0,
-    weight: 0,
-    active: true,
-    saleWeight: true,
-    quantitySold: 0,
-    createdAt: 0,
-    updatedAt: 0,
-    weightSold: 0
-  }
-}
 
 export default function OrderScreen() {
-  const { draft, addItem } = useOrder()
-  const [manualCode, setManualCode] = useState<string | null>(null)
+  const { draft, addItem } = useOrder();
+  const [manualCode, setManualCode] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false); // Feedback visual
 
-  const handleScan = (code: string) => {
-    const normalizedCode = code.trim().toUpperCase()
+  const handleScan = async (code: string) => {
+    const normalizedCode = code.trim().toUpperCase();
+    if (!normalizedCode) return;
 
-    console.log("RAW:", code)
-    console.log("NORMALIZED:", normalizedCode)
-    console.log("CACHE:", productsCache[normalizedCode])
+    setIsLoading(true);
+    try {
+      const product = await getProductById(normalizedCode);
 
-    const product = productsCache[normalizedCode]
-
-    if (product) {
-      if (product.saleWeight) {
-        setManualCode(normalizedCode)
+      if (product) {
+        // Si el producto se vende por peso, abrimos modal para cantidad manual
+        if (product.saleWeight) {
+          setManualCode(normalizedCode);
+        } else {
+          // Mapeo directo de Product -> OrderItem
+          addItem({
+            productId: product.id,
+            barcode: product.id, // Usa el barcode real si existe
+            branch: product.branch,
+            article: product.article,
+            unitPrice: product.price,
+            quantity: 1,
+            subtotal: product.price
+          });
+        }
       } else {
-        addItem({
-          productId: product.id,
-          barcode: product.id,
-          branch: product.branch,
-          article: product.article,
-          unitPrice: product.price,
-          quantity: 1,
-          subtotal: product.price
-        })
+        // No existe en DB, abrir modal manual
+        setManualCode(normalizedCode);
       }
-    } else {
-      setManualCode(normalizedCode)
+    } catch (error) {
+      console.error("Error en el scanner:", error);
+      // Opcional: mostrar un toast de error de conexión
+      setManualCode(normalizedCode);
+    } finally {
+      setIsLoading(false);
     }
+  };
 
-}
+  return (
+    <div style={{ padding: 20 }}>
+      <header>
+        <h2>Nuevo Pedido</h2>
+        {isLoading && <small>Buscando producto...</small>}
+      </header>
 
-return (
-  <div style={{ padding: 20 }}>
-    <h2>Nuevo Pedido</h2>
+      <ScannerInput onScan={handleScan} />
 
-    <ScannerInput onScan={handleScan} />
+      <OrderList items={draft.items} />
 
-    <OrderList items={draft.items} />
+      <div style={{ marginTop: 20, borderTop: '1px solid #ccc' }}>
+        <h3>Total: ${draft.total.toFixed(2)}</h3>
+      </div>
 
-    <h3>Total: {draft.total}</h3>
-
-    {manualCode && (
-      <ManualItemModal
-        code={manualCode}
-        onClose={() => setManualCode(null)}
-        onConfirm={(item) => {
-          addItem(item)
-          setManualCode(null)
-        }}
-      />
-    )}
-  </div>
-)
+      {manualCode && (
+        <ManualItemModal
+          code={manualCode}
+          onClose={() => setManualCode(null)}
+          onConfirm={(item) => {
+            addItem(item);
+            setManualCode(null);
+          }}
+        />
+      )}
+    </div>
+  );
 }
