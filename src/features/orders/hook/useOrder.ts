@@ -33,5 +33,27 @@ export function useOrder() {
     });
   }
 
-  return { draft, addItem, removeItem }
+  const updateQuantity = (index: number, newQty: number) => {
+    const items = draft.items.map((item, i) => {
+      if (i === index) {
+        const updatedItem = { 
+          ...item, 
+          quantity: newQty, 
+          subtotal: item.unitPrice * newQty
+        };
+        return updatedItem;
+      }
+      return item;
+    });
+
+    const total = items.reduce((acc, i) => acc + i.subtotal, 0);
+    setDraft({
+      ...draft,
+      items,
+      total,
+      subtotal: total
+    });
+  }
+
+  return { draft, addItem, removeItem, updateQuantity }
 }
