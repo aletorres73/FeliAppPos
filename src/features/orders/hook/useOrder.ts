@@ -79,5 +79,14 @@ export function useOrder() {
     });
   }
 
-  return { draft, addItem, removeItem, updateQuantity }
+  const clearDraft = () => {
+    setDraft({
+      items: [],
+      total: 0,
+      subtotal: 0,
+      comments: null
+    });
+  }
+
+  return { draft, addItem, removeItem, updateQuantity, clearDraft }
 }

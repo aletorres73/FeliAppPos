@@ -10,9 +10,22 @@ export function ScannerInput({ onScan }: Props) {
 
   // Mantenemos el auto-focus profesional
   useEffect(() => {
-    ref.current?.focus()
-    document.addEventListener("click", () => ref.current?.focus());
-  }, [])
+  const handleFocus = () => {
+    // Solo robar el foco si NO hay un modal abierto en el DOM
+    // (Asumiendo que tus modales están en el body o tienen una clase específica)
+    const isModalOpen = document.querySelector('[role="dialog"]') || document.querySelector('.modal-overlay');
+    
+    if (!isModalOpen) {
+      ref.current?.focus();
+    }
+  };
+
+  ref.current?.focus();
+  document.addEventListener("click", handleFocus);
+
+  // IMPORTANTE: Limpiar el evento cuando el componente desaparezca
+  return () => document.removeEventListener("click", handleFocus);
+}, []);
 
   return (
     <div style={{ 

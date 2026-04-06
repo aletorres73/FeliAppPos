@@ -6,13 +6,16 @@ import { useOrder } from "../hook/useOrder";
 import { getProductById } from "../../data/repositories/ProductRepository";
 import { roundToNearestHundred, formatCurrency } from "../../../utils/formats";
 import feliLogo from "../../../assets/logo-feli.webp";
-import type { Product, OrderItem } from "../types/types";
+import type { Product, OrderItem, OrderPayStatus } from "../types/types";
+import { CheckoutModal } from "../components/CheckoutModal";
+import { saveOrder } from "../../data/repositories/OrderRepository";
 
 export default function OrderScreen() {
-  const { draft, addItem, removeItem, updateQuantity } = useOrder();
+  const { draft, addItem, removeItem, updateQuantity, clearDraft } = useOrder();
   const [manualCode, setManualCode] = useState<string | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [showCheckout, setShowCheckout] = useState(false);
 
   // Derivación de datos (Selectors)
   const subtotal = draft.total;
@@ -26,7 +29,7 @@ export default function OrderScreen() {
     setIsLoading(true);
     try {
       const product = await getProductById(normalizedCode);
-      
+
       if (product?.saleWeight) {
         setSelectedProduct(product);
         setManualCode(normalizedCode);
@@ -40,6 +43,27 @@ export default function OrderScreen() {
       setIsLoading(false);
     }
   };
+
+  const handleFinalizeOrder = async (payStatus: OrderPayStatus, customerPayment: number) => {
+  try {
+    setIsLoading(true);
+    
+    // Capturamos el ID que retorna la función saveOrder
+    const orderId = await saveOrder(draft, payStatus, customerPayment);
+    
+    if (orderId) {
+      clearDraft(); 
+      setShowCheckout(false);
+      
+      // Uso del ID: Confirmación detallada
+      alert(`Venta guardada con éxito. ID: ${orderId}`);
+    }
+  } catch (error) {
+    alert("Error al guardar la venta");
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   const closeManualModal = () => {
     setManualCode(null);
@@ -61,19 +85,28 @@ export default function OrderScreen() {
         </section>
 
         <section>
-          <OrderList 
-            items={draft.items} 
-            onRemove={removeItem} 
+          <OrderList
+            items={draft.items}
+            onRemove={removeItem}
             onUpdate={(index, newQty) => updateQuantity(index, newQty)} // Conexión aquí
           />
         </section>
 
-        <Footer 
-          subtotal={subtotal} 
-          total={totalFinal} 
-          itemsCount={draft.items.length} 
+        <Footer
+          subtotal={subtotal}
+          total={totalFinal}
+          itemsCount={draft.items.length}
+          onCheckout={() => setShowCheckout(true)} // Pasamos la acción al footer
         />
       </div>
+
+      {showCheckout && (
+        <CheckoutModal
+          total={totalFinal}
+          onClose={() => setShowCheckout(false)}
+          onConfirm={handleFinalizeOrder}
+        />
+      )}
 
       {manualCode && (
         <ManualItemModal
@@ -108,7 +141,7 @@ const Header = ({ isLoading }: { isLoading: boolean }) => (
   </header>
 );
 
-const Footer = ({ subtotal, total, itemsCount }: any) => (
+const Footer = ({ subtotal, total, itemsCount, onCheckout }: any) => (
   <footer style={styles.footer}>
     <div>
       <span style={styles.label}>Subtotal</span>
@@ -116,9 +149,29 @@ const Footer = ({ subtotal, total, itemsCount }: any) => (
       <br />
       <small style={styles.itemCount}>{itemsCount} artículos</small>
     </div>
-    <div style={{ textAlign: "right" }}>
-      <span style={styles.totalLabel}>TOTAL A PAGAR</span>
-      <h2 style={styles.totalValue}>{formatCurrency(total)}</h2>
+
+    <div style={{ textAlign: "right", display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "10px" }}>
+      <div>
+        <span style={styles.totalLabel}>TOTAL A PAGAR</span>
+        <h2 style={styles.totalValue}>{formatCurrency(total)}</h2>
+      </div>
+
+      <button
+        onClick={onCheckout}
+        disabled={itemsCount === 0}
+        style={{
+          padding: "12px 24px",
+          backgroundColor: itemsCount === 0 ? "rgba(255,255,255,0.05)" : "#54C4F0",
+          color: itemsCount === 0 ? "rgba(255,255,255,0.2)" : "#0F1115",
+          border: "none",
+          borderRadius: "8px",
+          fontWeight: "bold",
+          cursor: itemsCount === 0 ? "not-allowed" : "pointer",
+          transition: "0.2s"
+        }}
+      >
+        Finalizar Venta
+      </button>
     </div>
   </footer>
 );
