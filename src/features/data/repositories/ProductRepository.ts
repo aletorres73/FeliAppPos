@@ -1,5 +1,5 @@
 import { db } from "../services/FirebaseService";
-import { doc, getDoc, getDocs, collection } from "firebase/firestore";
+import { doc, getDoc, getDocs, collection, onSnapshot, query } from "firebase/firestore";
 import type { Product } from "../../orders/types/types";
 
 export const getProductById = async (docId: string): Promise<Product | null> => {
@@ -61,3 +61,24 @@ export const mapToProduct = (data: any): Product => {
     weightSold: data.pesoVendido
   };
 }
+
+export const subscribeToProducts = (onUpdate: (products: Product[]) => void) => {
+  const colRef = collection(db, "products");
+  
+  // Opcional: puedes usar query(colRef, where("activo", "==", true)) si quieres filtrar
+  const q = query(colRef);
+
+  // onSnapshot devuelve una función de "unsubscribe" para cerrar el listener
+  return onSnapshot(q, (querySnapshot) => {
+    const products: Product[] = querySnapshot.docs.map(doc => {
+      const data = doc.data();
+      // Importante: Asegúrate de incluir el ID del documento
+      return mapToProduct({ ...data, id: doc.id });
+    });
+    
+    console.log(`Actualización en tiempo real: ${products.length} productos`);
+    onUpdate(products);
+  }, (error) => {
+    console.error("Error en el listener de productos:", error);
+  });
+};

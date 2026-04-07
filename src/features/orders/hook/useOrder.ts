@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from "react"
 import type { OrderDraft, OrderItem, Product } from "../types/types"
-import { getProducts } from "../../data/repositories/ProductRepository"
+import { subscribeToProducts } from "../../data/repositories/ProductRepository"
 import { roundToNearestHundred } from "../../../utils/formats";
 
 export function useOrder() {
@@ -8,34 +8,35 @@ export function useOrder() {
     items: [],
     total: 0,
     subtotal: 0,
-    comments: "" 
+    comments: ""
   })
-  
+
   const [products, setProducts] = useState<Product[]>([]);
   const [searchTerm, setSearchTerm] = useState(""); // Estado para la búsqueda
 
   // CARGA INICIAL: 
   useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const data = await getProducts();
-        setProducts(data || []); // Aseguramos que sea un array
-        console.log("Productos cargados en Hook:", data.length);
-      } catch (error) {
-        console.error("Error cargando productos:", error);
-      }
+    // Suscribirse a los cambios
+    const unsubscribe = subscribeToProducts((data) => {
+      setProducts(data || []);
+      console.log("Productos actualizados desde Firestore");
+    });
+
+    // CLEANUP: React ejecuta esto cuando el componente se destruye
+    return () => {
+      console.log("Cerrando conexión con Firestore");
+      unsubscribe();
     };
-    fetchProducts();
   }, []);
 
   // SUGERENCIAS: Usamos useMemo para que no se recalcule en cada render
   const suggestions = useMemo(() => {
     if (!searchTerm.trim()) return [];
-    
+
     const term = searchTerm.toLowerCase();
-    return products.filter(p => 
-      
-      p.article.toLowerCase().includes(term) || 
+    return products.filter(p =>
+
+      p.article.toLowerCase().includes(term) ||
       p.id.toString().includes(term) ||
       p.branch.toLowerCase().includes(term)
 
@@ -105,15 +106,15 @@ export function useOrder() {
     setDraft(prev => ({ ...prev, comments }));
   }
 
-  return { 
-    draft, 
-    addItem, 
-    removeItem, 
-    updateQuantity, 
-    clearDraft, 
-    updateComments, 
-    searchTerm, 
-    setSearchTerm, 
-    suggestions 
+  return {
+    draft,
+    addItem,
+    removeItem,
+    updateQuantity,
+    clearDraft,
+    updateComments,
+    searchTerm,
+    setSearchTerm,
+    suggestions
   }
 }
