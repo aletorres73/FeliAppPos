@@ -10,14 +10,15 @@ interface Props {
   isLoading: boolean; // <-- Nueva prop agregada
 }
 
-export function CheckoutModal({ 
-  total, 
-  onConfirm, 
-  onClose, 
-  comments, 
-  onCommentsChange, 
-  isLoading 
+export function CheckoutModal({
+  total,
+  onConfirm,
+  onClose,
+  comments,
+  onCommentsChange,
+  isLoading
 }: Props) {
+
   const [paymentAmount, setPaymentAmount] = useState<string>(total.toString());
   const [isPaid, setIsPaid] = useState(true);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -26,6 +27,18 @@ export function CheckoutModal({
     if (isPaid && !isLoading) {
       setTimeout(() => inputRef.current?.focus(), 50);
     }
+    return () => {
+      // Buscamos el input por su clase CSS
+      const scannerInput = document.querySelector('.scanner-field') as HTMLInputElement;
+
+      if (scannerInput) {
+        // Usamos un pequeño delay de 50ms para asegurar que el modal
+        // ya no esté en el DOM y el navegador permita mover el foco.
+        setTimeout(() => {
+          scannerInput.focus();
+        }, 50);
+      }
+    };
   }, [isPaid, isLoading]);
 
   const numericPayment = parseFloat(paymentAmount) || 0;
@@ -39,11 +52,11 @@ export function CheckoutModal({
         </h2>
 
         <div style={modalStyles.tabs}>
-          <button 
+          <button
             disabled={isLoading}
             onClick={() => { setIsPaid(true); setPaymentAmount(total.toString()); }}
-            style={{ 
-              ...modalStyles.tab, 
+            style={{
+              ...modalStyles.tab,
               backgroundColor: isPaid ? "#54C4F0" : "transparent",
               color: isPaid ? "#0F1115" : "white",
               opacity: isLoading ? 0.5 : 1
@@ -51,11 +64,11 @@ export function CheckoutModal({
           >
             Pagar Ahora
           </button>
-          <button 
+          <button
             disabled={isLoading}
             onClick={() => { setIsPaid(false); setPaymentAmount("0"); }}
-            style={{ 
-              ...modalStyles.tab, 
+            style={{
+              ...modalStyles.tab,
               backgroundColor: !isPaid ? "#E63946" : "transparent",
               color: "white",
               opacity: isLoading ? 0.5 : 1
@@ -72,9 +85,9 @@ export function CheckoutModal({
             value={comments}
             onChange={(e) => onCommentsChange(e.target.value)}
             placeholder="Ej: Paga con transferencia, retirar mañana..."
-            style={{ 
-              ...modalStyles.textarea, 
-              opacity: isLoading ? 0.6 : 1 
+            style={{
+              ...modalStyles.textarea,
+              opacity: isLoading ? 0.6 : 1
             }}
           />
         </div>
@@ -82,7 +95,7 @@ export function CheckoutModal({
         {isPaid && (
           <div style={{ marginTop: 20 }}>
             <label style={modalStyles.label}>Efectivo entregado:</label>
-            <input 
+            <input
               disabled={isLoading}
               ref={inputRef}
               type="number"
@@ -90,13 +103,13 @@ export function CheckoutModal({
               value={paymentAmount}
               onChange={(e) => setPaymentAmount(e.target.value)}
               onFocus={(e) => e.target.select()}
-              style={{ 
-                ...modalStyles.input, 
+              style={{
+                ...modalStyles.input,
                 opacity: isLoading ? 0.6 : 1,
                 borderColor: isLoading ? "rgba(255,255,255,0.1)" : "#54C4F0"
               }}
             />
-            
+
             <div style={modalStyles.changeBox}>
               <span style={{ color: "rgba(255,255,255,0.6)" }}>Vuelto:</span>
               <strong style={{ color: change >= 0 ? "#51cf66" : "#ff6b6b" }}>
@@ -107,18 +120,18 @@ export function CheckoutModal({
         )}
 
         <div style={modalStyles.actions}>
-          <button 
-            onClick={onClose} 
-            disabled={isLoading} 
+          <button
+            onClick={onClose}
+            disabled={isLoading}
             style={{ ...modalStyles.btnCancel, opacity: isLoading ? 0.5 : 1 }}
           >
             Cancelar
           </button>
-          <button 
+          <button
             disabled={isLoading}
             onClick={() => onConfirm(isPaid ? "PAID" : "PENDING", isPaid ? numericPayment : 0)}
-            style={{ 
-              ...modalStyles.btnConfirm, 
+            style={{
+              ...modalStyles.btnConfirm,
               backgroundColor: isLoading ? "#333" : "#54C4F0",
               color: isLoading ? "white" : "#0F1115",
               cursor: isLoading ? "not-allowed" : "pointer"
@@ -140,17 +153,17 @@ const modalStyles = {
   tab: { flex: 1, padding: "10px", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "8px", cursor: "pointer", transition: "0.2s", fontWeight: "bold" as const },
   label: { display: "block", color: "rgba(255,255,255,0.5)", fontSize: "0.8rem", marginBottom: 8 },
   input: { width: "100%", padding: "12px", backgroundColor: "#0F1115", border: "1px solid #54C4F0", borderRadius: "8px", color: "white", fontSize: "1.5rem", outline: "none", boxSizing: "border-box" as const },
-  textarea: { 
-    width: "100%", 
-    minHeight: "80px", 
-    padding: "12px", 
-    backgroundColor: "#0F1115", 
-    border: "1px solid rgba(255,255,255,0.1)", 
-    borderRadius: "8px", 
-    color: "white", 
-    fontSize: "0.9rem", 
-    outline: "none", 
-    boxSizing: "border-box" as const, 
+  textarea: {
+    width: "100%",
+    minHeight: "80px",
+    padding: "12px",
+    backgroundColor: "#0F1115",
+    border: "1px solid rgba(255,255,255,0.1)",
+    borderRadius: "8px",
+    color: "white",
+    fontSize: "0.9rem",
+    outline: "none",
+    boxSizing: "border-box" as const,
     resize: "none" as const,
     fontFamily: "inherit"
   },

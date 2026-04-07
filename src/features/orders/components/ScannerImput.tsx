@@ -24,6 +24,14 @@ export function ScannerInput({ onScan, externalValue, onChange, suggestions }: P
         // Solo robamos el foco si no hay modales y no se hizo clic en otro input
         ref.current?.focus();
       }
+      return () => {
+        // Buscamos el input por su clase o ID y le damos foco
+        const scannerInput = document.querySelector('.scanner-field') as HTMLInputElement;
+        if (scannerInput) {
+          // Usamos un pequeño delay para asegurar que el modal ya no esté bloqueando el DOM
+          setTimeout(() => scannerInput.focus(), 50);
+        }
+      };
     };
 
     // Foco inicial
