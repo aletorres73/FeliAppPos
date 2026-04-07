@@ -1,25 +1,32 @@
 import { useState, useRef, useEffect } from "react";
 import { formatCurrency } from "../../../utils/formats";
 
-// Agregamos comments y onCommentsChange a las props
 interface Props {
   total: number;
   onConfirm: (status: "PAID" | "PENDING", payment: number) => void;
   onClose: () => void;
   comments: string;
   onCommentsChange: (val: string) => void;
+  isLoading: boolean; // <-- Nueva prop agregada
 }
 
-export function CheckoutModal({ total, onConfirm, onClose, comments, onCommentsChange }: Props) {
+export function CheckoutModal({ 
+  total, 
+  onConfirm, 
+  onClose, 
+  comments, 
+  onCommentsChange, 
+  isLoading 
+}: Props) {
   const [paymentAmount, setPaymentAmount] = useState<string>(total.toString());
   const [isPaid, setIsPaid] = useState(true);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (isPaid) {
+    if (isPaid && !isLoading) {
       setTimeout(() => inputRef.current?.focus(), 50);
     }
-  }, [isPaid]);
+  }, [isPaid, isLoading]);
 
   const numericPayment = parseFloat(paymentAmount) || 0;
   const change = numericPayment - total;
@@ -27,39 +34,48 @@ export function CheckoutModal({ total, onConfirm, onClose, comments, onCommentsC
   return (
     <div style={modalStyles.overlay} role="dialog">
       <div style={modalStyles.card}>
-        <h2 style={{ margin: "0 0 20px 0", color: "white" }}>Confirmar Venta</h2>
+        <h2 style={{ margin: "0 0 20px 0", color: "white" }}>
+          {isLoading ? "Procesando..." : "Confirmar Venta"}
+        </h2>
 
         <div style={modalStyles.tabs}>
           <button 
+            disabled={isLoading}
             onClick={() => { setIsPaid(true); setPaymentAmount(total.toString()); }}
             style={{ 
               ...modalStyles.tab, 
               backgroundColor: isPaid ? "#54C4F0" : "transparent",
-              color: isPaid ? "#0F1115" : "white" 
+              color: isPaid ? "#0F1115" : "white",
+              opacity: isLoading ? 0.5 : 1
             }}
           >
             Pagar Ahora
           </button>
           <button 
+            disabled={isLoading}
             onClick={() => { setIsPaid(false); setPaymentAmount("0"); }}
             style={{ 
               ...modalStyles.tab, 
               backgroundColor: !isPaid ? "#E63946" : "transparent",
-              color: "white"
+              color: "white",
+              opacity: isLoading ? 0.5 : 1
             }}
           >
             Dejar Pendiente
           </button>
         </div>
 
-        {/* --- SECCIÓN DE COMENTARIOS --- */}
         <div style={{ marginBottom: 20 }}>
           <label style={modalStyles.label}>Notas / Comentarios:</label>
           <textarea
+            disabled={isLoading}
             value={comments}
             onChange={(e) => onCommentsChange(e.target.value)}
             placeholder="Ej: Paga con transferencia, retirar mañana..."
-            style={modalStyles.textarea}
+            style={{ 
+              ...modalStyles.textarea, 
+              opacity: isLoading ? 0.6 : 1 
+            }}
           />
         </div>
 
@@ -67,13 +83,18 @@ export function CheckoutModal({ total, onConfirm, onClose, comments, onCommentsC
           <div style={{ marginTop: 20 }}>
             <label style={modalStyles.label}>Efectivo entregado:</label>
             <input 
+              disabled={isLoading}
               ref={inputRef}
               type="number"
               step="any"
               value={paymentAmount}
               onChange={(e) => setPaymentAmount(e.target.value)}
               onFocus={(e) => e.target.select()}
-              style={modalStyles.input}
+              style={{ 
+                ...modalStyles.input, 
+                opacity: isLoading ? 0.6 : 1,
+                borderColor: isLoading ? "rgba(255,255,255,0.1)" : "#54C4F0"
+              }}
             />
             
             <div style={modalStyles.changeBox}>
@@ -86,12 +107,24 @@ export function CheckoutModal({ total, onConfirm, onClose, comments, onCommentsC
         )}
 
         <div style={modalStyles.actions}>
-          <button onClick={onClose} style={modalStyles.btnCancel}>Cancelar</button>
           <button 
-            onClick={() => onConfirm(isPaid ? "PAID" : "PENDING", isPaid ? numericPayment : 0)}
-            style={modalStyles.btnConfirm}
+            onClick={onClose} 
+            disabled={isLoading} 
+            style={{ ...modalStyles.btnCancel, opacity: isLoading ? 0.5 : 1 }}
           >
-            Confirmar {isPaid ? "Pago" : "Pedido"}
+            Cancelar
+          </button>
+          <button 
+            disabled={isLoading}
+            onClick={() => onConfirm(isPaid ? "PAID" : "PENDING", isPaid ? numericPayment : 0)}
+            style={{ 
+              ...modalStyles.btnConfirm, 
+              backgroundColor: isLoading ? "#333" : "#54C4F0",
+              color: isLoading ? "white" : "#0F1115",
+              cursor: isLoading ? "not-allowed" : "pointer"
+            }}
+          >
+            {isLoading ? "Guardando..." : `Confirmar ${isPaid ? "Pago" : "Pedido"}`}
           </button>
         </div>
       </div>
@@ -99,6 +132,7 @@ export function CheckoutModal({ total, onConfirm, onClose, comments, onCommentsC
   );
 }
 
+// Estilos se mantienen iguales (solo asegúrate de que modalStyles esté definido abajo)
 const modalStyles = {
   overlay: { position: "fixed" as const, top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.85)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 },
   card: { backgroundColor: "#1A1D23", padding: 30, borderRadius: 16, width: "100%", maxWidth: "400px", border: "1px solid rgba(255,255,255,0.1)" },

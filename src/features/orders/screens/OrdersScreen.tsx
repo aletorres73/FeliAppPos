@@ -67,17 +67,16 @@ export default function OrderScreen() {
   };
 
   const handleFinalizeOrder = async (payStatus: OrderPayStatus, customerPayment: number) => {
+    // 1. Evitar ejecución si ya está en curso
+    if (isLoading) return;
+
     try {
       setIsLoading(true);
-
-      // Capturamos el ID que retorna la función saveOrder
       const orderId = await saveOrder(draft, payStatus, customerPayment);
 
       if (orderId) {
         clearDraft();
         setShowCheckout(false);
-
-        // Uso del ID: Confirmación detallada
         alert(`Venta guardada con éxito. ID: ${orderId}`);
       }
     } catch (error) {
@@ -123,16 +122,18 @@ export default function OrderScreen() {
           subtotal={subtotal}
           total={totalFinal}
           itemsCount={draft.items.length}
-          onCheckout={() => setShowCheckout(true)} // Pasamos la acción al footer
+          isLoading={isLoading} // <--- Nueva prop
+          onCheckout={() => setShowCheckout(true)}
         />
       </div>
 
       {showCheckout && (
         <CheckoutModal
           total={totalFinal}
-          comments={draft.comments || ""} // <-- El valor del draft
-          onCommentsChange={updateComments} // <-- Tu función del hook useOrder
-          onClose={() => setShowCheckout(false)}
+          comments={draft.comments || ""}
+          isLoading={isLoading} // <--- IMPORTANTE: Conecta el estado de carga aquí
+          onCommentsChange={updateComments}
+          onClose={() => !isLoading && setShowCheckout(false)} // No deja cerrar si está guardando
           onConfirm={handleFinalizeOrder}
         />
       )}
@@ -170,7 +171,7 @@ const Header = ({ isLoading }: { isLoading: boolean }) => (
   </header>
 );
 
-const Footer = ({ subtotal, total, itemsCount, onCheckout }: any) => (
+const Footer = ({ subtotal, total, itemsCount, isLoading, onCheckout }: any) => (
   <footer style={styles.footer}>
     <div>
       <span style={styles.label}>Subtotal</span>
@@ -187,19 +188,21 @@ const Footer = ({ subtotal, total, itemsCount, onCheckout }: any) => (
 
       <button
         onClick={onCheckout}
-        disabled={itemsCount === 0}
+        // Se deshabilita si no hay items O si ya se está procesando algo
+        disabled={itemsCount === 0 || isLoading}
         style={{
           padding: "12px 24px",
-          backgroundColor: itemsCount === 0 ? "rgba(255,255,255,0.05)" : "#54C4F0",
-          color: itemsCount === 0 ? "rgba(255,255,255,0.2)" : "#0F1115",
+          backgroundColor: (itemsCount === 0 || isLoading) ? "rgba(255,255,255,0.05)" : "#54C4F0",
+          color: (itemsCount === 0 || isLoading) ? "rgba(255,255,255,0.2)" : "#0F1115",
           border: "none",
           borderRadius: "8px",
           fontWeight: "bold",
-          cursor: itemsCount === 0 ? "not-allowed" : "pointer",
-          transition: "0.2s"
+          cursor: (itemsCount === 0 || isLoading) ? "not-allowed" : "pointer",
+          transition: "0.2s",
+          opacity: isLoading ? 0.7 : 1 // Feedback visual de carga
         }}
       >
-        Finalizar Venta
+        {isLoading ? "Procesando..." : "Finalizar Venta"}
       </button>
     </div>
   </footer>
