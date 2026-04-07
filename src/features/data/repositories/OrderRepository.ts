@@ -30,10 +30,10 @@ export const saveOrder = async (
 
         console.log("Intentando guardar orden:", orderData);
 
-        // const docRef = await addDoc(collection(db, "orders"), orderData);
+        const docRef = await addDoc(collection(db, "orders"), orderData);
 
-        // return docRef.id; // Retornamos el ID por si lo necesitas para un ticket
-        return true; // Retornamos true para indicar éxito (puedes cambiar esto según tu lógica)
+        return docRef.id; // Retornamos el ID por si lo necesitas para un ticket
+        // return true; // Retornamos true para indicar éxito (puedes cambiar esto según tu lógica)
 
     } catch (error) {
         console.error("Error crítico al guardar orden:", error);

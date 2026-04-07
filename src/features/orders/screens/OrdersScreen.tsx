@@ -41,15 +41,26 @@ export default function OrderScreen() {
     try {
       const product = await getProductById(normalizedCode);
 
-      if (product?.saleWeight) {
+      if (!product) {
+        // CASO A: Producto no existe en BD -> Modal Manual para crear uno nuevo
+        setManualCode(normalizedCode);
+        setSelectedProduct(null); // Aseguramos que esté limpio
+        return;
+      }
+
+      if (product.saleWeight) {
+        // CASO B: Existe y es pesable -> Modal para ingresar peso
         setSelectedProduct(product);
         setManualCode(normalizedCode);
       } else {
-        addItem(mapProductToOrderItem(product!));
+        // CASO C: Existe y es unidad simple -> Agregar directo
+        addItem(mapProductToOrderItem(product));
+        setSearchTerm(""); // Limpiamos el buscador tras agregar
       }
     } catch (error) {
       console.error("Error en Scanner:", error);
-      // setManualCode(normalizedCode); // Opcional: permitir manual incluso si hay error en búsqueda
+      // Si hay error de red, también podemos permitir el ingreso manual
+      setManualCode(normalizedCode);
     } finally {
       setIsLoading(false);
     }

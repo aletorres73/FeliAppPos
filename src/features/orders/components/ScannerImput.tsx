@@ -11,24 +11,35 @@ export function ScannerInput({ onScan, externalValue, onChange, suggestions }: P
   const ref = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    const handleFocus = () => {
-      // Si hay un modal (dialog) abierto, NO robamos el foco
+    const handleFocus = (e: MouseEvent) => {
+      // 1. Detectamos si hay un modal abierto (dialog)
       const isModalOpen = document.querySelector('[role="dialog"]');
-      if (!isModalOpen) {
+
+      // 2. Detectamos si el usuario hizo clic en OTRO input o textarea
+      // (Por ejemplo, el campo de comentarios o el de efectivo del Checkout)
+      const target = e.target as HTMLElement;
+      const clickedInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
+
+      if (!isModalOpen && !clickedInput) {
+        // Solo robamos el foco si no hay modales y no se hizo clic en otro input
         ref.current?.focus();
       }
     };
 
+    // Foco inicial
     ref.current?.focus();
+
+    // Escuchamos clics en el documento
     document.addEventListener("click", handleFocus);
+
     return () => document.removeEventListener("click", handleFocus);
   }, []);
 
   return (
-    <div style={{ 
-      display: "flex", 
+    <div style={{
+      display: "flex",
       flexDirection: "column", // Cambiado a column para que las sugerencias bajen
-      alignItems: "center", 
+      alignItems: "center",
       margin: "20px 0",
       position: "relative",
       width: "100%",
@@ -83,8 +94,8 @@ export function ScannerInput({ onScan, externalValue, onChange, suggestions }: P
       `}</style>
 
       <div style={{ position: "relative", width: "100%", maxWidth: "600px" }}>
-        <span style={{ position: "absolute", left: 15, top: "50%", transform: "translateY(-50%)", opacity: 0.4 }}>🔍</span> 
-        
+        <span style={{ position: "absolute", left: 15, top: "50%", transform: "translateY(-50%)", opacity: 0.4 }}>🔍</span>
+
         <input
           ref={ref}
           className="scanner-field"
@@ -104,13 +115,13 @@ export function ScannerInput({ onScan, externalValue, onChange, suggestions }: P
         {suggestions.length > 0 && (
           <div className="suggestions-list">
             {suggestions.map((p) => (
-              <div 
-                key={p.id} 
+              <div
+                key={p.id}
                 className="suggestion-item"
                 onMouseDown={(e) => {
-                   e.preventDefault(); // Evita que el input pierda el foco antes del click
-                   onScan(p.id.toString());
-                   onChange("");
+                  e.preventDefault(); // Evita que el input pierda el foco antes del click
+                  onScan(p.id.toString());
+                  onChange("");
                 }}
               >
                 <span style={{ fontSize: "0.75rem", fontWeight: "bold" }}>{p.article}</span>
