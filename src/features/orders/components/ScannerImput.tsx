@@ -1,38 +1,37 @@
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef } from "react"
 
 type Props = {
-  onScan: (code: string) => void
+  onScan: (code: string) => void;
+  externalValue: string;        // Nuevo: Valor que viene del Hook
+  onChange: (val: string) => void; // Nuevo: Para actualizar el Hook
+  suggestions: any[];           // Nuevo: Lista de productos filtrados
 }
 
-export function ScannerInput({ onScan }: Props) {
-  const [value, setValue] = useState("")
+export function ScannerInput({ onScan, externalValue, onChange, suggestions }: Props) {
   const ref = useRef<HTMLInputElement>(null)
 
-  // Mantenemos el auto-focus profesional
   useEffect(() => {
-  const handleFocus = () => {
-    // Solo robar el foco si NO hay un modal abierto en el DOM
-    // (Asumiendo que tus modales están en el body o tienen una clase específica)
-    const isModalOpen = document.querySelector('[role="dialog"]') || document.querySelector('.modal-overlay');
-    
-    if (!isModalOpen) {
-      ref.current?.focus();
-    }
-  };
+    const handleFocus = () => {
+      // Si hay un modal (dialog) abierto, NO robamos el foco
+      const isModalOpen = document.querySelector('[role="dialog"]');
+      if (!isModalOpen) {
+        ref.current?.focus();
+      }
+    };
 
-  ref.current?.focus();
-  document.addEventListener("click", handleFocus);
-
-  // IMPORTANTE: Limpiar el evento cuando el componente desaparezca
-  return () => document.removeEventListener("click", handleFocus);
-}, []);
+    ref.current?.focus();
+    document.addEventListener("click", handleFocus);
+    return () => document.removeEventListener("click", handleFocus);
+  }, []);
 
   return (
     <div style={{ 
       display: "flex", 
-      justifyContent: "center", 
+      flexDirection: "column", // Cambiado a column para que las sugerencias bajen
+      alignItems: "center", 
       margin: "20px 0",
-      position: "relative" 
+      position: "relative",
+      width: "100%",
     }}>
       <style>{`
         .scanner-field {
@@ -40,52 +39,88 @@ export function ScannerInput({ onScan }: Props) {
           border: 1px solid rgba(255, 255, 255, 0.1);
           border-radius: 8px;
           color: white;
-          padding: 12px 16px 12px 60px; /* Espacio para el icono */
+          padding: 12px 16px 12px 60px;
           font-size: 0.85rem;
           outline: none;
           transition: all 0.2s ease;
           width: 100%;
           max-width: 600px;
-          letter-spacing: 2px;
+          box-sizing: border-box;
           font-family: monospace;
         }
 
         .scanner-field:focus {
-          background: rgba(255, 255, 255, 0.08);
-          border-color: #54C4F0; /* El mismo azul que usamos en el total */
+          border-color: #54C4F0;
           box-shadow: 0 0 15px rgba(84, 196, 240, 0.1);
         }
 
-        .scanner-icon {
+        .suggestions-list {
           position: absolute;
-          left: 15px;
-          top: 50%;
-          transform: translateY(-50%);
-          opacity: 0.4;
-          font-size: 0.85rem;
-          pointer-events: none;
+          top: 100%;
+          left: 0;
+          right: 0;
+          background: #1A1D23;
+          border: 1px solid #54C4F0;
+          border-radius: 0 0 8px 8px;
+          z-index: 1000;
+          max-height: 250px;
+          overflow-y: auto;
+          box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+          margin-top: -2px;
+        }
+
+        .suggestion-item {
+          padding: 12px 15px;
+          border-bottom: 1px solid rgba(255,255,255,0.05);
+          cursor: pointer;
+          display: flex;
+          justify-content: space-between;
+        }
+
+        .suggestion-item:hover {
+          background: rgba(84, 196, 240, 0.1);
         }
       `}</style>
 
-      <div style={{ position: "relative", width: "100%", maxWidth: "400px" }}>
-        {/* Indicador visual de escáner */}
-        <span className="scanner-icon">🔍</span> 
+      <div style={{ position: "relative", width: "100%", maxWidth: "600px" }}>
+        <span style={{ position: "absolute", left: 15, top: "50%", transform: "translateY(-50%)", opacity: 0.4 }}>🔍</span> 
         
         <input
           ref={ref}
           className="scanner-field"
-          placeholder="Escanear código..."
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
+          placeholder="Escanear o buscar producto..."
+          value={externalValue} // Usa el valor del hook
+          onChange={(e) => onChange(e.target.value)} // Actualiza el hook
           onKeyDown={(e) => {
             if (e.key === "Enter") {
-              if (value.trim()) onScan(value.trim())
-              setValue("")
+              if (externalValue.trim()) onScan(externalValue.trim());
+              onChange(""); // Limpia el buscador
             }
           }}
-          // Evitamos que el navegador intente autocompletar
           autoComplete="off"
         />
+
+        {/* RENDER DE SUGERENCIAS */}
+        {suggestions.length > 0 && (
+          <div className="suggestions-list">
+            {suggestions.map((p) => (
+              <div 
+                key={p.id} 
+                className="suggestion-item"
+                onMouseDown={(e) => {
+                   e.preventDefault(); // Evita que el input pierda el foco antes del click
+                   onScan(p.id.toString());
+                   onChange("");
+                }}
+              >
+                <span style={{ fontSize: "0.75rem", fontWeight: "bold" }}>{p.article}</span>
+                {/* <span style={{ color: "#54C4F0", fontWeight: "bold" }}>${p.price}</span> */}
+                <span style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.5)" }}>{p.branch}</span>
+                <span style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.5)" }}>Disponible: {p.saleWeight ? `${p.weight.toFixed(2)} kg` : p.stock}</span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )

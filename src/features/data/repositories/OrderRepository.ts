@@ -18,25 +18,22 @@ export const saveOrder = async (
             items: draft.items,
             total: draft.total,
             comments: draft.comments || "",
-            // Usar serverTimestamp() es mejor que Date.now() para evitar 
-            // conflictos si el reloj del dispositivo del cliente está mal.
             createdAt: Date.now(),
             payStatus: payStatus,
-            // Lo que efectivamente ingresó a la caja
-            payed: payStatus === "PAID" ? Math.min(customerPayment, draft.total) : 0,
+            payed: customerPayment <= draft.total ? customerPayment : draft.total, // Evitamos que el pago supere el total
             status: OrderStatus.PENDING,
             confirmedAt: null,
             cancelledAt: null,
             client: null,
-            // El billete/monto con el que pagó el cliente (útil para auditoría)
-            customerPayment: payStatus === "PAID" ? customerPayment : 0,
+            customerPayment: customerPayment,
         };
 
         console.log("Intentando guardar orden:", orderData);
 
-        const docRef = await addDoc(collection(db, "orders"), orderData);
+        // const docRef = await addDoc(collection(db, "orders"), orderData);
 
-        return docRef.id; // Retornamos el ID por si lo necesitas para un ticket
+        // return docRef.id; // Retornamos el ID por si lo necesitas para un ticket
+        return true; // Retornamos true para indicar éxito (puedes cambiar esto según tu lógica)
 
     } catch (error) {
         console.error("Error crítico al guardar orden:", error);

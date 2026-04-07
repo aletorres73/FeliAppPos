@@ -11,14 +11,25 @@ import { CheckoutModal } from "../components/CheckoutModal";
 import { saveOrder } from "../../data/repositories/OrderRepository";
 
 export default function OrderScreen() {
-  const { draft, addItem, removeItem, updateQuantity, clearDraft } = useOrder();
+  const {
+    draft,
+    searchTerm,
+    setSearchTerm,
+    suggestions,
+    addItem,
+    updateComments,
+    clearDraft,
+    removeItem,
+    updateQuantity
+  } = useOrder();
+
   const [manualCode, setManualCode] = useState<string | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showCheckout, setShowCheckout] = useState(false);
 
   // Derivación de datos (Selectors)
-  const subtotal = draft.total;
+  const subtotal = draft.subtotal;
   const totalFinal = roundToNearestHundred(subtotal);
 
   // Handlers
@@ -45,25 +56,25 @@ export default function OrderScreen() {
   };
 
   const handleFinalizeOrder = async (payStatus: OrderPayStatus, customerPayment: number) => {
-  try {
-    setIsLoading(true);
-    
-    // Capturamos el ID que retorna la función saveOrder
-    const orderId = await saveOrder(draft, payStatus, customerPayment);
-    
-    if (orderId) {
-      clearDraft(); 
-      setShowCheckout(false);
-      
-      // Uso del ID: Confirmación detallada
-      alert(`Venta guardada con éxito. ID: ${orderId}`);
+    try {
+      setIsLoading(true);
+
+      // Capturamos el ID que retorna la función saveOrder
+      const orderId = await saveOrder(draft, payStatus, customerPayment);
+
+      if (orderId) {
+        clearDraft();
+        setShowCheckout(false);
+
+        // Uso del ID: Confirmación detallada
+        alert(`Venta guardada con éxito. ID: ${orderId}`);
+      }
+    } catch (error) {
+      alert("Error al guardar la venta");
+    } finally {
+      setIsLoading(false);
     }
-  } catch (error) {
-    alert("Error al guardar la venta");
-  } finally {
-    setIsLoading(false);
-  }
-};
+  };
 
   const closeManualModal = () => {
     setManualCode(null);
@@ -81,7 +92,12 @@ export default function OrderScreen() {
         <Header isLoading={isLoading} />
 
         <section style={{ marginBottom: 40 }}>
-          <ScannerInput onScan={handleScan} />
+          <ScannerInput
+            externalValue={searchTerm}
+            onChange={setSearchTerm}
+            onScan={handleScan}
+            suggestions={suggestions}
+          />
         </section>
 
         <section>

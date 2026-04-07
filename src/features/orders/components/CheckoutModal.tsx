@@ -64,7 +64,7 @@ export function CheckoutModal({ total, onConfirm, onClose }: any) {
         <div style={modalStyles.actions}>
           <button onClick={onClose} style={modalStyles.btnCancel}>Cancelar</button>
           <button 
-            onClick={() => onConfirm(isPaid ? "PAID" : "PENDING", numericPayment ? numericPayment-total <= 0 : 0)}
+            onClick={() => onConfirm(isPaid ? "PAID" : "PENDING", numericPayment)}
             style={modalStyles.btnConfirm}
           >
             Confirmar {isPaid ? "Pago" : "Pedido"}
