@@ -119,6 +119,8 @@ export default function OrderScreen() {
       {showCheckout && (
         <CheckoutModal
           total={totalFinal}
+          comments={draft.comments || ""} // <-- El valor del draft
+          onCommentsChange={updateComments} // <-- Tu función del hook useOrder
           onClose={() => setShowCheckout(false)}
           onConfirm={handleFinalizeOrder}
         />
