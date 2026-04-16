@@ -2,7 +2,7 @@ import { useState } from "react";
 import { ScannerInput } from "../components/ScannerImput";
 import { OrderList } from "../components/OrderList";
 import { ManualItemModal } from "../components/ManualItemModal";
-import { CustomerSelector } from "../components/CustomerSelector";
+import { CustomerSelectorModal } from "../components/CustomerSelectorModal";
 import { useOrder } from "../hook/useOrder";
 import { getProductById } from "../../data/repositories/ProductRepository";
 import { roundToNearestHundred, formatCurrency } from "../../../utils/formats";
@@ -10,6 +10,7 @@ import feliLogo from "../../../assets/logo-feli.webp";
 import type { Product, OrderItem, OrderPayStatus } from "../types/types";
 import { CheckoutModal } from "../components/CheckoutModal";
 import { AnonymousCustomer } from "../../customers/types/types";
+import { CustomerSelector } from "../components/CustomerSelector";
 
 export default function OrderScreen() {
   const {
@@ -29,6 +30,8 @@ export default function OrderScreen() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showCheckout, setShowCheckout] = useState(false);
+  const [showCustomerModal, setShowCustomerModal] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState(AnonymousCustomer);
 
   // Derivación de datos (Selectors)
   const subtotal = draft.subtotal;
@@ -75,11 +78,12 @@ export default function OrderScreen() {
 
     try {
       setIsLoading(true);
-      const orderId = await commitOrder(draft, payStatus, customerPayment, AnonymousCustomer);
+      const orderId = await commitOrder(draft, payStatus, customerPayment, selectedCustomer);
 
       if (orderId) {
         clearDraft();
         setShowCheckout(false);
+        setSelectedCustomer(AnonymousCustomer); // Resetear para la próxima venta
         alert(`Venta guardada con éxito. ID: ${orderId}`);
       }
     } catch (error) {
@@ -104,9 +108,11 @@ export default function OrderScreen() {
       <div style={styles.content}>
         <Header isLoading={isLoading} />
 
-        <section style={{ marginBottom: 40 }}>
-          <CustomerSelector />
-        </section>
+        <CustomerSelector
+          selected={selectedCustomer}
+          onClick={() => setShowCustomerModal(true)}
+          onClear={() => setSelectedCustomer(AnonymousCustomer)} // <--- Aquí la lógica
+        />
 
         <section style={{ marginBottom: 40 }}>
           <ScannerInput
@@ -151,6 +157,17 @@ export default function OrderScreen() {
           product={selectedProduct ?? undefined}
           onClose={closeManualModal}
           onConfirm={handleConfirmManual}
+        />
+      )}
+
+      {showCustomerModal && (
+        <CustomerSelectorModal
+          onClose={() => setShowCustomerModal(false)}
+          onSelect={(c) => {
+            console.log("Cliente seleccionado:", c);
+            setSelectedCustomer(c);
+            setShowCustomerModal(false);
+          }}
         />
       )}
     </div>

@@ -18,7 +18,7 @@ export type TransactionType = (typeof TransactionType)[keyof typeof TransactionT
 export type Customer = {
   id: string | null 
   name: string,
-  lastName: string,
+  lastname: string,
   phone: string,
   address: string,
   currentBalance: number,
@@ -28,7 +28,7 @@ export type Customer = {
 export const AnonymousCustomer: Customer = {
   id: null,
   name: "Consumidor final",
-  lastName: "",
+  lastname: "",
   phone: "",
   address: "",
   currentBalance: 0,
