@@ -1,42 +1,88 @@
 import { db } from "../services/FirebaseService"
-import { collection, addDoc } from "firebase/firestore"
-import { OrderStatus, type OrderModel, type OrderPayStatus } from "../../orders/types/types"
-import type { OrderDraft } from "../../orders/types/types"
+import { writeBatch, doc, collection, increment } from "firebase/firestore"
+import { type OrderModel, } from "../../orders/types/types"
+import type { CustomerTransaction } from "../../customers/types/types"
 
-export const saveOrder = async (
-    draft: OrderDraft,
-    payStatus: OrderPayStatus,
-    customerPayment: number
-) => {
-    try {
-        // 1. Validamos datos básicos antes de intentar subir
-        if (draft.items.length === 0) throw new Error("No hay ítems en la orden");
 
-        // 2. Construimos el objeto de forma limpia
-        const orderData: OrderModel = {
-            id: 0, //Lo maneja Cloud Function
-            items: draft.items,
-            total: draft.total,
-            comments: draft.comments || "",
-            createdAt: Date.now(),
-            payStatus: payStatus,
-            payed: customerPayment <= draft.total ? customerPayment : draft.total, // Evitamos que el pago supere el total
-            status: OrderStatus.PENDING,
-            confirmedAt: null,
-            cancelledAt: null,
-            client: null,
-            customerPayment: customerPayment,
-        };
+export class OrderRepository {
+    private readonly ORDER_COLLECTION = "orders";
+    private readonly CUSTOMER_TRANSACTIONS = "customers_transactions";
+    private readonly CUSTOMERS = "customers";
 
-        console.log("Intentando guardar orden:", orderData);
+    async commitOrderWithTransaction(
+        order: OrderModel,
+        transaction: CustomerTransaction | null
+    ): Promise<string | null> {
+        try {
+            // CAMBIO: Se usa la función writeBatch pasándole la instancia de db
+            const batch = writeBatch(db);
 
-        const docRef = await addDoc(collection(db, "orders"), orderData);
+            // Referencia para la nueva orden
+            const orderRef = doc(collection(db, this.ORDER_COLLECTION));
 
-        return docRef.id; // Retornamos el ID por si lo necesitas para un ticket
-        // return true; // Retornamos true para indicar éxito (puedes cambiar esto según tu lógica)
+            batch.set(orderRef, { ...order, docId: orderRef.id}); // Guardamos el docId dentro del documento
 
-    } catch (error) {
-        console.error("Error crítico al guardar orden:", error);
-        throw error; // Re-lanzamos para que la UI pueda mostrar un alerta
+            if (transaction) {
+                const transRef = doc(collection(db, this.CUSTOMER_TRANSACTIONS));
+                const customerRef = doc(db, this.CUSTOMERS, transaction.clientId);
+
+                batch.set(transRef, { ...transaction, orderId: orderRef.id });
+
+                // CAMBIO: FieldValue.increment también cambia según el SDK
+                batch.update(customerRef, {
+                    currentBalance: increment(transaction.amount)
+                });
+            }
+
+            await batch.commit();
+            return orderRef.id;
+        } catch (error) {
+            console.error(error);
+            return null;
+        }
     }
-};
+
+    async payOrderWithTransaction(
+        order: OrderModel & { docId: string }, // Aseguramos que venga el docId
+        transaction: CustomerTransaction | null
+    ): Promise<boolean> {
+        try {
+            const batch = writeBatch(db); // O writeBatch(db) si usas el SDK modular
+
+            // 1. Referencia a la Orden usando su docId (el ID de Firestore)
+            const orderRef = doc(collection(db, this.ORDER_COLLECTION), order.docId);
+
+            // Actualizamos la orden
+            batch.set(orderRef, order, { merge: true });
+
+            // 2. Si hay transacción y el cliente no es nulo
+            if (transaction && transaction.clientId) {
+                // Referencia para el nuevo documento de transacción
+                const transRef = doc(collection(db, this.CUSTOMER_TRANSACTIONS));
+
+                // Registramos el movimiento
+                batch.set(transRef, {
+                    ...transaction,
+                    createdAt: Date.now()
+                });
+
+                // Referencia al cliente para actualizar su saldo
+                const customerRef = doc(collection(db, this.CUSTOMERS), transaction.clientId);
+
+                // IMPORTANTE: En Node.js con admin SDK se usa FieldValue.increment
+                batch.update(customerRef, {
+                    currentBalance: increment(transaction.amount)
+                });
+            }
+
+            await batch.commit();
+            console.log("Pago y saldo actualizados correctamente.");
+            return true;
+        } catch (error) {
+            console.error("Error en payOrderWithTransaction:", error);
+            return false;
+        }
+    }
+}
+
+export const orderRepository = new OrderRepository();

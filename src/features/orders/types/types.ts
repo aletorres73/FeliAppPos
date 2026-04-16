@@ -9,7 +9,7 @@ export interface OrderItem {
 }
 
 export interface OrderModel {
-  // docId: string;           // El ID del documento en Firestore
+  docId: string;           // El ID del documento en Firestore
   id: number;              // Tu ID autoincremental o interno
   status: OrderStatus;
   payStatus: OrderPayStatus;
@@ -60,19 +60,19 @@ export const OrderPayStatusText: Record<OrderPayStatus, string> = {
   [OrderPayStatus.PAID]: "Pagado",
 };
 
-  export type Product = {
-    id: string
-    branch: string
-    article: string
-    cost: number
-    gains: number
-    price: number
-    stock: number
-    weight: number
-    active: boolean
-    saleWeight: boolean
-    quantitySold: number
-    createdAt: number
-    updatedAt: number
-    weightSold: number
-  }
+export type Product = {
+  id: string
+  branch: string
+  article: string
+  cost: number
+  gains: number
+  price: number
+  stock: number
+  weight: number
+  active: boolean
+  saleWeight: boolean
+  quantitySold: number
+  createdAt: number
+  updatedAt: number
+  weightSold: number
+}

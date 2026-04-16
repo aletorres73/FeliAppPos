@@ -1,7 +1,10 @@
 import { useEffect, useState, useMemo } from "react"
-import type { OrderDraft, OrderItem, Product } from "../types/types"
+import { type OrderDraft, type OrderItem, type OrderModel, type Product, OrderStatus, OrderPayStatus } from "../types/types"
 import { subscribeToProducts } from "../../data/repositories/ProductRepository"
 import { roundToNearestHundred } from "../../../utils/formats";
+import { orderRepository } from "../../data/repositories/OrderRepository";
+import type { Customer, CustomerTransaction } from "../../customers/types/types";
+import { customerRepository } from "../../data/repositories/CustomerRepository";
 
 export function useOrder() {
   const [draft, setDraft] = useState<OrderDraft>({
@@ -13,6 +16,7 @@ export function useOrder() {
 
   const [products, setProducts] = useState<Product[]>([]);
   const [searchTerm, setSearchTerm] = useState(""); // Estado para la búsqueda
+  const [customers, setCustomers] = useState<Customer[]>([]); // Estado para clientes
 
   // CARGA INICIAL: 
   useEffect(() => {
@@ -21,6 +25,14 @@ export function useOrder() {
       setProducts(data || []);
       console.log("Productos actualizados desde Firestore");
     });
+
+    customerRepository.getCustomers().then(data => {
+      setCustomers(data || []);
+      console.log("Clientes cargados:", data);
+    }).catch(error => {
+      console.error("Error al cargar clientes:", error);
+    });
+
 
     // CLEANUP: React ejecuta esto cuando el componente se destruye
     return () => {
@@ -42,6 +54,16 @@ export function useOrder() {
 
     ).slice(0, 10); // Limitamos a 10 resultados por performance
   }, [searchTerm, products]);
+
+  const customersSuggestions = useMemo(() => {
+    if (!searchTerm.trim()) return [];
+
+    const term = searchTerm.toLowerCase();
+    return customers.filter(c =>
+      c.name.toLowerCase().includes(term) ||
+      (c.id !== null && c.id.toString().includes(term)) 
+    ).slice(0, 10);
+  }, [searchTerm, customers]);
 
   const addItem = (newItem: OrderItem) => {
     const existingItemIndex = draft.items.findIndex(
@@ -106,6 +128,88 @@ export function useOrder() {
     setDraft(prev => ({ ...prev, comments }));
   }
 
+  const commitOrder = async (
+    draft: OrderDraft,
+    payStatus: OrderPayStatus,
+    customerPayment: number,
+    customer: Customer
+  ): Promise<String | null> => {
+
+    const debDelta = (customerPayment < draft.total) ? draft.total - customerPayment : 0;
+
+    // 1. Validamos datos básicos antes de intentar subir
+    if (draft.items.length === 0) throw new Error("No hay ítems en la orden");
+
+    // 2. Construimos el objeto de forma limpia
+    const orderData: OrderModel = {
+      docId: "", // Se asigna en el repositorio
+      id: 0, //Lo maneja Cloud Function
+      items: draft.items,
+      total: draft.total,
+      comments: draft.comments || "",
+      createdAt: Date.now(),
+      payStatus: payStatus,
+      payed: customerPayment <= draft.total ? customerPayment : draft.total, // Evitamos que el pago supere el total
+      status: OrderStatus.PENDING,
+      confirmedAt: null,
+      cancelledAt: null,
+      client: null,
+      customerPayment: customerPayment,
+    };
+
+    const transaction = (customer.id && debDelta > 0) ? {
+      clientId: customer.id,
+      orderId: "", // Se asigna en el repositorio
+      amount: debDelta,
+      type: "SALE",
+      createdAt: Date.now(),
+      note: `Pago de ${customerPayment} para orden de ${draft.total}`
+    } as CustomerTransaction : null;
+
+    console.log("Intentando guardar orden:", orderData);
+
+
+    return orderRepository.commitOrderWithTransaction(orderData, transaction)
+
+  };
+
+  const PayOrder = async (
+    order: OrderModel,
+    amountPaid: number,
+  ): Promise<boolean> => {
+
+    // 1. Validar si ya está paga
+    if (order.payStatus === OrderPayStatus.PAID) return false;
+
+    // 2. Preparar la transacción (Solo si hay cliente y no es el "0"/Anónimo)
+    // Usamos el signo negativo (-) en amountPaid para que al hacer FieldValue.increment reste la deuda
+    const transaction: CustomerTransaction | null = (order.client != null) ? {
+      clientId: order.client,
+      orderId: order.docId, // Usamos el ID de Firestore
+      amount: -amountPaid,  // <--- IMPORTANTE: Negativo para restar del saldo
+      type: "PAY",
+      createdAt: Date.now(),
+      note: `Pago de orden #${order.id}`
+    } : null;
+
+    // 3. Crear el objeto de la orden actualizada
+    // Sumamos lo que ya estaba pagado + el nuevo pago
+    const updatedOrder: OrderModel & { docId: string } = {
+      ...order,
+      payed: (order.payed || 0) + amountPaid,
+      payStatus: OrderPayStatus.PAID, // O la lógica que prefieras (ej: parcial)
+      docId: order.docId // Necesitamos el docId para el repo
+    };
+
+    // 4. Llamar al repositorio
+    try {
+      const success = await orderRepository.payOrderWithTransaction(updatedOrder, transaction);
+      return success;
+    } catch (error) {
+      console.error("Error al procesar PayOrder:", error);
+      return false;
+    }
+  };
   return {
     draft,
     addItem,
@@ -115,6 +219,8 @@ export function useOrder() {
     updateComments,
     searchTerm,
     setSearchTerm,
-    suggestions
+    suggestions,
+    commitOrder, // commitOrderWithTransaction,
+    customersSuggestions
   }
 }

@@ -2,13 +2,14 @@ import { useState } from "react";
 import { ScannerInput } from "../components/ScannerImput";
 import { OrderList } from "../components/OrderList";
 import { ManualItemModal } from "../components/ManualItemModal";
+import { CustomerSelector } from "../components/CustomerSelector";
 import { useOrder } from "../hook/useOrder";
 import { getProductById } from "../../data/repositories/ProductRepository";
 import { roundToNearestHundred, formatCurrency } from "../../../utils/formats";
 import feliLogo from "../../../assets/logo-feli.webp";
 import type { Product, OrderItem, OrderPayStatus } from "../types/types";
 import { CheckoutModal } from "../components/CheckoutModal";
-import { saveOrder } from "../../data/repositories/OrderRepository";
+import { AnonymousCustomer } from "../../customers/types/types";
 
 export default function OrderScreen() {
   const {
@@ -20,7 +21,8 @@ export default function OrderScreen() {
     updateComments,
     clearDraft,
     removeItem,
-    updateQuantity
+    updateQuantity,
+    commitOrder,
   } = useOrder();
 
   const [manualCode, setManualCode] = useState<string | null>(null);
@@ -40,6 +42,7 @@ export default function OrderScreen() {
     setIsLoading(true);
     try {
       const product = await getProductById(normalizedCode);
+      console.log("Producto encontrado:", product);
 
       if (!product) {
         // CASO A: Producto no existe en BD -> Modal Manual para crear uno nuevo
@@ -72,7 +75,7 @@ export default function OrderScreen() {
 
     try {
       setIsLoading(true);
-      const orderId = await saveOrder(draft, payStatus, customerPayment);
+      const orderId = await commitOrder(draft, payStatus, customerPayment, AnonymousCustomer);
 
       if (orderId) {
         clearDraft();
@@ -102,6 +105,10 @@ export default function OrderScreen() {
         <Header isLoading={isLoading} />
 
         <section style={{ marginBottom: 40 }}>
+          <CustomerSelector />
+        </section>
+
+        <section style={{ marginBottom: 40 }}>
           <ScannerInput
             externalValue={searchTerm}
             onChange={setSearchTerm}
@@ -122,7 +129,7 @@ export default function OrderScreen() {
           subtotal={subtotal}
           total={totalFinal}
           itemsCount={draft.items.length}
-          isLoading={isLoading} // <--- Nueva prop
+          isLoading={isLoading}
           onCheckout={() => setShowCheckout(true)}
         />
       </div>
