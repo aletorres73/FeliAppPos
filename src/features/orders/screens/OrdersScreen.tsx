@@ -9,8 +9,10 @@ import { roundToNearestHundred, formatCurrency } from "../../../utils/formats";
 import feliLogo from "../../../assets/logo-feli.webp";
 import type { Product, OrderItem, OrderPayStatus } from "../types/types";
 import { CheckoutModal } from "../components/CheckoutModal";
-import { AnonymousCustomer } from "../../customers/types/types";
+import { AnonymousCustomer, type Customer } from "../../customers/types/types";
 import { CustomerSelector } from "../components/CustomerSelector";
+import { customerRepository } from "../../data/repositories/CustomerRepository";
+import { CustomerCreateModal } from "../components/CustomerCreateModal";
 
 export default function OrderScreen() {
   const {
@@ -32,12 +34,45 @@ export default function OrderScreen() {
   const [showCheckout, setShowCheckout] = useState(false);
   const [showCustomerModal, setShowCustomerModal] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState(AnonymousCustomer);
+  const [showCreateCustomerModal, setShowCreateCustomerModal] = useState(false);
 
   // Derivación de datos (Selectors)
   const subtotal = draft.subtotal;
   const totalFinal = roundToNearestHundred(subtotal);
 
   // Handlers
+  const handleSaveNewCustomer = async (data: any) => {
+    setIsLoading(true);
+    try {
+      const newCustomerBase = {
+        ...data,
+        currentBalance: 0,
+        lastPurchaseDate: null,
+      };
+
+      // 1. Guardar en Firebase (nos devuelve el ID generado por la transacción)
+      const newId = await customerRepository.saveClient(newCustomerBase);
+
+      if (newId) {
+        // 2. Crear el objeto completo para el estado local
+        const fullCustomer: Customer = {
+          ...newCustomerBase,
+          id: newId
+        };
+
+        // 3. SELECCIONAR AUTOMÁTICAMENTE
+        setSelectedCustomer(fullCustomer);
+        setShowCreateCustomerModal(false);
+        console.log("Cliente creado y seleccionado:", fullCustomer);
+      }
+    } catch (error) {
+      alert("Error al crear el cliente");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+
   const handleScan = async (code: string) => {
     const normalizedCode = code.trim().toUpperCase();
     if (!normalizedCode) return;
@@ -112,6 +147,7 @@ export default function OrderScreen() {
           selected={selectedCustomer}
           onClick={() => setShowCustomerModal(true)}
           onClear={() => setSelectedCustomer(AnonymousCustomer)} // <--- Aquí la lógica
+          onOpenCreate={() => setShowCreateCustomerModal(true)} // <--- Aquí la lógica
         />
 
         <section style={{ marginBottom: 40 }}>
@@ -139,6 +175,14 @@ export default function OrderScreen() {
           onCheckout={() => setShowCheckout(true)}
         />
       </div>
+
+      {showCreateCustomerModal && (
+        <CustomerCreateModal
+          isLoading={isLoading}
+          onClose={() => setShowCreateCustomerModal(false)}
+          onSave={handleSaveNewCustomer}
+        />
+      )}
 
       {showCheckout && (
         <CheckoutModal
