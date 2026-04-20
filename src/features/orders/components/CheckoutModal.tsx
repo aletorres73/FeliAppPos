@@ -35,11 +35,11 @@ export function CheckoutModal({
   }, [isPaid, paymentMethod, isLoading]);
 
   // Si cambia a transferencia, seteamos el pago igual al total automáticamente
-  useEffect(() => {
-    if (paymentMethod === "TRANSFER") {
-      setPaymentAmount(total.toString());
-    }
-  }, [paymentMethod, total]);
+  // useEffect(() => {
+  //   if (paymentMethod === "TRANSFER") {
+  //     setPaymentAmount(total.toString());
+  //   }
+  // }, [paymentMethod, total]);
 
   const numericPayment = parseFloat(paymentAmount) || 0;
   const change = numericPayment - total;
@@ -130,7 +130,7 @@ export function CheckoutModal({
               {paymentMethod === "CASH" ? "Efectivo entregado:" : "Monto a transferir:"}
             </label>
             <input
-              disabled={isLoading || paymentMethod === "TRANSFER"} // Bloqueado si es transferencia
+              disabled={isLoading /*|| paymentMethod === "TRANSFER"*/}
               ref={inputRef}
               type="number"
               value={paymentAmount}
@@ -138,8 +138,8 @@ export function CheckoutModal({
               onFocus={(e) => e.target.select()}
               style={{
                 ...modalStyles.input,
-                opacity: (isLoading || paymentMethod === "TRANSFER") ? 0.6 : 1,
-                borderColor: paymentMethod === "TRANSFER" ? "rgba(255,255,255,0.2)" : "#54C4F0"
+                opacity: (isLoading /*|| paymentMethod === "TRANSFER"*/) ? 0.6 : 1,
+                borderColor: /*paymentMethod === "TRANSFER" ? "rgba(255,255,255,0.2)" :*/ "#54C4F0"
               }}
             />
 
