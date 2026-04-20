@@ -22,7 +22,10 @@ export interface OrderModel {
   client: string | null;
   comments: string | null;
   customerPayment: number;
+  paymentMethod: PaymentMethod | null;
 }
+
+export type PaymentMethod = "CASH" | "TRANSFER" | null;
 
 export interface OrderDraft {
   items: OrderItem[];

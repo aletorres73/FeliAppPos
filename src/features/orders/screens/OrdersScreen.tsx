@@ -7,7 +7,7 @@ import { useOrder } from "../hook/useOrder";
 import { getProductById } from "../../data/repositories/ProductRepository";
 import { roundToNearestHundred, formatCurrency } from "../../../utils/formats";
 import feliLogo from "../../../assets/logo-feli.webp";
-import type { Product, OrderItem, OrderPayStatus } from "../types/types";
+import type { Product, OrderItem, OrderPayStatus, PaymentMethod } from "../types/types";
 import { CheckoutModal } from "../components/CheckoutModal";
 import { AnonymousCustomer, type Customer } from "../../customers/types/types";
 import { CustomerSelector } from "../components/CustomerSelector";
@@ -107,13 +107,16 @@ export default function OrderScreen() {
     }
   };
 
-  const handleFinalizeOrder = async (payStatus: OrderPayStatus, customerPayment: number) => {
+  const handleFinalizeOrder = async (
+    payStatus: OrderPayStatus,
+    customerPayment: number,
+    paymentMethod: PaymentMethod) => {
     // 1. Evitar ejecución si ya está en curso
     if (isLoading) return;
 
     try {
       setIsLoading(true);
-      const orderId = await commitOrder(draft, payStatus, customerPayment, selectedCustomer);
+      const orderId = await commitOrder(draft, payStatus, customerPayment, paymentMethod, selectedCustomer);
 
       if (orderId) {
         clearDraft();

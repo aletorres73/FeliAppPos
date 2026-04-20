@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from "react"
-import { type OrderDraft, type OrderItem, type OrderModel, type Product, OrderStatus, OrderPayStatus } from "../types/types"
+import { type OrderDraft, type OrderItem, type OrderModel, type Product, OrderStatus, OrderPayStatus, type PaymentMethod } from "../types/types"
 import { subscribeToProducts } from "../../data/repositories/ProductRepository"
 import { roundToNearestHundred } from "../../../utils/formats";
 import { orderRepository } from "../../data/repositories/OrderRepository";
@@ -112,11 +112,12 @@ export function useOrder() {
     draft: OrderDraft,
     payStatus: OrderPayStatus,
     customerPayment: number,
-    customer: Customer
+    paymentMethod: PaymentMethod,
+    customer: Customer,
   ): Promise<String | null> => {
 
     const debDelta = (customerPayment < draft.total) ? draft.total - customerPayment : 0;
-    console.log("commitOrder llamado con:", { draft, payStatus, customerPayment, customer, debDelta });
+    // console.log("commitOrder llamado con:", { draft, payStatus, customerPayment, customer, debDelta });
 
     // 1. Validamos datos básicos antes de intentar subir
     if (draft.items.length === 0) throw new Error("No hay ítems en la orden");
@@ -136,6 +137,7 @@ export function useOrder() {
       cancelledAt: null, //si es null es consumidor final, si no es null es cliente registrado
       client: customer.id,
       customerPayment: customerPayment,
+      paymentMethod: paymentMethod,
     };
 
     const transaction = (customer.id != null && debDelta > 0) ? {
@@ -147,7 +149,7 @@ export function useOrder() {
       note: `Pago de ${customerPayment} para orden de ${draft.total}`
     } as CustomerTransaction : null;
 
-    console.log("Intentando guardar orden:", [orderData, transaction]);
+    // console.log("Intentando guardar orden:", [orderData, transaction]);
 
 
     return orderRepository.commitOrderWithTransaction(orderData, transaction)
