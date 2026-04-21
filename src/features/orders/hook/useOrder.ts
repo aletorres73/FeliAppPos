@@ -132,7 +132,7 @@ export function useOrder() {
       createdAt: Date.now(),
       payStatus: payStatus,
       payed: customerPayment <= draft.total ? customerPayment : draft.total, // Evitamos que el pago supere el total
-      status: OrderStatus.PENDING,
+      status: OrderStatus.DRAFT,
       confirmedAt: null,
       cancelledAt: null, //si es null es consumidor final, si no es null es cliente registrado
       client: customer.id,
