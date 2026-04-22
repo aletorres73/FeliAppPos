@@ -13,6 +13,7 @@ import { AnonymousCustomer, type Customer } from "../../customers/types/types";
 import { CustomerSelector } from "../components/CustomerSelector";
 import { customerRepository } from "../../data/repositories/CustomerRepository";
 import { CustomerCreateModal } from "../components/CustomerCreateModal";
+import { SaleDashboardButton } from "../components/SaleDashboardButton";
 
 export default function OrderScreen() {
   const {
@@ -225,20 +226,24 @@ export default function OrderScreen() {
 
 const Header = ({ isLoading }: { isLoading: boolean }) => (
   <header style={styles.header}>
-    <div style={styles.headerBrand}>
-      <div style={styles.logoWrapper}>
-        <img src={feliLogo} alt="Logo" style={styles.logo} />
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%" }}>
+      <div style={styles.headerBrand}>
+        <div style={styles.logoWrapper}>
+          <img src={feliLogo} alt="Logo" style={styles.logo} />
+        </div>
+        <div>
+          <h1 style={styles.title}>Feli App - Nuevo Pedido</h1>
+          <p style={styles.subtitle}>Escanea productos para comenzar</p>
+        </div>
       </div>
-      <div>
-        <h1 style={styles.title}>Feli App - Nuevo Pedido</h1>
-        <p style={styles.subtitle}>Escanea productos para comenzar</p>
-      </div>
+      {isLoading && (
+        <div style={styles.loader}>
+          <span className="pulse-animation">●</span> Buscando...
+        </div>
+      )}
+      <SaleDashboardButton onClick={() => alert("Función de reportes aún no implementada")} />
     </div>
-    {isLoading && (
-      <div style={styles.loader}>
-        <span className="pulse-animation">●</span> Buscando...
-      </div>
-    )}
+
   </header>
 );
 
@@ -299,7 +304,7 @@ const styles: Record<string, React.CSSProperties> = {
   logoWrapper: { width: "80px", height: "80px", display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,0.03)", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.05)", overflow: "hidden" },
   logo: { width: "100%", height: "100%", objectFit: "contain" },
   title: { fontSize: "1.35rem", fontWeight: 600, margin: 0 },
-  subtitle: { color: "rgba(255,255,255,0.4)", fontSize: "0.85rem", margin: 0 },
+  subtitle: { color: "rgba(255,255,255,0.4)", fontSize: "0.8rem", margin: 0 },
   loader: { color: "#54C4F0", fontSize: "0.85rem", fontWeight: 500 },
   footer: { marginTop: 40, padding: "30px 20px", backgroundColor: "rgba(255,255,255,0.02)", borderRadius: "12px", display: "flex", justifyContent: "space-between", alignItems: "center", border: "1px solid rgba(255,255,255,0.05)" },
   label: { color: "rgba(255,255,255,0.4)", fontSize: "0.9rem", display: "block", marginBottom: 4 },
