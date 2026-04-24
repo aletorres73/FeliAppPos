@@ -1,6 +1,6 @@
 import { db } from "../services/FirebaseService";
 import { doc, getDoc, getDocs, collection, onSnapshot, query } from "firebase/firestore";
-import type { Product } from "../../orders/types/types";
+import type { Product } from "../../orders/types/orderTypes";
 
 export const getProductById = async (docId: string): Promise<Product | null> => {
   try {

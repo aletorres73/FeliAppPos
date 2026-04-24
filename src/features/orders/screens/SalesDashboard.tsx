@@ -2,9 +2,10 @@ import React from 'react';
 import { useSalesReports } from '../hook/useSalesReports';
 import { formatCurrency } from "../../../utils/formats";
 import { useNavigate } from 'react-router-dom';
+import { type DateRange } from '../hook/useSalesReports';
 
 export default function SalesDashboard() {
-    const { stats, isLoading } = useSalesReports();
+    const { stats, isLoading, range, setRange } = useSalesReports();
     const navigate = useNavigate();
 
     if (isLoading) return (
@@ -29,13 +30,29 @@ export default function SalesDashboard() {
                 {/* Header del Dashboard */}
                 <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
                     <div>
-                        <h2 style={{ fontSize: '1.8rem', margin: 0 }}>Reporte Mensual</h2>
+                        <h2 style={{ fontSize: '1.8rem', margin: 0 }}>Reporte de ventas.</h2>
                         <p style={{ color: 'rgba(255,255,255,0.4)', margin: '4px 0 0 0' }}>Análisis de rendimiento de ventas</p>
                     </div>
                     <button onClick={() => navigate('/')} style={backButtonStyle}>
                         ← Volver a Ventas
                     </button>
                 </header>
+
+                <div style={filterContainer}>
+                    {(['today', 'week', 'month'] as DateRange[]).map((r) => (
+                        <button
+                            key={r}
+                            onClick={() => setRange(r)}
+                            style={{
+                                ...filterBadge,
+                                backgroundColor: range === r ? '#54C4F0' : 'rgba(255,255,255,0.05)',
+                                color: range === r ? '#0F1115' : 'white',
+                            }}
+                        >
+                            {r === 'today' ? 'Hoy' : r === 'week' ? 'Semana' : 'Mes'}
+                        </button>
+                    ))}
+                </div>
 
                 {/* 1. Fila de KPIs (4 columnas) */}
                 <div style={kpiGrid}>
@@ -109,12 +126,16 @@ const rankingGrid: React.CSSProperties = {
     gap: '20px'
 };
 
+// Mejora para las cards de KPI para que se vean como "presionables" o contenedores premium
 const cardStyle: React.CSSProperties = {
     backgroundColor: '#1A1D23',
     borderRadius: '16px',
     padding: '24px',
     border: '1px solid rgba(255,255,255,0.05)',
-    boxShadow: '0 4px 20px rgba(0,0,0,0.2)'
+    boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'center'
 };
 
 const kpiLabel: React.CSSProperties = {
@@ -189,4 +210,25 @@ const fullScreenCenter: React.CSSProperties = {
     backgroundColor: '#0F1115',
     color: 'white',
     gap: '20px'
+};
+
+const filterContainer: React.CSSProperties = {
+    display: 'flex',
+    gap: '10px',
+    marginBottom: '24px',
+    backgroundColor: '#1A1D23',
+    padding: '6px',
+    borderRadius: '12px',
+    width: 'fit-content',
+    border: '1px solid rgba(255,255,255,0.05)'
+};
+
+const filterBadge: React.CSSProperties = {
+    padding: '8px 16px',
+    borderRadius: '8px',
+    border: 'none',
+    cursor: 'pointer',
+    fontSize: '0.85rem',
+    fontWeight: 600,
+    transition: 'all 0.2s ease',
 };

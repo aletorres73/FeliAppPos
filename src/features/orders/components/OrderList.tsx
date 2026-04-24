@@ -1,4 +1,4 @@
-import type { OrderItem } from "../types/types"
+import type { OrderItem } from "../types/orderTypes"
 
 type Props = {
   items: OrderItem[]

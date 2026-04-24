@@ -1,5 +1,5 @@
 import { useState } from "react"
-import type { OrderItem, Product } from "../types/types"
+import type { OrderItem, Product } from "../types/orderTypes"
 
 type Props = {
   code: string,

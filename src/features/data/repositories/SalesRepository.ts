@@ -4,7 +4,6 @@ import {
   where, 
   getDocs, 
   orderBy, 
-  Timestamp 
 } from "firebase/firestore";
 import { db } from "../services/FirebaseService"; // Ajusta según tu ruta
 import { type OrderModel, OrderStatus } from "../../orders/types/orderTypes";
@@ -24,9 +23,9 @@ export const salesRepository = {
       const q = query(
         ordersRef,
         where("status", "==", OrderStatus.CONFIRMED),
-        where("confirmedAt", ">=", startDate),
-        where("confirmedAt", "<=", endDate),
-        orderBy("confirmedAt", "desc")
+        where("createdAt", ">=", startDate),
+        where("createdAt", "<=", endDate),
+        orderBy("createdAt", "desc")
       );
 
       const querySnapshot = await getDocs(q);
