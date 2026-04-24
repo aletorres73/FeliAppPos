@@ -7,13 +7,14 @@ import { useOrder } from "../hook/useOrder";
 import { getProductById } from "../../data/repositories/ProductRepository";
 import { roundToNearestHundred, formatCurrency } from "../../../utils/formats";
 import feliLogo from "../../../assets/logo-feli.webp";
-import type { Product, OrderItem, OrderPayStatus, PaymentMethod } from "../types/types";
+import type { Product, OrderItem, OrderPayStatus, PaymentMethod } from "../types/orderTypes";
 import { CheckoutModal } from "../components/CheckoutModal";
 import { AnonymousCustomer, type Customer } from "../../customers/types/types";
 import { CustomerSelector } from "../components/CustomerSelector";
 import { customerRepository } from "../../data/repositories/CustomerRepository";
 import { CustomerCreateModal } from "../components/CustomerCreateModal";
 import { SaleDashboardButton } from "../components/SaleDashboardButton";
+import { useNavigate } from 'react-router-dom'; // Importamos el hook de navegación
 
 export default function OrderScreen() {
   const {
@@ -40,6 +41,8 @@ export default function OrderScreen() {
   // Derivación de datos (Selectors)
   const subtotal = draft.subtotal;
   const totalFinal = roundToNearestHundred(subtotal);
+
+  const navigate = useNavigate();
 
   // Handlers
   const handleSaveNewCustomer = async (data: any) => {
@@ -145,7 +148,7 @@ export default function OrderScreen() {
   return (
     <div style={styles.container}>
       <div style={styles.content}>
-        <Header isLoading={isLoading} />
+        <Header isLoading={isLoading} onNavigateToReports={() => navigate('/reports')} />
 
         <CustomerSelector
           selected={selectedCustomer}
@@ -224,7 +227,12 @@ export default function OrderScreen() {
 
 // --- Sub-componentes internos para mayor claridad ---
 
-const Header = ({ isLoading }: { isLoading: boolean }) => (
+interface HeaderProps {
+  isLoading: boolean;
+  onNavigateToReports: () => void;
+}
+
+const Header = ({ isLoading, onNavigateToReports }: HeaderProps) => (
   <header style={styles.header}>
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%" }}>
       <div style={styles.headerBrand}>
@@ -236,14 +244,17 @@ const Header = ({ isLoading }: { isLoading: boolean }) => (
           <p style={styles.subtitle}>Escanea productos para comenzar</p>
         </div>
       </div>
-      {isLoading && (
-        <div style={styles.loader}>
-          <span className="pulse-animation">●</span> Buscando...
-        </div>
-      )}
-      <SaleDashboardButton onClick={() => alert("Función de reportes aún no implementada")} />
+      
+      <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
+        {isLoading && (
+          <div style={styles.loader}>
+            <span className="pulse-animation">●</span> Buscando...
+          </div>
+        )}
+        {/* Ahora el botón ejecuta la navegación */}
+        <SaleDashboardButton onClick={onNavigateToReports} />
+      </div>
     </div>
-
   </header>
 );
 

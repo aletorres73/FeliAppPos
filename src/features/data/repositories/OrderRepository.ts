@@ -1,6 +1,6 @@
 import { db } from "../services/FirebaseService"
 import { writeBatch, doc, collection, increment } from "firebase/firestore"
-import { type OrderModel, } from "../../orders/types/types"
+import { type OrderModel, } from "../../orders/types/orderTypes"
 import type { CustomerTransaction } from "../../customers/types/types"
 
 

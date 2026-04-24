@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from "react"
-import { type OrderDraft, type OrderItem, type OrderModel, type Product, OrderStatus, OrderPayStatus, type PaymentMethod } from "../types/types"
+import { type OrderDraft, type OrderItem, type OrderModel, type Product, OrderStatus, OrderPayStatus, type PaymentMethod } from "../types/orderTypes"
 import { subscribeToProducts } from "../../data/repositories/ProductRepository"
 import { roundToNearestHundred } from "../../../utils/formats";
 import { orderRepository } from "../../data/repositories/OrderRepository";

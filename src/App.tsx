@@ -1,10 +1,7 @@
 import OrderScreen from "./features/orders/screens/OrdersScreen"
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import SalesDashboard from './features/dashboard/SaleDashboard'; // El nuevo componente
+import SalesDashboard from './features/orders/screens/SalesDashboard'; // El nuevo componente
 
-// export default function App() {
-//   return <OrderScreen />
-// }
 
 export default function App() {
   return (
