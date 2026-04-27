@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { salesRepository } from '../../data/repositories/SalesRepository';
 import { type OrderModel } from '../../orders/types/orderTypes';
-import { startOfDay, startOfMonth, subDays } from 'date-fns';
+import { startOfDay, startOfMonth, startOfWeek } from 'date-fns';
 
 // Solución al error: "Cannot find name 'DateRange'"
 export type DateRange = 'today' | 'week' | 'month' | 'custom';
@@ -14,24 +14,34 @@ export const useSalesReports = () => {
     // Usamos useCallback para que la función no se recree en cada render
     const fetchSales = useCallback(async (selectedRange: DateRange) => {
         setIsLoading(true);
+        const now = new Date();
         let startDate: Date;
-        const endDate = new Date(); 
+        const endDate = now; // Hasta el momento actual
 
         switch (selectedRange) {
             case 'today':
-                startDate = startOfDay(new Date());
+                startDate = startOfDay(now);
                 break;
             case 'week':
-                startDate = subDays(new Date(), 7);
+                // startOfWeek por defecto usa el domingo (0). 
+                // Pasamos { weekStartsOn: 1 } para que sea Lunes.
+                startDate = startOfWeek(now, { weekStartsOn: 1 });
                 break;
             case 'month':
+                startDate = startOfMonth(now);
+                break;
             default:
-                startDate = startOfMonth(new Date());
+                startDate = startOfMonth(now);
                 break;
         }
 
         try {
-            const data = await salesRepository.getOrdersByDateRange(startDate.getTime(), endDate.getTime());
+            // Mantenemos la lógica de repositorio con Timestamps
+            console.log("Rango de fechas:", startDate, endDate)
+            const data = await salesRepository.getOrdersByDateRange(
+                startDate.getTime(),
+                endDate.getTime()
+            );
             setOrders(data);
         } catch (error) {
             console.error("Error al cargar reportes:", error);
