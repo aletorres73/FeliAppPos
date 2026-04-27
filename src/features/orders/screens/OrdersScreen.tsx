@@ -5,7 +5,6 @@ import { ManualItemModal } from "../components/ManualItemModal";
 import { CustomerSelectorModal } from "../components/CustomerSelectorModal";
 import { useOrder } from "../hook/useOrder";
 import { getProductById } from "../../data/repositories/ProductRepository";
-import { roundToNearestHundred, formatCurrency } from "../../../utils/formats";
 import feliLogo from "../../../assets/logo-feli.webp";
 import type { Product, OrderItem, OrderPayStatus, PaymentMethod } from "../types/orderTypes";
 import { CheckoutModal } from "../components/CheckoutModal";
@@ -15,6 +14,7 @@ import { customerRepository } from "../../data/repositories/CustomerRepository";
 import { CustomerCreateModal } from "../components/CustomerCreateModal";
 import { SaleDashboardButton } from "../components/SaleDashboardButton";
 import { useNavigate } from 'react-router-dom'; // Importamos el hook de navegación
+import { Footer } from "../components/Footer";
 
 export default function OrderScreen() {
   const {
@@ -28,6 +28,7 @@ export default function OrderScreen() {
     removeItem,
     updateQuantity,
     commitOrder,
+    applyGlobalDiscount,
   } = useOrder();
 
   const [manualCode, setManualCode] = useState<string | null>(null);
@@ -37,10 +38,12 @@ export default function OrderScreen() {
   const [showCustomerModal, setShowCustomerModal] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState(AnonymousCustomer);
   const [showCreateCustomerModal, setShowCreateCustomerModal] = useState(false);
+  const [globalDiscount, setGlobalDiscount] = useState(0);
 
   // Derivación de datos (Selectors)
-  const subtotal = draft.subtotal;
-  const totalFinal = roundToNearestHundred(subtotal);
+  // const subtotal = draft.subtotal;
+  // const totalDiscount = Math.max(0, subtotal - globalDiscount);
+  const totalFinal = draft.total
 
   const navigate = useNavigate();
 
@@ -126,6 +129,7 @@ export default function OrderScreen() {
         clearDraft();
         setShowCheckout(false);
         setSelectedCustomer(AnonymousCustomer); // Resetear para la próxima venta
+        setGlobalDiscount(0)
         alert(`Venta guardada con éxito. ID: ${orderId}`);
       }
     } catch (error) {
@@ -175,11 +179,14 @@ export default function OrderScreen() {
         </section>
 
         <Footer
-          subtotal={subtotal}
+          subtotal={draft.subtotal}
           total={totalFinal}
+          discount={globalDiscount}
           itemsCount={draft.items.length}
           isLoading={isLoading}
+          onDiscountChange={setGlobalDiscount}
           onCheckout={() => setShowCheckout(true)}
+          onConfirm={(val) => {applyGlobalDiscount(val)}}
         />
       </div>
 
@@ -232,6 +239,7 @@ interface HeaderProps {
   onNavigateToReports: () => void;
 }
 
+
 const Header = ({ isLoading, onNavigateToReports }: HeaderProps) => (
   <header style={styles.header}>
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%" }}>
@@ -244,7 +252,7 @@ const Header = ({ isLoading, onNavigateToReports }: HeaderProps) => (
           <p style={styles.subtitle}>Escanea productos para comenzar</p>
         </div>
       </div>
-      
+
       <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
         {isLoading && (
           <div style={styles.loader}>
@@ -256,43 +264,6 @@ const Header = ({ isLoading, onNavigateToReports }: HeaderProps) => (
       </div>
     </div>
   </header>
-);
-
-const Footer = ({ subtotal, total, itemsCount, isLoading, onCheckout }: any) => (
-  <footer style={styles.footer}>
-    <div>
-      <span style={styles.label}>Subtotal</span>
-      <span style={styles.subtotalValue}>{formatCurrency(subtotal)}</span>
-      <br />
-      <small style={styles.itemCount}>{itemsCount} artículos</small>
-    </div>
-
-    <div style={{ textAlign: "right", display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "10px" }}>
-      <div>
-        <span style={styles.totalLabel}>TOTAL A PAGAR</span>
-        <h2 style={styles.totalValue}>{formatCurrency(total)}</h2>
-      </div>
-
-      <button
-        onClick={onCheckout}
-        // Se deshabilita si no hay items O si ya se está procesando algo
-        disabled={itemsCount === 0 || isLoading}
-        style={{
-          padding: "12px 24px",
-          backgroundColor: (itemsCount === 0 || isLoading) ? "rgba(255,255,255,0.05)" : "#54C4F0",
-          color: (itemsCount === 0 || isLoading) ? "rgba(255,255,255,0.2)" : "#0F1115",
-          border: "none",
-          borderRadius: "8px",
-          fontWeight: "bold",
-          cursor: (itemsCount === 0 || isLoading) ? "not-allowed" : "pointer",
-          transition: "0.2s",
-          opacity: isLoading ? 0.7 : 1 // Feedback visual de carga
-        }}
-      >
-        {isLoading ? "Procesando..." : "Finalizar Venta"}
-      </button>
-    </div>
-  </footer>
 );
 
 // --- Funciones de Mapeo ---
@@ -317,7 +288,6 @@ const styles: Record<string, React.CSSProperties> = {
   title: { fontSize: "1.35rem", fontWeight: 600, margin: 0 },
   subtitle: { color: "rgba(255,255,255,0.4)", fontSize: "0.8rem", margin: 0 },
   loader: { color: "#54C4F0", fontSize: "0.85rem", fontWeight: 500 },
-  footer: { marginTop: 40, padding: "30px 20px", backgroundColor: "rgba(255,255,255,0.02)", borderRadius: "12px", display: "flex", justifyContent: "space-between", alignItems: "center", border: "1px solid rgba(255,255,255,0.05)" },
   label: { color: "rgba(255,255,255,0.4)", fontSize: "0.9rem", display: "block", marginBottom: 4 },
   subtotalValue: { color: "rgba(255,255,255,0.7)", fontSize: "1.2rem" },
   itemCount: { color: "rgba(255,255,255,0.3)" },

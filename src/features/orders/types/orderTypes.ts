@@ -29,9 +29,10 @@ export type PaymentMethod = "CASH" | "TRANSFER" | null;
 
 export interface OrderDraft {
   items: OrderItem[];
-  total: number;
-  subtotal: number;
-  comments: string | null;
+  subtotal: number; // Suma pura de items
+  discount: number; // Monto a descontar
+  total: number;    // Subtotal - Descuento (redondeado)
+  comments: string;
 }
 
 // 1. Definimos el objeto con los valores

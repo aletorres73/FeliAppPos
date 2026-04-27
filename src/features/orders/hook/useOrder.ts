@@ -8,99 +8,91 @@ import type { Customer, CustomerTransaction } from "../../customers/types/types"
 export function useOrder() {
   const [draft, setDraft] = useState<OrderDraft>({
     items: [],
-    total: 0,
     subtotal: 0,
+    discount: 0,
+    total: 0,
     comments: ""
   })
 
   const [products, setProducts] = useState<Product[]>([]);
-  const [searchTerm, setSearchTerm] = useState(""); // Estado para la búsqueda
+  const [searchTerm, setSearchTerm] = useState("");
 
-  // CARGA INICIAL: 
+  // --- LÓGICA DE CÁLCULO CENTRALIZADA ---
+  // Esta función garantiza que el total siempre sea subtotal - descuento
+  const calculateTotals = (items: OrderItem[], discount: number) => {
+    const subtotal = items.reduce((acc, i) => acc + i.subtotal, 0);
+    const totalBeforeRounding = subtotal - discount;
+    return {
+      items,
+      subtotal,
+      discount,
+      total: roundToNearestHundred(Math.max(0, totalBeforeRounding))
+    };
+  };
+
   useEffect(() => {
-    // Suscribirse a los cambios
     const unsubscribe = subscribeToProducts((data) => {
       setProducts(data || []);
-      console.log("Productos actualizados desde Firestore");
     });
-
-    // CLEANUP: React ejecuta esto cuando el componente se destruye
-    return () => {
-      console.log("Cerrando conexión con Firestore");
-      unsubscribe();
-    };
+    return () => unsubscribe();
   }, []);
 
-  // SUGERENCIAS: Usamos useMemo para que no se recalcule en cada render
   const suggestions = useMemo(() => {
     if (!searchTerm.trim()) return [];
-
     const term = searchTerm.toLowerCase();
     return products.filter(p =>
-
       p.article.toLowerCase().includes(term) ||
       p.id.toString().includes(term) ||
       p.branch.toLowerCase().includes(term)
-
-    ).slice(0, 10); // Limitamos a 10 resultados por performance
+    ).slice(0, 10);
   }, [searchTerm, products]);
 
   const addItem = (newItem: OrderItem) => {
-    const existingItemIndex = draft.items.findIndex(
-      (i) => i.productId === newItem.productId && i.productId !== ""
-    );
+    setDraft(prev => {
+      const existingIndex = prev.items.findIndex(i => i.productId === newItem.productId);
+      let newItems = [...prev.items];
 
-    let newItems: OrderItem[];
-
-    if (existingItemIndex !== -1) {
-      newItems = [...draft.items];
-      const existingItem = newItems[existingItemIndex];
-      const updatedQuantity = existingItem.quantity + newItem.quantity;
-
-      newItems[existingItemIndex] = {
-        ...existingItem,
-        quantity: updatedQuantity,
-        subtotal: updatedQuantity * existingItem.unitPrice
-      };
-    } else {
-      newItems = [...draft.items, newItem];
-    }
-
-    const newTotal = newItems.reduce((acc, i) => acc + i.subtotal, 0);
-
-    setDraft({
-      ...draft,
-      items: newItems,
-      subtotal: newTotal,
-      total: roundToNearestHundred(newTotal)
+      if (existingIndex !== -1) {
+        const item = newItems[existingIndex];
+        const updatedQty = item.quantity + newItem.quantity;
+        newItems[existingIndex] = {
+          ...item,
+          quantity: updatedQty,
+          subtotal: updatedQty * item.unitPrice
+        };
+      } else {
+        newItems.push(newItem);
+      }
+      return { ...prev, ...calculateTotals(newItems, prev.discount) };
     });
   };
 
   const removeItem = (index: number) => {
-    const items = draft.items.filter((_, i) => i !== index);
-    const total = items.reduce((acc, i) => acc + i.subtotal, 0);
-    setDraft({
-      ...draft,
-      items,
-      total,
-      subtotal: total
+    setDraft(prev => {
+      const newItems = prev.items.filter((_, i) => i !== index);
+      return { ...prev, ...calculateTotals(newItems, prev.discount) };
     });
-  }
+  };
 
   const updateQuantity = (index: number, newQty: number) => {
-    const items = draft.items.map((item, i) => {
-      if (i === index) {
-        return { ...item, quantity: newQty, subtotal: item.unitPrice * newQty };
-      }
-      return item;
+    setDraft(prev => {
+      const newItems = prev.items.map((item, i) => 
+        i === index ? { ...item, quantity: newQty, subtotal: item.unitPrice * newQty } : item
+      );
+      return { ...prev, ...calculateTotals(newItems, prev.discount) };
     });
+  };
 
-    const total = items.reduce((acc, i) => acc + i.subtotal, 0);
-    setDraft({ ...draft, items, total, subtotal: total });
-  }
+  // --- CORRECCIÓN DEL DESCUENTO ---
+  const applyGlobalDiscount = (discountAmount: number) => {
+    setDraft(prev => ({
+      ...prev,
+      ...calculateTotals(prev.items, discountAmount)
+    }));
+  };
 
   const clearDraft = () => {
-    setDraft({ items: [], total: 0, subtotal: 0, comments: "" });
+    setDraft({ items: [], subtotal: 0, discount: 0, total: 0, comments: "" });
     setSearchTerm("");
   }
 
@@ -115,26 +107,22 @@ export function useOrder() {
     paymentMethod: PaymentMethod,
     customer: Customer,
   ): Promise<String | null> => {
-
     const debDelta = (customerPayment < draft.total) ? draft.total - customerPayment : 0;
-    // console.log("commitOrder llamado con:", { draft, payStatus, customerPayment, customer, debDelta });
 
-    // 1. Validamos datos básicos antes de intentar subir
     if (draft.items.length === 0) throw new Error("No hay ítems en la orden");
 
-    // 2. Construimos el objeto de forma limpia
     const orderData: OrderModel = {
-      docId: "", // Se asigna en el repositorio
-      id: 0, //Lo maneja Cloud Function
+      docId: "",
+      id: 0,
       items: draft.items,
-      total: draft.total,
+      total: draft.total, // Ya viene calculado y redondeado del draft
       comments: draft.comments || "",
       createdAt: Date.now(),
       payStatus: payStatus,
-      payed: customerPayment <= draft.total ? customerPayment : draft.total, // Evitamos que el pago supere el total
+      payed: customerPayment <= draft.total ? customerPayment : draft.total,
       status: OrderStatus.DRAFT,
       confirmedAt: null,
-      cancelledAt: null, //si es null es consumidor final, si no es null es cliente registrado
+      cancelledAt: null,
       client: customer.id,
       customerPayment: customerPayment,
       paymentMethod: paymentMethod,
@@ -142,58 +130,17 @@ export function useOrder() {
 
     const transaction = (customer.id != null && debDelta > 0) ? {
       clientId: customer.id,
-      orderId: "", // Se asigna en el repositorio
+      orderId: "",
       amount: debDelta,
       type: "SALE",
       createdAt: Date.now(),
-      note: `Pago de ${customerPayment} para orden de ${draft.total}`
+      note: `Venta: Total ${draft.total} - Pagó ${customerPayment}`
     } as CustomerTransaction : null;
 
-    // console.log("Intentando guardar orden:", [orderData, transaction]);
-
-
-    return orderRepository.commitOrderWithTransaction(orderData, transaction)
-    // return "true"
-
+    return orderRepository.commitOrderWithTransaction(orderData, transaction);
+    // console.log("Saving order: ", orderData)
+    // return "test"
   };
-
-  // const PayOrder = async (
-  //   order: OrderModel,
-  //   amountPaid: number,
-  // ): Promise<boolean> => {
-
-  //   // 1. Validar si ya está paga
-  //   if (order.payStatus === OrderPayStatus.PAID) return false;
-
-  //   // 2. Preparar la transacción (Solo si hay cliente y no es el "0"/Anónimo)
-  //   // Usamos el signo negativo (-) en amountPaid para que al hacer FieldValue.increment reste la deuda
-  //   const transaction: CustomerTransaction | null = (order.client != null) ? {
-  //     clientId: order.client,
-  //     orderId: order.docId, // Usamos el ID de Firestore
-  //     amount: -amountPaid,  // <--- IMPORTANTE: Negativo para restar del saldo
-  //     type: "PAY",
-  //     createdAt: Date.now(),
-  //     note: `Pago de orden #${order.id}`
-  //   } : null;
-
-  //   // 3. Crear el objeto de la orden actualizada
-  //   // Sumamos lo que ya estaba pagado + el nuevo pago
-  //   const updatedOrder: OrderModel & { docId: string } = {
-  //     ...order,
-  //     payed: (order.payed || 0) + amountPaid,
-  //     payStatus: OrderPayStatus.PAID, // O la lógica que prefieras (ej: parcial)
-  //     docId: order.docId // Necesitamos el docId para el repo
-  //   };
-
-  //   // 4. Llamar al repositorio
-  //   try {
-  //     const success = await orderRepository.payOrderWithTransaction(updatedOrder, transaction);
-  //     return success;
-  //   } catch (error) {
-  //     console.error("Error al procesar PayOrder:", error);
-  //     return false;
-  //   }
-  // };
 
   return {
     draft,
@@ -205,6 +152,7 @@ export function useOrder() {
     searchTerm,
     setSearchTerm,
     suggestions,
-    commitOrder, // commitOrderWithTransaction,
+    commitOrder,
+    applyGlobalDiscount // Reemplaza a updateDraftSubtotal
   }
 }
