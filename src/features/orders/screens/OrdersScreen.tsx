@@ -12,7 +12,7 @@ import { AnonymousCustomer, type Customer } from "../../customers/types/types";
 import { CustomerSelector } from "../components/CustomerSelector";
 import { customerRepository } from "../../data/repositories/CustomerRepository";
 import { CustomerCreateModal } from "../components/CustomerCreateModal";
-import { SaleDashboardButton } from "../components/SaleDashboardButton";
+import { CashFlowButton, SaleDashboardButton } from "../components/navigationButtons";
 import { useNavigate } from 'react-router-dom'; // Importamos el hook de navegación
 import { Footer } from "../components/Footer";
 
@@ -152,7 +152,7 @@ export default function OrderScreen() {
   return (
     <div style={styles.container}>
       <div style={styles.content}>
-        <Header isLoading={isLoading} onNavigateToReports={() => navigate('/reports')} />
+        <Header isLoading={isLoading} onNavigate={(route) => navigate(route)} />
 
         <CustomerSelector
           selected={selectedCustomer}
@@ -178,16 +178,18 @@ export default function OrderScreen() {
           />
         </section>
 
-        <Footer
-          subtotal={draft.subtotal}
-          total={totalFinal}
-          discount={globalDiscount}
-          itemsCount={draft.items.length}
-          isLoading={isLoading}
-          onDiscountChange={setGlobalDiscount}
-          onCheckout={() => setShowCheckout(true)}
-          onConfirm={(val) => { applyGlobalDiscount(val) }}
-        />
+        <section>
+          <Footer
+            subtotal={draft.subtotal}
+            total={totalFinal}
+            discount={globalDiscount}
+            itemsCount={draft.items.length}
+            isLoading={isLoading}
+            onDiscountChange={setGlobalDiscount}
+            onCheckout={() => setShowCheckout(true)}
+            onConfirm={(val) => { applyGlobalDiscount(val) }}
+          />
+        </section>
       </div>
 
       {showCreateCustomerModal && (
@@ -236,11 +238,11 @@ export default function OrderScreen() {
 
 interface HeaderProps {
   isLoading: boolean;
-  onNavigateToReports: () => void;
+  onNavigate: (route: string) => void;
 }
 
 
-const Header = ({ isLoading, onNavigateToReports }: HeaderProps) => (
+const Header = ({ isLoading, onNavigate }: HeaderProps) => (
   <header style={styles.header}>
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%" }}>
       <div style={styles.headerBrand}>
@@ -260,7 +262,8 @@ const Header = ({ isLoading, onNavigateToReports }: HeaderProps) => (
           </div>
         )}
         {/* Ahora el botón ejecuta la navegación */}
-        <SaleDashboardButton onClick={onNavigateToReports} />
+        <CashFlowButton onClick={() => {}} />
+        <SaleDashboardButton onClick={() => onNavigate('reports')} />
       </div>
     </div>
   </header>
