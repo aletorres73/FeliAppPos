@@ -11,58 +11,6 @@ interface FooterProps {
   onConfirm: (value: number) => void;
 }
 
-const styles: Record<string, React.CSSProperties> = {
-  footer: {
-    backgroundColor: "#1A1D23",
-    borderTop: "1px solid rgba(255,255,255,0.05)",
-    padding: "20px 10px",
-    display: "flex",
-    justifyContent: "space-around",
-    alignItems: "center",
-    position: "fixed",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    zIndex: 50,
-  },
-  section: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "4px",
-  },
-  label: {
-    color: "rgba(255,255,255,0.4)",
-    fontSize: "0.75rem",
-    fontWeight: 600,
-    textTransform: "uppercase",
-    letterSpacing: "0.5px",
-  },
-  valueText: {
-    color: "white",
-    fontSize: "1.1rem",
-    fontWeight: 500,
-  },
-  totalValue: {
-    color: "#54C4F0",
-    fontSize: "1.4rem",
-    fontWeight: "bold",
-    margin: 0,
-  },
-  discountInput: {
-    background: "rgba(255, 255, 255, 0.05)",
-    border: "1px solid rgba(255, 255, 255, 0.1)",
-    borderRadius: "8px",
-    color: "#54C4F0", // Color de acento para el monto
-    padding: "8px 12px",
-    fontSize: "0.9rem",
-    outline: "none",
-    width: "120px",
-    fontFamily: "monospace",
-    marginTop: "4px",
-    transition: "all 0.2s ease",
-  }
-};
-
 export const Footer = ({
   subtotal,
   total,
@@ -136,4 +84,57 @@ export const Footer = ({
       </div>
     </footer>
   );
+};
+
+const styles: Record<string, React.CSSProperties> = {
+  footer: {
+    backgroundColor: "#1A1D23",
+    borderTop: "1px solid rgba(255,255,255,0.05)",
+    padding: "35px 5px",
+    display: "flex",
+    justifyContent: "space-around",
+    alignItems: "center",
+    position: "fixed",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    zIndex: 50,
+    height: "50px", // Definimos un alto fijo para calcular el offset
+  },
+  section: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "4px",
+  },
+  label: {
+    color: "rgba(255,255,255,0.4)",
+    fontSize: "0.75rem",
+    fontWeight: 600,
+    textTransform: "uppercase",
+    letterSpacing: "0.5px",
+  },
+  valueText: {
+    color: "white",
+    fontSize: "1.1rem",
+    fontWeight: 500,
+  },
+  totalValue: {
+    color: "#54C4F0",
+    fontSize: "1.4rem",
+    fontWeight: "bold",
+    margin: 0,
+  },
+  discountInput: {
+    background: "rgba(255, 255, 255, 0.05)",
+    border: "1px solid rgba(255, 255, 255, 0.1)",
+    borderRadius: "8px",
+    color: "#54C4F0", // Color de acento para el monto
+    padding: "8px 12px",
+    fontSize: "0.9rem",
+    outline: "none",
+    width: "120px",
+    fontFamily: "monospace",
+    marginTop: "4px",
+    transition: "all 0.2s ease",
+  }
 };

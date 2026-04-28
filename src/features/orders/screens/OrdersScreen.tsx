@@ -186,7 +186,7 @@ export default function OrderScreen() {
           isLoading={isLoading}
           onDiscountChange={setGlobalDiscount}
           onCheckout={() => setShowCheckout(true)}
-          onConfirm={(val) => {applyGlobalDiscount(val)}}
+          onConfirm={(val) => { applyGlobalDiscount(val) }}
         />
       </div>
 
@@ -279,18 +279,90 @@ const mapProductToOrderItem = (p: Product): OrderItem => ({
 
 // --- Objeto de Estilos ---
 const styles: Record<string, React.CSSProperties> = {
-  container: { minHeight: "100vh", backgroundColor: "#0F1115", color: "white", padding: "40px 20px", fontFamily: "'Inter', sans-serif" },
-  content: { maxWidth: "900px", margin: "0 auto" },
-  header: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 30, borderBottom: "1px solid rgba(255,255,255,0.05)", paddingBottom: 20 },
-  headerBrand: { display: "flex", alignItems: "center", gap: "18px" },
-  logoWrapper: { width: "80px", height: "80px", display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,0.03)", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.05)", overflow: "hidden" },
-  logo: { width: "100%", height: "100%", objectFit: "contain" },
-  title: { fontSize: "1.35rem", fontWeight: 600, margin: 0 },
-  subtitle: { color: "rgba(255,255,255,0.4)", fontSize: "0.8rem", margin: 0 },
-  loader: { color: "#54C4F0", fontSize: "0.85rem", fontWeight: 500 },
-  label: { color: "rgba(255,255,255,0.4)", fontSize: "0.9rem", display: "block", marginBottom: 4 },
-  subtotalValue: { color: "rgba(255,255,255,0.7)", fontSize: "1.2rem" },
-  itemCount: { color: "rgba(255,255,255,0.3)" },
-  totalLabel: { color: "#54C4F0", fontSize: "0.9rem", fontWeight: 600, display: "block", marginBottom: 5 },
-  totalValue: { fontSize: "2.5rem", margin: 0, color: "#54C4F0", fontWeight: 700 },
+  container: {
+    height: "100vh", // Forzamos que la app mida exactamente el alto de la pantalla
+    backgroundColor: "#0F1115",
+    color: "white",
+    fontFamily: "'Inter', sans-serif",
+    display: "flex",
+    // flexDirection: "column", // Layout vertical
+    // overflow: "hidden" // Evitamos scroll en el body
+  },
+  content: {
+    flex: 1, // Este contenedor ocupará todo el espacio sobrante entre header y footer
+    maxWidth: "900px",
+    margin: "0 auto",
+    width: "100%",
+    padding: "10px 120px 180px 120px", // El padding inferior (120px) previene que el footer pise el contenido
+    overflowY: "auto", // Solo el contenido hace scroll
+  },
+  header: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 30,
+    borderBottom: "1px solid rgba(255,255,255,0.05)",
+    paddingBottom: 20
+  },
+  headerBrand: {
+    display: "flex",
+    alignItems: "center",
+    gap: "18px"
+  },
+  logoWrapper: {
+    width: "80px", height: "80px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.03)",
+    borderRadius: "12px",
+    border: "1px solid rgba(255,255,255,0.05)",
+    overflow: "hidden"
+  },
+  logo: {
+    width: "100%",
+    height: "100%",
+    objectFit: "contain"
+  },
+  title: {
+    fontSize: "1.35rem",
+    fontWeight: 600,
+    margin: 2
+  },
+  subtitle: {
+    color: "rgba(255,255,255,0.4)",
+    fontSize: "0.8rem",
+    margin: 0
+  },
+  loader: {
+    color: "#54C4F0",
+    fontSize: "0.85rem",
+    fontWeight: 500
+  },
+  label: {
+    color: "rgba(255,255,255,0.4)",
+    fontSize: "0.9rem",
+    display: "block",
+    marginBottom: 4
+  },
+  subtotalValue: {
+    color: "rgba(255,255,255,0.7)",
+    fontSize: "1.2rem"
+  },
+  itemCount: {
+    color: "rgba(255,255,255,0.3)"
+  },
+  totalLabel: {
+    color: "#54C4F0",
+    fontSize: "0.9rem",
+    fontWeight: 600, display: "block",
+    // marginBottom: 5
+  },
+  totalValue: {
+    fontSize: "2.5rem",
+    // margin: 0,
+    color: "#54C4F0",
+    fontWeight: 700
+  },
 };
+
