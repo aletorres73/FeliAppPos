@@ -1,4 +1,4 @@
-import { formatCurrency } from "../../../utils/formats"; // Asumiendo tu ruta de utilidades
+import { formatCurrency } from "../../../../utils/formats"; // Asumiendo tu ruta de utilidades
 
 interface FooterProps {
   subtotal: number;

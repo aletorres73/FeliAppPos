@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { salesRepository } from '../../data/repositories/SalesRepository';
-import { type OrderModel } from '../../orders/types/orderTypes';
+import { type OrderModel } from '../../domain/types/orderTypes';
 import { startOfDay, startOfMonth, startOfWeek } from 'date-fns';
 
 // Solución al error: "Cannot find name 'DateRange'"

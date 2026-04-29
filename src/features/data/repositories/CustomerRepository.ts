@@ -9,8 +9,8 @@ import {
   DocumentSnapshot, 
 } from "firebase/firestore";
 import { db } from "../services/FirebaseService"
-import type { Customer } from "../../customers/types/types";
-import { AnonymousCustomer } from "../../customers/types/types";
+import type { Customer } from "../../domain/types/customersTypes";
+import { AnonymousCustomer } from "../../domain/types/customersTypes";
 
 export class CustomerRepository {
   private readonly CUSTOMER_COLLECTION = "customers";

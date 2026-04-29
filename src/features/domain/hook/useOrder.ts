@@ -1,9 +1,9 @@
 import { useEffect, useState, useMemo } from "react"
-import { type OrderDraft, type OrderItem, type OrderModel, type Product, OrderStatus, OrderPayStatus, type PaymentMethod } from "../types/orderTypes"
+import { type OrderDraft, type OrderItem, type OrderModel, type Product, OrderStatus, OrderPayStatus, type PaymentMethod } from "../../domain/types/orderTypes"
 import { subscribeToProducts } from "../../data/repositories/ProductRepository"
 import { roundToNearestHundred } from "../../../utils/formats";
 import { orderRepository } from "../../data/repositories/OrderRepository";
-import type { Customer, CustomerTransaction } from "../../customers/types/types";
+import type { Customer, CustomerTransaction } from "../../domain/types/customersTypes";
 
 export function useOrder() {
   const [draft, setDraft] = useState<OrderDraft>({

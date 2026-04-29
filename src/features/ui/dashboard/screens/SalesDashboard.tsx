@@ -1,8 +1,7 @@
 import React from 'react';
-import { useSalesReports } from '../hook/useSalesReports';
-import { formatCurrency } from "../../../utils/formats";
+import { useSalesReports, type DateRange } from '../../../domain/hook/useSalesReports';
+import { formatCurrency } from "../../../../utils/formats";
 import { useNavigate } from 'react-router-dom';
-import { type DateRange } from '../hook/useSalesReports';
 
 export default function SalesDashboard() {
     const { stats, isLoading, range, setRange } = useSalesReports();
