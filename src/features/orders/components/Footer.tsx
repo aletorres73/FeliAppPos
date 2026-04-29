@@ -89,22 +89,30 @@ export const Footer = ({
 const styles: Record<string, React.CSSProperties> = {
   footer: {
     backgroundColor: "#1A1D23",
-    borderTop: "1px solid rgba(255,255,255,0.05)",
-    padding: "35px 5px",
+    borderTop: "1px solid rgba(255,255,255,0.1)",
+    padding: "20px",
     display: "flex",
-    justifyContent: "space-around",
-    alignItems: "center",
+    justifyContent: "space-between",
+    alignItems: "start", // Cambiado a center para mejor alineación responsive
     position: "fixed",
     bottom: 0,
-    left: 0,
-    right: 0,
-    zIndex: 50,
-    height: "50px", // Definimos un alto fijo para calcular el offset
+    left: "50%", // Centrado dinámico
+    transform: "translateX(-50%)", // Centrado dinámico
+    width: "100%",
+    maxWidth: "1000px", // Se ajusta al ancho de tu 'content'
+    height: "auto", // Permitimos que crezca si el contenido se apila
+    minHeight: "100px",
+    borderTopLeftRadius: "24px",
+    borderTopRightRadius: "24px",
+    zIndex: 100,
+    boxShadow: "0 -10px 25px rgba(0,0,0,0.5)",
+    boxSizing: "border-box", // Vital para que el padding no rompa el width
   },
   section: {
     display: "flex",
     flexDirection: "column",
-    gap: "4px",
+    gap: "2px",
+    flex: 1, // Distribuye el espacio equitativamente
   },
   label: {
     color: "rgba(255,255,255,0.4)",
@@ -132,7 +140,7 @@ const styles: Record<string, React.CSSProperties> = {
     padding: "8px 12px",
     fontSize: "0.9rem",
     outline: "none",
-    width: "120px",
+    width: "90%", // Más flexible
     fontFamily: "monospace",
     marginTop: "4px",
     transition: "all 0.2s ease",

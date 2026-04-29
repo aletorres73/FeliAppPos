@@ -178,18 +178,16 @@ export default function OrderScreen() {
           />
         </section>
 
-        <section>
-          <Footer
-            subtotal={draft.subtotal}
-            total={totalFinal}
-            discount={globalDiscount}
-            itemsCount={draft.items.length}
-            isLoading={isLoading}
-            onDiscountChange={setGlobalDiscount}
-            onCheckout={() => setShowCheckout(true)}
-            onConfirm={(val) => { applyGlobalDiscount(val) }}
-          />
-        </section>
+        <Footer
+          subtotal={draft.subtotal}
+          total={totalFinal}
+          discount={globalDiscount}
+          itemsCount={draft.items.length}
+          isLoading={isLoading}
+          onDiscountChange={setGlobalDiscount}
+          onCheckout={() => setShowCheckout(true)}
+          onConfirm={(val) => { applyGlobalDiscount(val) }}
+        />
       </div>
 
       {showCreateCustomerModal && (
@@ -262,7 +260,7 @@ const Header = ({ isLoading, onNavigate }: HeaderProps) => (
           </div>
         )}
         {/* Ahora el botón ejecuta la navegación */}
-        <CashFlowButton onClick={() => {}} />
+        <CashFlowButton onClick={() => { }} />
         <SaleDashboardButton onClick={() => onNavigate('reports')} />
       </div>
     </div>
@@ -283,21 +281,21 @@ const mapProductToOrderItem = (p: Product): OrderItem => ({
 // --- Objeto de Estilos ---
 const styles: Record<string, React.CSSProperties> = {
   container: {
-    height: "100vh", // Forzamos que la app mida exactamente el alto de la pantalla
+    minHeight: "100vh",
     backgroundColor: "#0F1115",
     color: "white",
     fontFamily: "'Inter', sans-serif",
     display: "flex",
-    // flexDirection: "column", // Layout vertical
-    // overflow: "hidden" // Evitamos scroll en el body
+    flexDirection: "column",
+    alignItems: "center", // Asegura que el contenido esté centrado
   },
   content: {
-    flex: 1, // Este contenedor ocupará todo el espacio sobrante entre header y footer
-    maxWidth: "900px",
-    margin: "0 auto",
+    flex: 1,
+    maxWidth: "1000px",
     width: "100%",
-    padding: "10px 120px 180px 120px", // El padding inferior (120px) previene que el footer pise el contenido
-    overflowY: "auto", // Solo el contenido hace scroll
+    // Aumentamos el padding lateral para móviles y el inferior para el footer
+    padding: "20px 20px 160px 20px",
+    boxSizing: "border-box",
   },
   header: {
     display: "flex",
