@@ -264,7 +264,7 @@ const Header = ({ isLoading, onNavigate }: HeaderProps) => (
           </div>
         )}
         {/* Ahora el botón ejecuta la navegación */}
-        <CashFlowButton onClick={() => {}} />
+        <CashFlowButton onClick={() => onNavigate('cashflow')} />
         <SaleDashboardButton onClick={() => onNavigate('reports')} />
       </div>
     </div>

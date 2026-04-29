@@ -128,18 +128,19 @@ export function useOrder() {
       paymentMethod: paymentMethod,
     };
 
-    const transaction = (customer.id != null && debDelta > 0) ? {
+    const transaction = {
       clientId: customer.id,
       orderId: "",
       amount: debDelta,
       type: "SALE",
       createdAt: Date.now(),
       note: `Venta: Total ${draft.total} - Pagó ${customerPayment}`
-    } as CustomerTransaction : null;
+    } as CustomerTransaction;
 
-    return orderRepository.commitOrderWithTransaction(orderData, transaction);
-    // console.log("Saving order: ", orderData)
-    // return "test"
+    // return orderRepository.commitOrderWithTransaction(orderData, transaction);
+    console.log("Saving order: ", orderData)
+    console.log("Saving transaction", transaction)
+    return "test"
   };
 
   return {

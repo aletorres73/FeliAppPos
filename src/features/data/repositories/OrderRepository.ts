@@ -20,18 +20,19 @@ export class OrderRepository {
             // Referencia para la nueva orden
             const orderRef = doc(collection(db, this.ORDER_COLLECTION));
 
-            batch.set(orderRef, { ...order, docId: orderRef.id}); // Guardamos el docId dentro del documento
+            batch.set(orderRef, { ...order, docId: orderRef.id }); // Guardamos el docId dentro del documento
 
             if (transaction) {
                 const transRef = doc(collection(db, this.CUSTOMER_TRANSACTIONS));
-                const customerRef = doc(db, this.CUSTOMERS, transaction.clientId);
+
+                if (transaction.clientId) {
+                    const customerRef = doc(db, this.CUSTOMERS, transaction.clientId);
+                    batch.update(customerRef, {
+                        currentBalance: increment(transaction.amount)
+                    });
+                }
 
                 batch.set(transRef, { ...transaction, orderId: orderRef.id });
-
-                // CAMBIO: FieldValue.increment también cambia según el SDK
-                batch.update(customerRef, {
-                    currentBalance: increment(transaction.amount)
-                });
             }
 
             await batch.commit();
