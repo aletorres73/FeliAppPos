@@ -11,7 +11,7 @@ export class OrderRepository {
 
     async commitOrderWithTransaction(
         order: OrderModel,
-        transaction: CustomerTransaction | null
+        transaction: CustomerTransaction
     ): Promise<string | null> {
         try {
             // CAMBIO: Se usa la función writeBatch pasándole la instancia de db
@@ -20,15 +20,16 @@ export class OrderRepository {
             // Referencia para la nueva orden
             const orderRef = doc(collection(db, this.ORDER_COLLECTION));
 
-            batch.set(orderRef, { ...order, docId: orderRef.id}); // Guardamos el docId dentro del documento
+            batch.set(orderRef, { ...order, docId: orderRef.id }); // Guardamos el docId dentro del documento
 
-            if (transaction) {
-                const transRef = doc(collection(db, this.CUSTOMER_TRANSACTIONS));
+            const transRef = doc(collection(db, this.CUSTOMER_TRANSACTIONS));
+
+            batch.set(transRef, { ...transaction, orderId: orderRef.id });
+
+            if (transaction.clientId != null) { // si cliente es null no se actualiza el saldo pero se guarda la transacción
+
                 const customerRef = doc(db, this.CUSTOMERS, transaction.clientId);
 
-                batch.set(transRef, { ...transaction, orderId: orderRef.id });
-
-                // CAMBIO: FieldValue.increment también cambia según el SDK
                 batch.update(customerRef, {
                     currentBalance: increment(transaction.amount)
                 });
