@@ -1,43 +1,48 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { salesRepository } from '../../data/repositories/SalesRepository';
 import { type OrderModel } from '../../domain/types/orderTypes';
-import { startOfDay, startOfMonth, startOfWeek } from 'date-fns';
+import { 
+    startOfDay, endOfDay, 
+    startOfMonth, endOfMonth, 
+    startOfWeek, endOfWeek,
+    addDays, subDays,
+    addWeeks, subWeeks,
+    addMonths,  subMonths 
+} from 'date-fns';
 
-// Solución al error: "Cannot find name 'DateRange'"
-export type DateRange = 'today' | 'week' | 'month' | 'custom';
+export type DateRange = 'today' | 'week' | 'month';
 
 export const useSalesReports = () => {
     const [orders, setOrders] = useState<OrderModel[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [range, setRange] = useState<DateRange>('today');
+    // FECHA DE REFERENCIA: El "pivote" para movernos entre periodos
+    const [referenceDate, setReferenceDate] = useState(new Date());
 
-    // Usamos useCallback para que la función no se recree en cada render
-    const fetchSales = useCallback(async (selectedRange: DateRange) => {
+    const fetchSales = useCallback(async (selectedRange: DateRange, refDate: Date) => {
         setIsLoading(true);
-        const now = new Date();
         let startDate: Date;
-        const endDate = now; // Hasta el momento actual
+        let endDate: Date;
 
         switch (selectedRange) {
             case 'today':
-                startDate = startOfDay(now);
+                startDate = startOfDay(refDate);
+                endDate = endOfDay(refDate);
                 break;
             case 'week':
-                // startOfWeek por defecto usa el domingo (0). 
-                // Pasamos { weekStartsOn: 1 } para que sea Lunes.
-                startDate = startOfWeek(now, { weekStartsOn: 1 });
+                startDate = startOfWeek(refDate, { weekStartsOn: 1 });
+                endDate = endOfWeek(refDate, { weekStartsOn: 1 });
                 break;
             case 'month':
-                startDate = startOfMonth(now);
+                startDate = startOfMonth(refDate);
+                endDate = endOfMonth(refDate);
                 break;
             default:
-                startDate = startOfMonth(now);
-                break;
+                startDate = startOfDay(refDate);
+                endDate = endOfDay(refDate);
         }
 
         try {
-            // Mantenemos la lógica de repositorio con Timestamps
-            console.log("Rango de fechas:", startDate, endDate)
             const data = await salesRepository.getOrdersByDateRange(
                 startDate.getTime(),
                 endDate.getTime()
@@ -48,64 +53,63 @@ export const useSalesReports = () => {
         } finally {
             setIsLoading(false);
         }
-    }, []); // Dependencias vacías para que sea estable
+    }, []);
 
+    // Se dispara cuando cambia el rango O la fecha de referencia
     useEffect(() => {
-        fetchSales(range);
-    }, [range, fetchSales]);
+        fetchSales(range, referenceDate);
+    }, [range, referenceDate, fetchSales]);
 
+    // Handlers para la UI
+    const handleNext = () => {
+        if (range === 'today') setReferenceDate(prev => addDays(prev, 1));
+        if (range === 'week') setReferenceDate(prev => addWeeks(prev, 1));
+        if (range === 'month') setReferenceDate(prev => addMonths(prev, 1));
+    };
+
+    const handlePrev = () => {
+        if (range === 'today') setReferenceDate(prev => subDays(prev, 1));
+        if (range === 'week') setReferenceDate(prev => subWeeks(prev, 1));
+        if (range === 'month') setReferenceDate(prev => subMonths(prev, 1));
+    };
+
+    const resetToToday = () => setReferenceDate(new Date());
+
+    // --- Lógica de Stats (Se mantiene igual, optimizada con useMemo) ---
     const stats = useMemo(() => {
         if (orders.length === 0) return null;
-
         let periodTotal = 0;
         let periodCash = 0;
         let periodTransfer = 0;
         let pendingCollect = 0;
-
-        const productMap: Record<string, { branch: string, article: string; quantity: number; total: number }> = {};
+        const productMap: Record<string, any> = {};
 
         orders.forEach((order) => {
             periodTotal += order.total;
             pendingCollect += (order.total - (order.payed || 0));
-            console.log(`Order ${order.docId}: total=${order.total}, payed=${order.payed}, pending=${order.total - (order.payed || 0)}`);
-
             if (order.paymentMethod === "CASH") periodCash += (order.payed || 0);
             if (order.paymentMethod === "TRANSFER") periodTransfer += (order.payed || 0);
 
             order.items.forEach((item) => {
                 if (!productMap[item.productId]) {
-                    productMap[item.productId] = {
-                        branch: item.branch,
-                        article: item.article,
-                        quantity: 0,
-                        total: 0
-                    };
+                    productMap[item.productId] = { branch: item.branch, article: item.article, quantity: 0, total: 0 };
                 }
                 productMap[item.productId].quantity += item.quantity;
                 productMap[item.productId].total += item.subtotal;
             });
         });
-        console.log("Ordenes: ", orders);
-        console.log("Stats calculados: ", { periodTotal, periodCash, periodTransfer, pendingCollect });
-        console.log("Productos acumulados: ", productMap);
 
         const sortedProducts = Object.values(productMap).sort((a, b) => b.quantity - a.quantity);
 
         return {
-            periodTotal,
-            periodCash,
-            periodTransfer,
-            pendingCollect,
+            periodTotal, periodCash, periodTransfer, pendingCollect,
             topProducts: sortedProducts.slice(0, 10),
             bottomProducts: sortedProducts.filter(p => p.quantity > 0).reverse().slice(0, 10)
         };
     }, [orders]);
 
     return {
-        stats,
-        isLoading,
-        range,
-        setRange,
-        refetch: () => fetchSales(range)
+        stats, isLoading, range, setRange,
+        referenceDate, handleNext, handlePrev, resetToToday
     };
 };

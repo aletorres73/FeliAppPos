@@ -32,7 +32,7 @@ export function CashFlowButton({ onClick }: Props) {
     )
 }
 
-const buttonStyles: React.CSSProperties = {
+export const buttonStyles: React.CSSProperties = {
     backgroundColor: '#1A1D23',
     border: '1px solid #54C4F0',
     color: '#54C4F0',
@@ -48,6 +48,6 @@ const buttonStyles: React.CSSProperties = {
     maxHeight: '40px'
 }
 
-const iconStyle: React.CSSProperties = {
+export const iconStyle: React.CSSProperties = {
     width: '20px', height: '20px', fontSize: '10px'
 }
