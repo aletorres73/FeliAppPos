@@ -117,6 +117,7 @@ export function useOrder() {
       items: draft.items,
       total: draft.total, // Ya viene calculado y redondeado del draft
       comments: draft.comments || "",
+      discount: draft.discount,
       createdAt: Date.now(),
       payStatus: payStatus,
       payed: customerPayment <= draft.total ? customerPayment : draft.total,
@@ -137,10 +138,10 @@ export function useOrder() {
       note: `Venta: Total ${draft.total} - Pagó ${customerPayment}`
     } as CustomerTransaction;
 
-    // return orderRepository.commitOrderWithTransaction(orderData, transaction);
-    console.log("Saving order: ", orderData)
-    console.log("Saving transaction", transaction)
-    return "test"
+    return orderRepository.commitOrderWithTransaction(orderData, transaction);
+    // console.log("Saving order: ", orderData)
+    // console.log("Saving transaction", transaction)
+    // return "test"
   };
 
   return {

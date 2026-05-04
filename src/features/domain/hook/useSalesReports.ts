@@ -43,6 +43,7 @@ export const useSalesReports = () => {
         }
 
         try {
+            console.log(`Cargando ventas desde ${startDate} hasta ${endDate}...`);
             const data = await salesRepository.getOrdersByDateRange(
                 startDate.getTime(),
                 endDate.getTime()
@@ -85,6 +86,7 @@ export const useSalesReports = () => {
         const productMap: Record<string, any> = {};
 
         orders.forEach((order) => {
+            // console.log("Procesando orden:", order);
             periodTotal += order.total;
             pendingCollect += (order.total - (order.payed || 0));
             if (order.paymentMethod === "CASH") periodCash += (order.payed || 0);

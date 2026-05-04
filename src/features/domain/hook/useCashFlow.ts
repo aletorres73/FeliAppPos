@@ -1,16 +1,16 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useMemo, /*useEffect, useCallback*/ } from 'react';
 import { type DateRange } from './useSalesReports';
 
 
 export const useCashflow = () => {
-    const [isLoading, setIsLoading] = useState(false);
+    const [isLoading,/* setIsLoading*/] = useState(false);
     const [range, setRange] = useState<DateRange>('today');
 
     const stats = useMemo(() => {
         return {}
-    },[])
+    }, [])
 
-    return{
+    return {
         isLoading,
         stats,
         range,

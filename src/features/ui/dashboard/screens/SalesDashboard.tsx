@@ -10,7 +10,7 @@ import {
     listItem, itemArticle, itemBadge, itemBranch
 } from '../styles/Dashboard';
 
-import { buttonStyles, iconStyle } from '../../navigation/navigationButtons';
+import { iconStyle } from '../../navigation/navigationButtons';
 import { ArrowPathIcon } from "@heroicons/react/24/solid";
 
 interface Props {
@@ -173,13 +173,13 @@ const navButtonStyle: React.CSSProperties = {
     fontSize: '0.8rem'
 };
 
-const todayButtonStyle: React.CSSProperties = {
-    backgroundColor: 'transparent',
-    border: '1px solid #54C4F0',
-    color: '#54C4F0',
-    padding: '8px 16px',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    fontSize: '0.8rem',
-    fontWeight: 600
-};
+// const todayButtonStyle: React.CSSProperties = {
+//     backgroundColor: 'transparent',
+//     border: '1px solid #54C4F0',
+//     color: '#54C4F0',
+//     padding: '8px 16px',
+//     borderRadius: '8px',
+//     cursor: 'pointer',
+//     fontSize: '0.8rem',
+//     fontWeight: 600
+// };

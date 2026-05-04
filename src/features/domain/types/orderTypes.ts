@@ -16,6 +16,7 @@ export interface OrderModel {
   items: OrderItem[];
   total: number;
   payed: number;
+  discount: number;
   createdAt: number;       // Timestamp (ms)
   confirmedAt: number | null;
   cancelledAt: number | null;

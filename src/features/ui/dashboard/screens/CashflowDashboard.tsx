@@ -1,16 +1,16 @@
 import { useNavigate } from 'react-router-dom';
 
 import {
-    fullScreenCenter, backButtonStyle, filterBadge, filterContainer,
+    fullScreenCenter, backButtonStyle, /*filterBadge, filterContainer,
     kpiGrid, kpiLabel, cardStyle, accentText, rankingGrid, rankingTitle,
-    listItem, itemArticle, itemBadge, itemBranch
+    listItem, itemArticle, itemBadge, itemBranch*/
 
 } from '../styles/Dashboard';
 
 import { useCashflow } from '../../../domain/hook/useCashFlow';
 
 export default function CashFlowDashboard(){
-    const { stats, isLoading, range, setRange } = useCashflow();
+    const { isLoading, /*stats, range, setRange*/ } = useCashflow();
     const navigate = useNavigate();
 
     if (isLoading) return (
