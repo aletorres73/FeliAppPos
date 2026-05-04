@@ -1,20 +1,22 @@
 import { useState } from "react";
-import { ScannerInput } from "../components/ScannerImput";
-import { OrderList } from "../components/OrderList";
-import { ManualItemModal } from "../components/ManualItemModal";
-import { CustomerSelectorModal } from "../components/CustomerSelectorModal";
-import { useOrder } from "../hook/useOrder";
-import { getProductById } from "../../data/repositories/ProductRepository";
-import feliLogo from "../../../assets/logo-feli.webp";
-import type { Product, OrderItem, OrderPayStatus, PaymentMethod } from "../types/orderTypes";
-import { CheckoutModal } from "../components/CheckoutModal";
-import { AnonymousCustomer, type Customer } from "../../customers/types/types";
-import { CustomerSelector } from "../components/CustomerSelector";
-import { customerRepository } from "../../data/repositories/CustomerRepository";
-import { CustomerCreateModal } from "../components/CustomerCreateModal";
-import { CashFlowButton, SaleDashboardButton } from "../components/navigationButtons";
+import { ScannerInput } from "../../../ui/orders/components/ScannerImput";
+import { CustomerSelector } from "../../../ui/orders/components/CustomerSelector";
+import { OrderList } from "../../../ui/orders/components/OrderList";
+import { ManualItemModal } from "../../../ui/orders/components/ManualItemModal";
+import { CustomerSelectorModal } from "../../../ui/orders/components/CustomerSelectorModal";
+import { Footer } from "../../../ui/orders/components/Footer";
+import { CustomerCreateModal } from "../../../ui/orders/components/CustomerCreateModal";
+import { CheckoutModal } from "../../../ui/orders/components/CheckoutModal";
+import feliLogo from "../../../../assets/logo-feli.webp"
+import { CashFlowButton, SaleDashboardButton } from "../../navigation/navigationButtons";
+
+import { getProductById } from "../../../data/repositories/ProductRepository";
+import { customerRepository } from "../../../data/repositories/CustomerRepository";
+
+import type { Product, OrderItem, OrderPayStatus, PaymentMethod } from "../../../domain/types/orderTypes";
+import { AnonymousCustomer, type Customer } from "../../../domain/types/customersTypes";
 import { useNavigate } from 'react-router-dom'; // Importamos el hook de navegación
-import { Footer } from "../components/Footer";
+import { useOrder } from "../../../domain/hook/useOrder";
 
 export default function OrderScreen() {
   const {
@@ -260,7 +262,7 @@ const Header = ({ isLoading, onNavigate }: HeaderProps) => (
           </div>
         )}
         {/* Ahora el botón ejecuta la navegación */}
-        <CashFlowButton onClick={() => { }} />
+        <CashFlowButton onClick={() => onNavigate('cashflow')} />
         <SaleDashboardButton onClick={() => onNavigate('reports')} />
       </div>
     </div>

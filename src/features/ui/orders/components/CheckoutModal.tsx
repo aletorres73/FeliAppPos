@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
-import { formatCurrency } from "../../../utils/formats";
-import type { PaymentMethod } from "../types/orderTypes";
+import { formatCurrency } from "../../../../utils/formats";
+import type { PaymentMethod } from "../../../domain/types/orderTypes";
 
 // Definimos los tipos de pago
 

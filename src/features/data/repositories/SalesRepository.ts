@@ -6,7 +6,7 @@ import {
   orderBy, 
 } from "firebase/firestore";
 import { db } from "../services/FirebaseService"; // Ajusta según tu ruta
-import { type OrderModel, OrderStatus } from "../../orders/types/orderTypes";
+import { type OrderModel, OrderStatus } from "../../domain/types/orderTypes";
 
 export const salesRepository = {
   /**

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import { formatCurrency } from "../../../utils/formats"; // Por si quieres mostrar deudas
-import type { Customer } from "../../customers/types/types";
-import { customerRepository } from "../../data/repositories/CustomerRepository"; // Asumiendo que tienes esta función
+import { formatCurrency } from "../../../../utils/formats"; // Por si quieres mostrar deudas
+import type { Customer } from "../../../domain/types/customersTypes";
+import { customerRepository } from "../../../data/repositories/CustomerRepository"; // Asumiendo que tienes esta función
 
 interface Props {
   onClose: () => void;

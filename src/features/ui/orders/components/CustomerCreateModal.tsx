@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { Customer } from "../../customers/types/types";
+import type { Customer } from "../../../domain/types/customersTypes";
 
 interface Props {
   onClose: () => void;
