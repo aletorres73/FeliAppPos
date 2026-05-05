@@ -1,52 +1,79 @@
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react";
+import type { Product } from "../../../domain/types/orderTypes";
 
 type Props = {
   onScan: (code: string) => void;
-  externalValue: string;        // Nuevo: Valor que viene del Hook
-  onChange: (val: string) => void; // Nuevo: Para actualizar el Hook
-  suggestions: any[];           // Nuevo: Lista de productos filtrados
-}
+  externalValue: string;
+  onChange: (val: string) => void;
+  suggestions: Product[]; // Cambiado de any[] a Product para type-safety
+};
 
 export function ScannerInput({ onScan, externalValue, onChange, suggestions }: Props) {
-  const ref = useRef<HTMLInputElement>(null)
+  const ref = useRef<HTMLInputElement>(null);
+  const [selectedIndex, setSelectedIndex] = useState<number>(-1);
+
+  // Reiniciar el índice cuando cambian las sugerencias
+  useEffect(() => {
+    setSelectedIndex(-1);
+  }, [suggestions]);
 
   useEffect(() => {
     const handleFocus = (e: MouseEvent) => {
-      // 1. Detectamos si hay un modal abierto (dialog)
       const isModalOpen = document.querySelector('[role="dialog"]');
-
-      // 2. Detectamos si el usuario hizo clic en OTRO input o textarea
-      // (Por ejemplo, el campo de comentarios o el de efectivo del Checkout)
       const target = e.target as HTMLElement;
       const clickedInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
 
       if (!isModalOpen && !clickedInput) {
-        // Solo robamos el foco si no hay modales y no se hizo clic en otro input
         ref.current?.focus();
       }
-      return () => {
-        // Buscamos el input por su clase o ID y le damos foco
-        const scannerInput = document.querySelector('.scanner-field') as HTMLInputElement;
-        if (scannerInput) {
-          // Usamos un pequeño delay para asegurar que el modal ya no esté bloqueando el DOM
-          setTimeout(() => scannerInput.focus(), 50);
-        }
-      };
     };
 
-    // Foco inicial
     ref.current?.focus();
-
-    // Escuchamos clics en el documento
     document.addEventListener("click", handleFocus);
-
     return () => document.removeEventListener("click", handleFocus);
   }, []);
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (suggestions.length === 0) {
+      if (e.key === "Enter" && externalValue.trim()) {
+        onScan(externalValue.trim());
+        onChange("");
+      }
+      return;
+    }
+
+    switch (e.key) {
+      case "ArrowDown":
+        e.preventDefault();
+        setSelectedIndex((prev) => (prev < suggestions.length - 1 ? prev + 1 : prev));
+        break;
+      case "ArrowUp":
+        e.preventDefault();
+        setSelectedIndex((prev) => (prev > 0 ? prev - 1 : 0));
+        break;
+      case "Enter":
+        e.preventDefault();
+        if (selectedIndex >= 0 && suggestions[selectedIndex]) {
+          // Seleccionamos el producto resaltado
+          onScan(suggestions[selectedIndex].id);
+        } else if (externalValue.trim()) {
+          // Si no hay nada resaltado pero hay texto, escaneamos el texto (ej. código de barras)
+          onScan(externalValue.trim());
+        }
+        onChange("");
+        setSelectedIndex(-1);
+        break;
+      case "Escape":
+        setSelectedIndex(-1);
+        onChange("");
+        break;
+    }
+  };
 
   return (
     <div style={{
       display: "flex",
-      flexDirection: "column", // Cambiado a column para que las sugerencias bajen
+      flexDirection: "column",
       alignItems: "center",
       margin: "20px 0",
       position: "relative",
@@ -65,7 +92,7 @@ export function ScannerInput({ onScan, externalValue, onChange, suggestions }: P
           width: 100%;
           max-width: 600px;
           box-sizing: border-box;
-          font-family: monospace;
+          font-family: 'Inter', sans-serif;
         }
 
         .scanner-field:focus {
@@ -76,71 +103,89 @@ export function ScannerInput({ onScan, externalValue, onChange, suggestions }: P
         .suggestions-list {
           position: absolute;
           top: 100%;
-          left: 0;
-          right: 0;
+          left: 50%;
+          transform: translateX(-50%);
+          width: 100%;
+          max-width: 600px;
           background: #1A1D23;
-          border: 1px solid #54C4F0;
-          border-radius: 0 0 8px 8px;
+          border: 1px solid rgba(84, 196, 240, 0.3);
+          border-radius: 0 0 12px 12px;
           z-index: 1000;
-          max-height: 250px;
+          max-height: 300px;
           overflow-y: auto;
-          box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-          margin-top: -2px;
+          box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+          margin-top: 4px;
         }
 
         .suggestion-item {
-          padding: 12px 15px;
-          border-bottom: 1px solid rgba(255,255,255,0.05);
+          padding: 12px 16px;
+          border-bottom: 1px solid rgba(255,255,255,0.03);
           cursor: pointer;
           display: flex;
-          justify-content: space-between;
+          align-items: center;
+          gap: 12px;
+          transition: background 0.2s;
         }
 
-        .suggestion-item:hover {
-          background: rgba(84, 196, 240, 0.1);
+        .suggestion-item.active {
+          background: rgba(84, 196, 240, 0.15);
+          border-left: 3px solid #54C4F0;
         }
       `}</style>
 
       <div style={{ position: "relative", width: "100%", maxWidth: "600px" }}>
-        <span style={{ position: "absolute", left: 15, top: "50%", transform: "translateY(-50%)", opacity: 0.4 }}>🔍</span>
+        <span style={{ 
+          position: "absolute", 
+          left: 20, 
+          top: "50%", 
+          transform: "translateY(-50%)", 
+          fontSize: "1.2rem",
+          color: "#54C4F0",
+          zIndex: 1 
+        }}>
+          🔍
+        </span>
 
         <input
           ref={ref}
           className="scanner-field"
-          placeholder="Escanear o buscar producto..."
-          value={externalValue} // Usa el valor del hook
-          onChange={(e) => onChange(e.target.value)} // Actualiza el hook
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              if (externalValue.trim()) onScan(externalValue.trim());
-              onChange(""); // Limpia el buscador
-            }
-          }}
+          placeholder="Escanear código o buscar por nombre..."
+          value={externalValue}
+          onChange={(e) => onChange(e.target.value)}
+          onKeyDown={handleKeyDown}
           autoComplete="off"
         />
 
-        {/* RENDER DE SUGERENCIAS */}
         {suggestions.length > 0 && (
           <div className="suggestions-list">
-            {suggestions.map((p) => (
+            {suggestions.map((p, index) => (
               <div
                 key={p.id}
-                className="suggestion-item"
+                className={`suggestion-item ${index === selectedIndex ? 'active' : ''}`}
                 onMouseDown={(e) => {
-                  e.preventDefault(); // Evita que el input pierda el foco antes del click
-                  onScan(p.id.toString());
+                  e.preventDefault(); 
+                  onScan(p.id);
                   onChange("");
                 }}
               >
-                <span style={{ fontSize: "0.75rem", fontWeight: "bold" }}>{p.article}</span>
-                {/* <span style={{ color: "#54C4F0", fontWeight: "bold" }}>${p.price}</span> */}
-                <span style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.5)" }}>{p.branch}</span>
-                <span style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.5)" }}>Disponible: {p.saleWeight ? `${p.weight.toFixed(2)} kg` : p.stock}</span>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: "0.9rem", fontWeight: 600, color: "white" }}>{p.article}</div>
+                  <div style={{ fontSize: "0.7rem", color: "rgba(255,255,255,0.4)", textTransform: "uppercase" }}>{p.branch}</div>
+                </div>
+                
+                <div style={{ textAlign: "right" }}>
+                  <div style={{ color: "#54C4F0", fontWeight: "bold", fontSize: "0.9rem" }}>
+                    ${p.price.toLocaleString()}
+                  </div>
+                  <div style={{ fontSize: "0.7rem", color: "rgba(255,255,255,0.5)" }}>
+                    {p.saleWeight ? `${p.weight.toFixed(3)} kg` : `${p.stock} unid.`}
+                  </div>
+                </div>
               </div>
             ))}
           </div>
         )}
       </div>
     </div>
-  )
+  );
 }
