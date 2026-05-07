@@ -11,7 +11,7 @@ export class OrderRepository {
 
     async commitOrderWithTransaction(
         order: OrderModel,
-        transaction: CustomerTransaction
+        transaction: CustomerTransaction | null
     ): Promise<string | null> {
         try {
             // CAMBIO: Se usa la función writeBatch pasándole la instancia de db
@@ -22,19 +22,21 @@ export class OrderRepository {
 
             batch.set(orderRef, { ...order, docId: orderRef.id }); // Guardamos el docId dentro del documento
 
-            const transRef = doc(collection(db, this.CUSTOMER_TRANSACTIONS));
+            if (transaction) {
 
-            batch.set(transRef, { ...transaction, orderId: orderRef.id });
+                const transRef = doc(collection(db, this.CUSTOMER_TRANSACTIONS));
 
-            if (transaction.clientId != null) { // si cliente es null no se actualiza el saldo pero se guarda la transacción
+                batch.set(transRef, { ...transaction, orderId: orderRef.id });
 
-                const customerRef = doc(db, this.CUSTOMERS, transaction.clientId);
+                if (transaction.clientId != null) { // si cliente es null no se actualiza el saldo pero se guarda la transacción
 
-                batch.update(customerRef, {
-                    currentBalance: increment(transaction.amount)
-                });
+                    const customerRef = doc(db, this.CUSTOMERS, transaction.clientId);
+
+                    batch.update(customerRef, {
+                        currentBalance: increment(transaction.amount)
+                    });
+                }
             }
-
             await batch.commit();
             return orderRef.id;
         } catch (error) {

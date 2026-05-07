@@ -52,10 +52,10 @@ export function CheckoutModal({
   const numCash = parseFloat(cashAmount) || 0;
   const numTransfer = parseFloat(transferAmount) || 0;
 
-  const paymentType: PaymentMethod[] = (numCash > 0 || numTransfer > 0) ? [
-    { type: "CASH" as PaymentType, amount: numCash },
-    { type: "TRANSFER" as PaymentType, amount: numTransfer }
-  ] : [];
+  const paymentType: PaymentMethod[] = [];
+
+  if(numCash > 0 ) paymentType.push({ type: "CASH" as PaymentType, amount: numCash });
+  if(numTransfer > 0) paymentType.push({ type: "TRANSFER" as PaymentType, amount: numTransfer });
 
   const totalPayed = numCash + numTransfer;
   const remanente = total - totalPayed;

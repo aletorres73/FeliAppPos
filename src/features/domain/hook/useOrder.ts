@@ -76,7 +76,7 @@ export function useOrder() {
 
   const updateQuantity = (index: number, newQty: number) => {
     setDraft(prev => {
-      const newItems = prev.items.map((item, i) => 
+      const newItems = prev.items.map((item, i) =>
         i === index ? { ...item, quantity: newQty, subtotal: item.unitPrice * newQty } : item
       );
       return { ...prev, ...calculateTotals(newItems, prev.discount) };
@@ -104,7 +104,7 @@ export function useOrder() {
     draft: OrderDraft,
     payStatus: OrderPayStatus,
     customerPayment: number,
-    paymentMethod: PaymentMethod [] | null,
+    paymentMethod: PaymentMethod[] | null,
     customer: Customer,
   ): Promise<String | null> => {
     const debDelta = (customerPayment < draft.total) ? draft.total - customerPayment : 0;
@@ -129,15 +129,19 @@ export function useOrder() {
       paymentMethod: paymentMethod,
     };
 
-    const transaction = {
-      clientId: customer.id,
-      orderId: "",
-      amount: debDelta,
-      paymentMethod: paymentMethod,
-      type: "SALE",
-      createdAt: Date.now(),
-      note: `Venta: Total ${draft.total} - Pagó ${customerPayment}`
-    } as CustomerTransaction;
+    let transaction: CustomerTransaction | null = null;
+
+    if (debDelta > 0 && customer.id) {
+      transaction = {
+        clientId: customer.id,
+        orderId: "",
+        amount: debDelta,
+        paymentMethod: paymentMethod,
+        type: "SALE",
+        createdAt: Date.now(),
+        note: `Venta: Total ${draft.total} - Pagó ${customerPayment}`
+      } as CustomerTransaction;
+    }
 
     return orderRepository.commitOrderWithTransaction(orderData, transaction);
     // console.log("Saving order: ", orderData)
