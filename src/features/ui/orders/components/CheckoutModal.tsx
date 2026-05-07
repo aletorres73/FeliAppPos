@@ -1,13 +1,15 @@
 import { useState, useRef, useEffect } from "react";
 import { formatCurrency } from "../../../../utils/formats";
-import type { PaymentMethod } from "../../../domain/types/orderTypes";
-
-// Definimos los tipos de pago
+import { type PaymentType, type PaymentMethod } from "../../../domain/types/orderTypes";
 
 interface Props {
   total: number;
-  // Actualizamos el confirm para que también devuelva el método
-  onConfirm: (status: "PAID" | "PENDING", payment: number, method: PaymentMethod | null) => void;
+  // Ajustamos onConfirm para enviar el desglose completo
+  onConfirm: (
+    status: "PAID" | "PENDING",
+    totalPayed: number,
+    paymentMethod: PaymentMethod[] | null// Método principal o "MIXED"
+  ) => void;
   onClose: () => void;
   comments: string;
   onCommentsChange: (val: string) => void;
@@ -22,156 +24,156 @@ export function CheckoutModal({
   onCommentsChange,
   isLoading
 }: Props) {
-  const [paymentAmount, setPaymentAmount] = useState<string>(total.toString());
-  const [isPaid, setIsPaid] = useState(true);
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("CASH");
-  const inputRef = useRef<HTMLInputElement>(null);
+  // Estados para montos específicos
+  const [cashAmount, setCashAmount] = useState<string>(total.toString());
+  const [transferAmount, setTransferAmount] = useState<string>("0");
 
+  // Tipo de operación: "TOTAL" (paga todo) o "PARTIAL" (paga una parte)
+  // const [paymentType, setPaymentType] = useState<"TOTAL" | "PARTIAL">("TOTAL");
+  const [activeMode, setActiveMode] = useState<"CASH" | "TRANSFER" | "MIXED">("CASH");
+
+  const cashInputRef = useRef<HTMLInputElement>(null);
+
+  // Lógica de reseteo al cambiar de modo
   useEffect(() => {
-    // Solo hacemos focus si es pago en EFECTIVO
-    if (isPaid && paymentMethod === "CASH" && !isLoading) {
-      setTimeout(() => inputRef.current?.focus(), 50);
+    if (activeMode === "CASH") {
+      setCashAmount(total.toString());
+      setTransferAmount("0");
+    } else if (activeMode === "TRANSFER") {
+      setCashAmount("0");
+      setTransferAmount(total.toString());
+    } else {
+      // MIXED: dejamos que el usuario edite ambos, pero inicializamos 50/50
+      setCashAmount((total / 2).toString());
+      setTransferAmount((total / 2).toString());
     }
-  }, [isPaid, paymentMethod, isLoading]);
+  }, [activeMode, total]);
 
-  // Si cambia a transferencia, seteamos el pago igual al total automáticamente
-  // useEffect(() => {
-  //   if (paymentMethod === "TRANSFER") {
-  //     setPaymentAmount(total.toString());
-  //   }
-  // }, [paymentMethod, total]);
+  const numCash = parseFloat(cashAmount) || 0;
+  const numTransfer = parseFloat(transferAmount) || 0;
 
-  const numericPayment = parseFloat(paymentAmount) || 0;
-  const change = numericPayment - total;
+  const paymentType: PaymentMethod[] = (numCash > 0 || numTransfer > 0) ? [
+    { type: "CASH" as PaymentType, amount: numCash },
+    { type: "TRANSFER" as PaymentType, amount: numTransfer }
+  ] : [];
+
+  const totalPayed = numCash + numTransfer;
+  const remanente = total - totalPayed;
+  const vuelto = numCash > (total - numTransfer) ? numCash - (total - numTransfer) : 0;
+
+  const handleFinalConfirm = () => {
+    const status = totalPayed >= total ? "PAID" : "PENDING";
+    // El paymentMethod enviado es para el reporte (CASH, TRANSFER o MIXED)
+    onConfirm(status, totalPayed, paymentType.length > 0 ? paymentType : null);
+  };
 
   return (
     <div style={modalStyles.overlay} role="dialog">
       <div style={modalStyles.card}>
-        <h2 style={{ margin: "0 0 20px 0", color: "white" }}>
-          {isLoading ? "Procesando..." : "Confirmar Venta"}
+        <h2 style={{ margin: "0 0 20px 0", color: "white", fontSize: '1.4rem' }}>
+          {isLoading ? "Procesando..." : "Finalizar Venta"}
         </h2>
 
-        {/* Tabs Principales: Pago o Pendiente */}
+        {/* 1. Selector de Modo de Pago */}
+        <label style={modalStyles.label}>Forma de Pago:</label>
         <div style={modalStyles.tabs}>
-          <button
-            disabled={isLoading}
-            onClick={() => { setIsPaid(true); setPaymentAmount(total.toString()); }}
-            style={{
-              ...modalStyles.tab,
-              backgroundColor: isPaid ? "#54C4F0" : "transparent",
-              color: isPaid ? "#0F1115" : "white",
-              opacity: isLoading ? 0.5 : 1
-            }}
-          >
-            Pagar Ahora
-          </button>
-          <button
-            disabled={isLoading}
-            onClick={() => { setIsPaid(false); setPaymentAmount("0"); setPaymentMethod(null); }}
-            style={{
-              ...modalStyles.tab,
-              backgroundColor: !isPaid ? "#E63946" : "transparent",
-              color: "white",
-              opacity: isLoading ? 0.5 : 1
-            }}
-          >
-            Dejar Pendiente
-          </button>
+          {["CASH", "TRANSFER", "MIXED"].map((mode) => (
+            <button
+              key={mode}
+              disabled={isLoading}
+              onClick={() => setActiveMode(mode as any)}
+              style={{
+                ...modalStyles.tab,
+                backgroundColor: activeMode === mode ? "#54C4F0" : "transparent",
+                color: activeMode === mode ? "#0F1115" : "white",
+                borderColor: activeMode === mode ? "#54C4F0" : "rgba(255,255,255,0.1)"
+              }}
+            >
+              {mode === "CASH" ? "Efectivo" : mode === "TRANSFER" ? "Transf." : "Mixto"}
+            </button>
+          ))}
         </div>
 
-        {/* Selector de Método de Pago (Solo si isPaid es true) */}
-        {isPaid && (
-          <div style={{ marginBottom: 20 }}>
-            <label style={modalStyles.label}>Método de Pago:</label>
-            <div style={{ display: "flex", gap: "10px" }}>
-              <button
-                disabled={isLoading}
-                onClick={() => setPaymentMethod("CASH")}
-                style={{
-                  ...modalStyles.methodBtn,
-                  border: paymentMethod === "CASH" ? "2px solid #54C4F0" : "1px solid rgba(255,255,255,0.1)",
-                  backgroundColor: paymentMethod === "CASH" ? "rgba(84, 196, 240, 0.1)" : "transparent"
-                }}
-              >
-                💵 Efectivo
-              </button>
-              <button
-                disabled={isLoading}
-                onClick={() => setPaymentMethod("TRANSFER")}
-                style={{
-                  ...modalStyles.methodBtn,
-                  border: paymentMethod === "TRANSFER" ? "2px solid #54C4F0" : "1px solid rgba(255,255,255,0.1)",
-                  backgroundColor: paymentMethod === "TRANSFER" ? "rgba(84, 196, 240, 0.1)" : "transparent"
-                }}
-              >
-                🏦 Transferencia
-              </button>
+        {/* 2. Inputs Dinámicos según el modo */}
+        <div style={{ display: 'flex', gap: '15px', marginBottom: '20px' }}>
+          {(activeMode === "CASH" || activeMode === "MIXED") && (
+            <div style={{ flex: 1 }}>
+              <label style={modalStyles.label}>Monto Efectivo:</label>
+              <input
+                ref={cashInputRef}
+                type="number"
+                value={cashAmount}
+                onChange={(e) => setCashAmount(e.target.value)}
+                style={modalStyles.inputSmall}
+                onFocus={(e) => e.target.select()}
+              />
             </div>
-          </div>
-        )}
+          )}
+          {(activeMode === "TRANSFER" || activeMode === "MIXED") && (
+            <div style={{ flex: 1 }}>
+              <label style={modalStyles.label}>Monto Transf.:</label>
+              <input
+                type="number"
+                value={transferAmount}
+                onChange={(e) => setTransferAmount(e.target.value)}
+                style={modalStyles.inputSmall}
+                onFocus={(e) => e.target.select()}
+              />
+            </div>
+          )}
+        </div>
 
+        {/* 3. Resumen de Pago */}
+        <div style={modalStyles.summaryBox}>
+          <div style={modalStyles.summaryRow}>
+            <span>Total Venta:</span>
+            <span>{formatCurrency(total)}</span>
+          </div>
+          <div style={modalStyles.summaryRow}>
+            <span>Total Abonado:</span>
+            <span style={{ color: "#54C4F0" }}>{formatCurrency(totalPayed)}</span>
+          </div>
+          {remanente > 0 ? (
+            <div style={modalStyles.summaryRow}>
+              <span style={{ color: "#FF5252" }}>Deuda Restante:</span>
+              <span style={{ color: "#FF5252", fontWeight: 'bold' }}>{formatCurrency(remanente)}</span>
+            </div>
+          ) : (
+            <div style={modalStyles.summaryRow}>
+              <span>Vuelto (Efectivo):</span>
+              <span style={{ color: "#51cf66", fontWeight: 'bold' }}>{formatCurrency(vuelto)}</span>
+            </div>
+          )}
+        </div>
+
+        {/* 4. Comentarios */}
         <div style={{ marginBottom: 20 }}>
-          <label style={modalStyles.label}>Notas / Comentarios:</label>
+          <label style={modalStyles.label}>Notas de la venta:</label>
           <textarea
             disabled={isLoading}
             value={comments}
             onChange={(e) => onCommentsChange(e.target.value)}
-            placeholder="Ej: Paga con transferencia, retirar mañana..."
-            style={{
-              ...modalStyles.textarea,
-              opacity: isLoading ? 0.6 : 1
-            }}
+            placeholder="Agregar comentarios..."
+            style={modalStyles.textarea}
           />
         </div>
 
-        {isPaid && (
-          <div style={{ marginTop: 20 }}>
-            <label style={modalStyles.label}>
-              {paymentMethod === "CASH" ? "Efectivo entregado:" : "Monto a transferir:"}
-            </label>
-            <input
-              disabled={isLoading /*|| paymentMethod === "TRANSFER"*/}
-              ref={inputRef}
-              type="number"
-              value={paymentAmount}
-              onChange={(e) => setPaymentAmount(e.target.value)}
-              onFocus={(e) => e.target.select()}
-              style={{
-                ...modalStyles.input,
-                opacity: (isLoading /*|| paymentMethod === "TRANSFER"*/) ? 0.6 : 1,
-                borderColor: /*paymentMethod === "TRANSFER" ? "rgba(255,255,255,0.2)" :*/ "#54C4F0"
-              }}
-            />
-
-            {paymentMethod === "CASH" && (
-              <div style={modalStyles.changeBox}>
-                <span style={{ color: "rgba(255,255,255,0.6)" }}>Vuelto:</span>
-                <strong style={{ color: change >= 0 ? "#51cf66" : "#ff6b6b" }}>
-                  {formatCurrency(change < 0 ? 0 : change)}
-                </strong>
-              </div>
-            )}
-          </div>
-        )}
-
+        {/* 5. Acciones */}
         <div style={modalStyles.actions}>
-          <button
-            onClick={onClose}
-            disabled={isLoading}
-            style={{ ...modalStyles.btnCancel, opacity: isLoading ? 0.5 : 1 }}
-          >
+          <button onClick={onClose} disabled={isLoading} style={modalStyles.btnCancel}>
             Cancelar
           </button>
           <button
-            disabled={isLoading}
-            onClick={() => onConfirm(isPaid ? "PAID" : "PENDING", isPaid ? numericPayment : 0, paymentMethod)}
+            disabled={isLoading /* || totalPayed === 0 */}
+            onClick={handleFinalConfirm}
             style={{
               ...modalStyles.btnConfirm,
-              backgroundColor: isLoading ? "#333" : "#54C4F0",
-              color: isLoading ? "white" : "#0F1115"
+              backgroundColor: remanente > 0 ? "#FFAB40" : "#54C4F0" // Naranja si es parcial
             }}
           >
-            {isLoading ? "Guardando..." : `Confirmar ${isPaid ? "Pago" : "Pedido"}`}
+            {isLoading ? "Guardando..." :
+              remanente === total ? "Pendiente" :
+              remanente > 0 ? "Pago Parcial" : "Finalizar Venta"}
           </button>
         </div>
       </div>
@@ -180,16 +182,17 @@ export function CheckoutModal({
 }
 
 const modalStyles = {
+  // ... (overlay y card se mantienen iguales)
   overlay: { position: "fixed" as const, top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.85)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 },
-  card: { backgroundColor: "#1A1D23", padding: 30, borderRadius: 16, width: "100%", maxWidth: "400px", border: "1px solid rgba(255,255,255,0.1)" },
-  tabs: { display: "flex", gap: "10px", marginBottom: 20 },
-  tab: { flex: 1, padding: "6px", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "8px", cursor: "pointer", transition: "0.2s", fontWeight: "bold" as const },
-  methodBtn: { flex: 1, padding: "4px", borderRadius: "8px", cursor: "pointer", color: "white", transition: "0.2s", fontSize: "0.85em", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" },
-  label: { display: "block", color: "rgba(255,255,255,0.5)", fontSize: "0.8rem", marginBottom: 8 },
-  input: { width: "100%", padding: "12px", backgroundColor: "#0F1115", border: "1px solid #54C4F0", borderRadius: "8px", color: "white", fontSize: "1.5rem", outline: "none", boxSizing: "border-box" as const },
-  textarea: { width: "100%", minHeight: "45px", padding: "12px", backgroundColor: "#0F1115", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "8px", color: "white", fontSize: "0.85rem", outline: "none", resize: "none" as const, fontFamily: "inherit" },
-  changeBox: { marginTop: 15, display: "flex", justifyContent: "space-between", fontSize: "1.2rem", color: "white" },
-  actions: { marginTop: 30, display: "flex", gap: "12px" },
-  btnCancel: { flex: 1, padding: "8px", background: "transparent", color: "white", border: "none", cursor: "pointer" },
-  btnConfirm: { flex: 2, padding: "8px", background: "#54C4F0", color: "#0F1115", fontWeight: "bold", border: "none", borderRadius: "8px", cursor: "pointer" }
+  card: { backgroundColor: "#1A1D23", padding: 30, borderRadius: 16, width: "100%", maxWidth: "450px", border: "1px solid rgba(255,255,255,0.1)" },
+  tabs: { display: "flex", gap: "8px", marginBottom: 20 },
+  tab: { flex: 1, padding: "10px", border: "1px solid", borderRadius: "8px", cursor: "pointer", transition: "0.2s", fontSize: "0.85rem", fontWeight: "bold" as const },
+  label: { display: "block", color: "rgba(255,255,255,0.5)", fontSize: "0.75rem", marginBottom: 6, fontWeight: 600, textTransform: "uppercase" as const },
+  inputSmall: { width: "100%", padding: "10px", backgroundColor: "#0F1115", border: "1px solid #54C4F0", borderRadius: "8px", color: "white", fontSize: "1.1rem", outline: "none", boxSizing: "border-box" as const },
+  textarea: { width: "100%", minHeight: "60px", padding: "12px", backgroundColor: "#0F1115", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "8px", color: "white", fontSize: "0.85rem", outline: "none", resize: "none" as const, fontFamily: "inherit" },
+  summaryBox: { backgroundColor: "rgba(255,255,255,0.02)", padding: "15px", borderRadius: "12px", marginBottom: "20px", border: "1px solid rgba(255,255,255,0.05)" },
+  summaryRow: { display: "flex", justifyContent: "space-between", marginBottom: "5px", fontSize: "0.9rem" },
+  actions: { display: "flex", gap: "12px" },
+  btnCancel: { flex: 1, padding: "12px", background: "transparent", color: "white", border: "none", cursor: "pointer" },
+  btnConfirm: { flex: 2, padding: "12px", color: "#0F1115", fontWeight: "bold", border: "none", borderRadius: "8px", cursor: "pointer" }
 };

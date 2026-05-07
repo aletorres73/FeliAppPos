@@ -104,7 +104,7 @@ export function useOrder() {
     draft: OrderDraft,
     payStatus: OrderPayStatus,
     customerPayment: number,
-    paymentMethod: PaymentMethod,
+    paymentMethod: PaymentMethod [] | null,
     customer: Customer,
   ): Promise<String | null> => {
     const debDelta = (customerPayment < draft.total) ? draft.total - customerPayment : 0;
@@ -133,6 +133,7 @@ export function useOrder() {
       clientId: customer.id,
       orderId: "",
       amount: debDelta,
+      paymentMethod: paymentMethod,
       type: "SALE",
       createdAt: Date.now(),
       note: `Venta: Total ${draft.total} - Pagó ${customerPayment}`

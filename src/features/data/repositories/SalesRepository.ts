@@ -6,7 +6,7 @@ import {
   orderBy, 
 } from "firebase/firestore";
 import { db } from "../services/FirebaseService"; // Ajusta según tu ruta
-import { type OrderModel, OrderStatus } from "../../domain/types/orderTypes";
+import { type OrderModel, OrderStatus, type PaymentMethod, type PaymentType } from "../../domain/types/orderTypes";
 
 export const salesRepository = {
   /**
@@ -32,7 +32,8 @@ export const salesRepository = {
       
       return querySnapshot.docs.map(doc => ({
         ...doc.data(),
-        docId: doc.id
+        docId: doc.id,
+        paymentMethod: normalizePaymentMethod(doc.data().paymentMethod, doc.data().payed)
       })) as OrderModel[];
       
     } catch (error) {
@@ -52,4 +53,28 @@ export const salesRepository = {
     
     return salesRepository.getOrdersByDateRange(firstDay, lastDay);
   }
+};
+
+/**
+ * Normaliza el método de pago para manejar datos legacy (string) 
+ * y el nuevo formato (array de objetos).
+ */
+const normalizePaymentMethod = (legacyOrNew: any, payed: number): PaymentMethod[] => {
+    // Caso 1: Ya es el formato nuevo (Array)
+    if (Array.isArray(legacyOrNew)) {
+        return legacyOrNew;
+    }
+
+    // Caso 2: Es formato legacy (String: "CASH" o "TRANSFER")
+    if (typeof legacyOrNew === 'string') {
+        return [{
+            type: legacyOrNew as PaymentType,
+            // En el formato viejo no teníamos el desglose, 
+            // asumimos que el pago total fue por este medio.
+            amount: payed
+        }];
+    }
+
+    // Caso 3: Es null o indefinido
+    return [];
 };

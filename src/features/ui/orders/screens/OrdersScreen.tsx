@@ -119,7 +119,7 @@ export default function OrderScreen() {
   const handleFinalizeOrder = async (
     payStatus: OrderPayStatus,
     customerPayment: number,
-    paymentMethod: PaymentMethod) => {
+    paymentMethod: PaymentMethod[] | null) => {
     // 1. Evitar ejecución si ya está en curso
     if (isLoading) return;
 

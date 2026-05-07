@@ -1,13 +1,13 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { salesRepository } from '../../data/repositories/SalesRepository';
 import { type OrderModel } from '../../domain/types/orderTypes';
-import { 
-    startOfDay, endOfDay, 
-    startOfMonth, endOfMonth, 
+import {
+    startOfDay, endOfDay,
+    startOfMonth, endOfMonth,
     startOfWeek, endOfWeek,
     addDays, subDays,
     addWeeks, subWeeks,
-    addMonths,  subMonths 
+    addMonths, subMonths
 } from 'date-fns';
 
 export type DateRange = 'today' | 'week' | 'month';
@@ -89,8 +89,19 @@ export const useSalesReports = () => {
             // console.log("Procesando orden:", order);
             periodTotal += order.total;
             pendingCollect += (order.total - (order.payed || 0));
-            if (order.paymentMethod === "CASH") periodCash += (order.payed || 0);
-            if (order.paymentMethod === "TRANSFER") periodTransfer += (order.payed || 0);
+            /*  if (order.paymentMethod.type === "CASH") periodCash += (order.payed || 0);
+             if (order.paymentMethod.type === "TRANSFER") periodTransfer += (order.payed || 0); */
+            // Nueva lógica para procesar el array de métodos de pago
+            console.log("Procesando métodos de pago para orden:", order.docId, order.paymentMethod);
+            if (Array.isArray(order.paymentMethod)) {
+                order.paymentMethod.forEach(method => {
+                    if (method.type === "CASH") periodCash += method.amount;
+                    if (method.type === "TRANSFER") periodTransfer += method.amount;
+                });
+            }
+            else{
+
+            }
 
             order.items.forEach((item) => {
                 if (!productMap[item.productId]) {
