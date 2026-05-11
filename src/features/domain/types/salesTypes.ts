@@ -6,3 +6,5 @@ export interface SalesStats {
   topProducts: { article: string; quantity: number; total: number }[];
   lowStockAlerts: { article: string; quantity: number }[];
 }
+
+export type DateRange = 'today' | 'week' | 'month';

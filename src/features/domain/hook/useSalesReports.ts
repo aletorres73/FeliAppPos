@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { salesRepository } from '../../data/repositories/SalesRepository';
 import { type OrderModel } from '../../domain/types/orderTypes';
+import { type DateRange } from '../../domain/types/salesTypes';
 import {
     startOfDay, endOfDay,
     startOfMonth, endOfMonth,
@@ -10,7 +11,6 @@ import {
     addMonths, subMonths
 } from 'date-fns';
 
-export type DateRange = 'today' | 'week' | 'month';
 
 export const useSalesReports = () => {
     const [orders, setOrders] = useState<OrderModel[]>([]);
