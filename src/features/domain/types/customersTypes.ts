@@ -1,10 +1,14 @@
+import type { PaymentMethod } from "./orderTypes";
+
 export type CustomerTransaction = {
   clientId: string
   orderId: string,
   amount: number,
   type: TransactionType,
   createdAt: number,
-  note: string
+  note: string,
+  debt: number,
+  paymentMethod: PaymentMethod[] | null,
 }
 
 export const TransactionType = {

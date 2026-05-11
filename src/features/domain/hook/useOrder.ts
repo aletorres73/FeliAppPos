@@ -108,6 +108,7 @@ export function useOrder() {
     customer: Customer,
   ): Promise<String | null> => {
     const debDelta = (customerPayment < draft.total) ? draft.total - customerPayment : 0;
+    const payed = customerPayment <= draft.total ? customerPayment : draft.total
 
     if (draft.items.length === 0) throw new Error("No hay ítems en la orden");
 
@@ -120,7 +121,7 @@ export function useOrder() {
       discount: draft.discount,
       createdAt: Date.now(),
       payStatus: payStatus,
-      payed: customerPayment <= draft.total ? customerPayment : draft.total,
+      payed: payed,
       status: OrderStatus.DRAFT,
       confirmedAt: null,
       cancelledAt: null,
@@ -129,19 +130,17 @@ export function useOrder() {
       paymentMethod: paymentMethod,
     };
 
-    let transaction: CustomerTransaction | null = null;
+    const transaction = {
+      clientId: customer.id,
+      orderId: "",
+      amount: payed,
+      debt: debDelta,
+      paymentMethod: paymentMethod,
+      type: "SALE",
+      createdAt: Date.now(),
+      note: `Venta: Total ${draft.total} - Pagó ${customerPayment}`
+    } as CustomerTransaction | null;
 
-    if (debDelta > 0 && customer.id) {
-      transaction = {
-        clientId: customer.id,
-        orderId: "",
-        amount: debDelta,
-        paymentMethod: paymentMethod,
-        type: "SALE",
-        createdAt: Date.now(),
-        note: `Venta: Total ${draft.total} - Pagó ${customerPayment}`
-      } as CustomerTransaction;
-    }
 
     return orderRepository.commitOrderWithTransaction(orderData, transaction);
     // console.log("Saving order: ", orderData)

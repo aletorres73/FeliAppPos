@@ -33,7 +33,7 @@ export class OrderRepository {
                     const customerRef = doc(db, this.CUSTOMERS, transaction.clientId);
 
                     batch.update(customerRef, {
-                        currentBalance: increment(transaction.amount)
+                        currentBalance: increment(transaction.debt)
                     });
                 }
             }
