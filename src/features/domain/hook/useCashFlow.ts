@@ -69,6 +69,12 @@ export const useCashflow = () => {
                                     .reduce((acc, e) => acc + e.amount, 0);
         const salaryOut = expenses.filter(e => e.category === 'SALARY')
                                     .reduce((acc, e) => acc + e.amount, 0);
+        const suppliesOut = expenses.filter(e => e.category === 'SUPPLIES')
+                                        .reduce((acc, e) => acc + e.amount, 0);
+        const servicesOut = expenses.filter(e => e.category === 'SERVICES')
+                                        .reduce((acc, e) => acc + e.amount, 0);
+        const otherOut = expenses.filter(e => e.category === 'OTHER')
+                                        .reduce((acc, e) => acc + e.amount, 0);
 
         return {
             totalIncome: cashIn + transferIn,
@@ -76,7 +82,7 @@ export const useCashflow = () => {
             netBalance: (cashIn + transferIn) - (cashOut + transferOut),
             availableCash: cashIn - cashOut,
             availableBank: transferIn - transferOut,
-            byCategory: { supplierOut, salaryOut },
+            byCategory: { supplierOut, salaryOut, suppliesOut, servicesOut, otherOut },
             pendingToCollect: orders.reduce((acc, o) => acc + (o.total - (o.payed || 0)), 0)
         };
     }, [orders, expenses]);

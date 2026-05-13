@@ -113,6 +113,18 @@ export default function CashFlowDashboard() {
                                 <span>Sueldos:</span>
                                 <span>{formatCurrency(stats?.byCategory.salaryOut || 0)}</span>
                             </div>
+                            <div style={detailRow}>
+                                <span>Insumos:</span>
+                                <span>{formatCurrency(stats?.byCategory.suppliesOut || 0)}</span>
+                            </div>
+                            <div style={detailRow}>
+                                <span>Servicios:</span>
+                                <span>{formatCurrency(stats?.byCategory.servicesOut || 0)}</span>
+                            </div>
+                            <div style={detailRow}>
+                                <span>Otros:</span>
+                                <span>{formatCurrency(stats?.byCategory.otherOut || 0)}</span>
+                            </div>
                         </div>
                     </div>
 
