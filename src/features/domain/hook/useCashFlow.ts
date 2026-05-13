@@ -4,7 +4,7 @@ import { salesRepository } from '../../data/repositories/SalesRepository';
 import { expenseRepository } from '../../data/repositories/ExpenseRepository';
 import { type DateRange } from '../types/salesTypes';
 import { startOfDay, endOfDay, startOfMonth, startOfWeek } from 'date-fns';
-import { type OrderModel, type PaymentMethod } from '../types/orderTypes';
+import { type OrderModel, type PaymentMethod, type PaymentType } from '../types/orderTypes';
 import { type Expense } from '../types/expenseTypes';
 
 export const useCashflow = () => {
@@ -28,12 +28,13 @@ export const useCashflow = () => {
         }
 
         try {
+            console.log(`Fetching Cash Flow data for range: ${range} (${start} - ${end})`);
             // Consultas en paralelo para optimizar performance
             const [salesData, expensesData] = await Promise.all([
                 salesRepository.getOrdersByDateRange(start.getTime(), end.getTime()),
                 expenseRepository.getByRange(start.getTime(), end.getTime())
             ]);
-            
+
             setOrders(salesData);
             setExpenses(expensesData);
         } catch (error) {
@@ -46,43 +47,74 @@ export const useCashflow = () => {
     useEffect(() => { fetchData(); }, [fetchData]);
 
     const stats = useMemo(() => {
+        // Permitimos que calcule aunque una de las dos listas esté vacía
         if (orders.length === 0 && expenses.length === 0) return null;
 
-        // 1. Cálculo de Ingresos Reales (solo lo efectivamente cobrado)
         let cashIn = 0;
         let transferIn = 0;
+        let cashOut = 0;
+        let transferOut = 0;
 
+        // Totales por categoría inicializados en 0
+        const categories = {
+            supplierOut: 0,
+            salaryOut: 0,
+            suppliesOut: 0,
+            servicesOut: 0,
+            otherOut: 0
+        };
+
+        // 1. Cálculo de INGRESOS (Ventas)
         orders.forEach(order => {
-            order.paymentMethod?.forEach((method: PaymentMethod) => {
-                if (method.type === "CASH") cashIn += method.amount;
-                if (method.type === "TRANSFER") transferIn += method.amount;
+            // Normalización defensiva para paymentMethod
+            const methods = Array.isArray(order.paymentMethod) ? order.paymentMethod : [];
+            methods.forEach((m: PaymentMethod) => {
+                if (m.type === "CASH") cashIn += m.amount;
+                if (m.type === "TRANSFER") transferIn += m.amount;
             });
         });
 
-        // 2. Cálculo de Egresos por Categoría
-        const cashOut = expenses.filter(e => e.paymentMethod === 'CASH')
-                                .reduce((acc, e) => acc + e.amount, 0);
-        const transferOut = expenses.filter(e => e.paymentMethod === 'TRANSFER')
-                                    .reduce((acc, e) => acc + e.amount, 0);
+        // 2. Cálculo de EGRESOS (Gastos) - Un solo bucle para todo
+        expenses.forEach(expense => {
+            // NORMALIZACIÓN CRÍTICA: Manejamos Array o String (Legacy)
+            const methods: PaymentMethod[] = Array.isArray(expense.paymentMethod)
+                ? expense.paymentMethod
+                : (typeof expense.paymentMethod === 'string')
+                    ? [{ type: expense.paymentMethod as PaymentType, amount: expense.amount || 0 }]
+                    : [];
 
-        const supplierOut = expenses.filter(e => e.category === 'SUPPLIER')
-                                    .reduce((acc, e) => acc + e.amount, 0);
-        const salaryOut = expenses.filter(e => e.category === 'SALARY')
-                                    .reduce((acc, e) => acc + e.amount, 0);
-        const suppliesOut = expenses.filter(e => e.category === 'SUPPLIES')
-                                        .reduce((acc, e) => acc + e.amount, 0);
-        const servicesOut = expenses.filter(e => e.category === 'SERVICES')
-                                        .reduce((acc, e) => acc + e.amount, 0);
-        const otherOut = expenses.filter(e => e.category === 'OTHER')
-                                        .reduce((acc, e) => acc + e.amount, 0);
+            methods.forEach((m: PaymentMethod) => {
+                const amt = Number(m.amount) || 0;
+                if (m.type === 'CASH') cashOut += amt;
+                if (m.type === 'TRANSFER') transferOut += amt;
+            });
+
+            // Acumulamos por categoría usando el amount global del gasto
+            const expenseAmt = Number(expense.amount) || 0;
+            switch (expense.category) {
+                case 'SUPPLIER': categories.supplierOut += expenseAmt; break;
+                case 'SALARY':   categories.salaryOut += expenseAmt; break;
+                case 'SUPPLIES': categories.suppliesOut += expenseAmt; break;
+                case 'SERVICES': categories.servicesOut += expenseAmt; break;
+                case 'OTHER':    categories.otherOut += expenseAmt; break;
+            }
+        });
+
+        const totalIn = cashIn + transferIn;
+        const totalOut = cashOut + transferOut;
+
+        console.log("CASH FLOW STATS CALCULATED:", {
+            totalIn, totalOut, netBalance: totalIn - totalOut, availableCash: cashIn - cashOut, availableBank: transferIn - transferOut, categories
+        });
 
         return {
-            totalIncome: cashIn + transferIn,
-            totalExpense: cashOut + transferOut,
-            netBalance: (cashIn + transferIn) - (cashOut + transferOut),
-            availableCash: cashIn - cashOut,
-            availableBank: transferIn - transferOut,
-            byCategory: { supplierOut, salaryOut, suppliesOut, servicesOut, otherOut },
+            totalIncome: totalIn,
+            totalExpense: totalOut,
+            // CÁLCULO NETO: Ingreso real cobrado menos Egreso real pagado
+            netBalance: totalIn - totalOut, 
+            availableCash: cashIn /* - cashOut */,
+            availableBank: transferIn /* - transferOut */,
+            byCategory: categories,
             pendingToCollect: orders.reduce((acc, o) => acc + (o.total - (o.payed || 0)), 0)
         };
     }, [orders, expenses]);

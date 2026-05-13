@@ -8,19 +8,21 @@ export const useExpenseForm = (onSuccess?: () => void) => {
     const [formData, setFormData] = useState<Omit<Expense, 'id'>>({
         category: 'OTHER',
         amount: 0,
-        paymentMethod: 'CASH',
+        paymentMethod: [{ type: 'CASH', amount: 0 }],
         createdAt: Date.now(),
         note: ''
     });
 
-    const saveExpense = async () => {
-        if (formData.amount <= 0) {
+    const saveExpense = async (
+        data: Omit<Expense, 'id'>,
+    ) => {
+        if (data.amount <= 0) {
             alert("El monto debe ser mayor a 0");
             return;
         }
         setIsLoading(true);
         try {
-            await expenseRepository.save(formData);
+            await expenseRepository.save(data);
             onSuccess?.();
         } catch (error) {
             console.error("Error al guardar egreso:", error);
