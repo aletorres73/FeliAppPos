@@ -8,32 +8,32 @@ export interface OrderItem {
   subtotal: number;
 }
 
-  export interface OrderModel {
-    docId: string;           // El ID del documento en Firestore
-    id: number;              // Tu ID autoincremental o interno
-    status: OrderStatus;
-    payStatus: OrderPayStatus;
-    items: OrderItem[];
-    total: number;
-    payed: number;
-    discount: number;
-    createdAt: number;       // Timestamp (ms)
-    confirmedAt: number | null;
-    cancelledAt: number | null;
-    client: string | null;
-    comments: string | null;
-    customerPayment: number;
-    paymentMethod: PaymentMethod [] | null;
-  }
+export interface OrderModel {
+  docId: string;           // El ID del documento en Firestore
+  id: number;              // Tu ID autoincremental o interno
+  status: OrderStatus;
+  payStatus: OrderPayStatus;
+  items: OrderItem[];
+  total: number;
+  payed: number;
+  discount: number;
+  createdAt: number;       // Timestamp (ms)
+  confirmedAt: number | null;
+  cancelledAt: number | null;
+  client: string | null;
+  comments: string | null;
+  customerPayment: number;
+  paymentMethod: PaymentMethod[] | null;
+}
 
-  export type PaymentType = "CASH" | "TRANSFER" | "MIXED" | "QR" | "CARD" | null;
+export type PaymentType = "CASH" | "TRANSFER" | "MIXED" | "QR" | "CARD" | null;
 
-  export interface PaymentMethod {
-    type: PaymentType;
-    amount: number;
-  }
+export interface PaymentMethod {
+  type: PaymentType;
+  amount: number;
+}
 
-  export interface OrderDraft {
+export interface OrderDraft {
   items: OrderItem[];
   subtotal: number; // Suma pura de items
   discount: number; // Monto a descontar

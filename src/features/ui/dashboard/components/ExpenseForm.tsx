@@ -1,0 +1,148 @@
+import React from 'react';
+import { useExpenseForm } from '../../../domain/hook/useExpenseForm';
+import { cardStyle, kpiLabel, /* backButtonStyle */ } from '../../dashboard/styles/Dashboard';
+import type { PaymentType } from '../../../domain/types/orderTypes';
+
+const CATEGORIES: { value: string, label: string }[] = [
+    { value: 'SUPPLIER', label: '📦 Proveedor' },
+    { value: 'SUPPLIES', label: '🛒 Insumos' },
+    { value: 'SALARY', label: '👥 Sueldos' },
+    { value: 'SERVICES', label: '⚡ Servicios' },
+    { value: 'OTHER', label: '✨ Otros' },
+];
+
+interface Props {
+    onComplete: () => void; // Callback para notificar al padre que se guardó con éxito
+}
+
+export default function ExpenseForm({ onComplete }: Props) {
+    const { formData, setFormData, saveExpense, isLoading } = useExpenseForm(onComplete);
+
+    // Handler de guardado para asegurar consistencia
+    const handleSave = async () => {
+        if (!formData.amount || formData.amount <= 0) {
+            alert("Por favor, ingrese un monto válido.");
+            return;
+        }
+
+        // NORMALIZACIÓN: Sincronizamos el monto global con el array de pagos
+        const finalizedPaymentMethod = formData.paymentMethod.map(p => ({
+            ...p,
+            amount: formData.amount // Aquí inyectamos el valor real del input
+        }));
+
+        // Si el array está vacío (no eligió nada), creamos uno por defecto en CASH
+        const paymentData = finalizedPaymentMethod.length > 0 
+            ? finalizedPaymentMethod 
+            : [{ type: 'CASH' as PaymentType, amount: formData.amount }];
+
+        await saveExpense({
+            ...formData,
+            paymentMethod: paymentData
+        });
+    };
+
+    return (
+        <div style={cardStyle}>
+            <h3 style={{ color: '#54C4F0', marginBottom: '20px' }}>Registrar Egreso</h3>
+            
+            <div style={formGroup}>
+                <label style={kpiLabel}>Categoría</label>
+                <div style={categoryGrid}>
+                    {CATEGORIES.map(cat => (
+                        <button
+                            key={cat.value}
+                            onClick={() => setFormData({...formData, category: cat.value as any})}
+                            style={{
+                                ...categoryTab,
+                                backgroundColor: formData.category === cat.value ? '#54C4F0' : 'rgba(255,255,255,0.05)',
+                                color: formData.category === cat.value ? '#0F1115' : 'white'
+                            }}
+                        >
+                            {cat.label}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            <div style={formGroup}>
+                <label style={kpiLabel}>Monto ($)</label>
+                <input
+                    type="number"
+                    value={formData.amount || ''}
+                    // Limpieza simple para evitar valores negativos
+                    onChange={e => setFormData({ ...formData, amount: Math.abs(Number(e.target.value)) })}
+                    style={inputStyle}
+                    placeholder="0.00"
+                />
+            </div>
+
+            <div style={formGroup}>
+                <label style={kpiLabel}>Método de Pago</label>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                    {['CASH', 'TRANSFER'].map(m => {
+                        const isActive = formData.paymentMethod.some(p => p.type === m);
+                        return (
+                            <button
+                                key={m}
+                                type="button"
+                                onClick={() => setFormData({
+                                    ...formData, 
+                                    // Guardamos la intención del tipo, el monto lo actualiza handleSave
+                                    paymentMethod: [{ type: m as PaymentType, amount: 0 }] 
+                                })}
+                                style={{
+                                    ...methodBtn,
+                                    border: isActive ? '2px solid #54C4F0' : '1px solid rgba(255,255,255,0.1)',
+                                    backgroundColor: isActive ? 'rgba(84, 196, 240, 0.1)' : 'transparent',
+                                    color: isActive ? '#54C4F0' : 'white'
+                                }}
+                            >
+                                {m === 'CASH' ? '💵 Efectivo' : '🏦 Transf.'}
+                            </button>
+                        );
+                    })}
+                </div>
+            </div>
+
+            <div style={formGroup}>
+                <label style={kpiLabel}>Nota / Concepto</label>
+                <textarea 
+                    value={formData.note}
+                    onChange={e => setFormData({...formData, note: e.target.value})}
+                    style={textareaStyle}
+                    placeholder="Ej: Pago de luz abril..."
+                />
+            </div>
+
+            {/* ... Sección Notas ... */}
+
+            <button
+                disabled={isLoading}
+                onClick={handleSave} 
+                style={{
+                    ...submitBtn,
+                    opacity: isLoading ? 0.6 : 1,
+                    cursor: isLoading ? 'not-allowed' : 'pointer'
+                }}
+            >
+                {isLoading ? 'Guardando...' : 'Confirmar Gasto'}
+            </button>
+        </div>
+    );
+}
+
+// Estilos Inline (JS Objects)
+const formGroup: React.CSSProperties = { marginBottom: '20px' };
+const inputStyle: React.CSSProperties = {
+    width: '100%', padding: '12px', backgroundColor: '#0F1115', border: '1px solid rgba(255,255,255,0.1)',
+    borderRadius: '8px', color: 'white', fontSize: '1.2rem', outline: 'none', boxSizing: 'border-box'
+};
+const categoryGrid: React.CSSProperties = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' };
+const categoryTab: React.CSSProperties = { padding: '10px', borderRadius: '8px', border: 'none', cursor: 'pointer', transition: '0.2s', fontSize: '0.8rem', fontWeight: 'bold' };
+const methodBtn: React.CSSProperties = { flex: 1, padding: '10px', borderRadius: '8px', cursor: 'pointer', color: 'white', transition: '0.2s' };
+const textareaStyle: React.CSSProperties = { ...inputStyle, fontSize: '0.9rem', minHeight: '60px', resize: 'none' };
+const submitBtn: React.CSSProperties = {
+    width: '100%', padding: '15px', backgroundColor: '#54C4F0', color: '#0F1115',
+    border: 'none', borderRadius: '10px', fontWeight: 'bold', cursor: 'pointer', marginTop: '10px'
+};

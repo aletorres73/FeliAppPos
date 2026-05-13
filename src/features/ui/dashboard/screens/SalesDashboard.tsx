@@ -1,8 +1,9 @@
-import { useSalesReports, type DateRange } from '../../../domain/hook/useSalesReports';
+import { useSalesReports } from '../../../domain/hook/useSalesReports';
 import { formatCurrency } from "../../../../utils/formats";
 import { useNavigate } from 'react-router-dom';
 import { format, startOfWeek } from 'date-fns';
 import { es } from 'date-fns/locale';
+import {type DateRange} from '../../../domain/types/salesTypes';
 
 import {
     fullScreenCenter, backButtonStyle, filterBadge, filterContainer,
