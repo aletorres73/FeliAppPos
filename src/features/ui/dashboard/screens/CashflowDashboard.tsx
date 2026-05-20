@@ -184,7 +184,7 @@ export default function CashFlowDashboard() {
 }
 
 // ESTILOS INLINE PARA MANTENER LA CONSISTENCIA DE FELI APP
-const containerStyle: React.CSSProperties = { padding: '40px 20px', backgroundColor: '#0F1115', minHeight: '100vh', color: 'white', fontFamily: "'Inter', sans-serif" };
+const containerStyle: React.CSSProperties = { padding: '12px 20px', backgroundColor: '#0F1115', minHeight: '100vh', color: 'white', fontFamily: "'Inter', sans-serif" };
 const headerStyle: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', marginBottom: '32px', alignItems: 'center' };
 const mainTitleStyle: React.CSSProperties = { fontSize: '1.8rem', fontWeight: 700, margin: 0 };
 const statusBadge: React.CSSProperties = { fontSize: '0.7rem', color: '#54C4F0', letterSpacing: '1px', fontWeight: 800, marginTop: '5px' };

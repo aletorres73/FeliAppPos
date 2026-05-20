@@ -12,27 +12,33 @@ const CATEGORIES: { value: string, label: string }[] = [
 ];
 
 interface Props {
-    onComplete: () => void; // Callback para notificar al padre que se guardó con éxito,
-    onClose?: () => void; // Opcional, para cerrar el modal si se implementa un botón de cierre
+    onComplete: () => void;
+    onClose?: () => void;
 }
 
 export default function ExpenseForm({ onComplete, onClose }: Props) {
     const { formData, setFormData, saveExpense, isLoading } = useExpenseForm(onComplete);
 
-    // Handler de guardado para asegurar consistencia
+    // HELPER: Convertir Timestamp a "YYYY-MM-DD" para el input nativo
+    const formatDateForInput = (timestamp: number) => {
+        const d = new Date(timestamp);
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
     const handleSave = async () => {
         if (!formData.amount || formData.amount <= 0) {
             alert("Por favor, ingrese un monto válido.");
             return;
         }
 
-        // NORMALIZACIÓN: Sincronizamos el monto global con el array de pagos
         const finalizedPaymentMethod = formData.paymentMethod.map(p => ({
             ...p,
-            amount: formData.amount // Aquí inyectamos el valor real del input
+            amount: formData.amount 
         }));
 
-        // Si el array está vacío (no eligió nada), creamos uno por defecto en CASH
         const paymentData = finalizedPaymentMethod.length > 0
             ? finalizedPaymentMethod
             : [{ type: 'CASH' as PaymentType, amount: formData.amount }];
@@ -48,6 +54,25 @@ export default function ExpenseForm({ onComplete, onClose }: Props) {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
                 <h2 style={{ color: '#54C4F0', fontSize: '1.3rem' }}>Registrar Nuevo Gasto</h2>
                 {onClose && <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.3)', cursor: 'pointer', fontSize: '1.2rem' }}>✕</button>}
+            </div>
+
+            {/* SECCIÓN NUEVA: Fecha del Gasto */}
+            <div style={formGroup}>
+                <label style={kpiLabel}>Seleccionar Fecha</label>
+                <input
+                    type="date"
+                    value={formatDateForInput(formData.createdAt)}
+                    onChange={e => {
+                        const selectedDate = e.target.value;
+                        // Si el usuario borra la fecha, vuelve a Date.now().
+                        // El 'T00:00:00' asegura que no haya saltos de día por la zona horaria local.
+                        const newTimestamp = selectedDate 
+                            ? new Date(`${selectedDate}T00:00:00`).getTime() 
+                            : Date.now();
+                        setFormData({ ...formData, createdAt: newTimestamp });
+                    }}
+                    style={{ ...inputStyle, colorScheme: 'dark' }} // colorScheme para el icono del calendario nativo
+                />
             </div>
 
             <div style={formGroup}>
@@ -74,7 +99,6 @@ export default function ExpenseForm({ onComplete, onClose }: Props) {
                 <input
                     type="number"
                     value={formData.amount || ''}
-                    // Limpieza simple para evitar valores negativos
                     onChange={e => setFormData({ ...formData, amount: Math.abs(Number(e.target.value)) })}
                     style={inputStyle}
                     placeholder="0.00"
@@ -92,7 +116,6 @@ export default function ExpenseForm({ onComplete, onClose }: Props) {
                                 type="button"
                                 onClick={() => setFormData({
                                     ...formData,
-                                    // Guardamos la intención del tipo, el monto lo actualiza handleSave
                                     paymentMethod: [{ type: m as PaymentType, amount: 0 }]
                                 })}
                                 style={{
@@ -118,8 +141,6 @@ export default function ExpenseForm({ onComplete, onClose }: Props) {
                     placeholder="Ej: Pago de luz abril..."
                 />
             </div>
-
-            {/* ... Sección Notas ... */}
 
             <button
                 disabled={isLoading}
