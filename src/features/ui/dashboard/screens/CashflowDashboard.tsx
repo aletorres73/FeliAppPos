@@ -125,7 +125,7 @@ export default function CashFlowDashboard() {
                             </div>
 
                             {/* Bloque de Egresos: El Destino */}
-                            <div style={sectionCard}>
+                            <div style={{...sectionCard, justifyContent: 'flex-start'}}>
                                 <div style={cardHeader}>
                                     <h3 style={sectionTitle}>Egresos Totales</h3>
                                     <span style={{ color: '#FF5252', fontWeight: 700 }}>{formatCurrency(stats?.totalExpense || 0)}</span>
