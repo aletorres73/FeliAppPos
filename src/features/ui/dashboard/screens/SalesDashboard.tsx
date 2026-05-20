@@ -3,40 +3,28 @@ import { formatCurrency } from "../../../../utils/formats";
 import { useNavigate } from 'react-router-dom';
 import { format, startOfWeek } from 'date-fns';
 import { es } from 'date-fns/locale';
-import {type DateRange} from '../../../domain/types/salesTypes';
 
 import {
-    fullScreenCenter, backButtonStyle, filterBadge, filterContainer,
+    fullScreenCenter, backButtonStyle,
     kpiGrid, kpiLabel, cardStyle, accentText, rankingGrid, rankingTitle,
     listItem, itemArticle, itemBadge, itemBranch
 } from '../styles/Dashboard';
 
-import { iconStyle } from '../../navigation/navigationButtons';
-import { ArrowPathIcon } from "@heroicons/react/24/solid";
+import { RangeSelector } from '../components/Common';
 
-interface Props {
-    onClick: () => void;
-}
-
-function ResetButton({ onClick }: Props) {
-    return (
-        <button
-            onClick={onClick}
-            style={navButtonStyle}
-            onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#252a33'}
-            onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#1A1D23'}
-        >
-            <ArrowPathIcon style={iconStyle} /> 
-        </button>
-    )
-}
 
 export default function SalesDashboard() {
     const {
         stats, isLoading, range, setRange,
         referenceDate, handleNext, handlePrev, resetToToday
     } = useSalesReports();
+
     const navigate = useNavigate();
+
+    const HandleSetRange = (newRange: typeof range) => {
+        setRange(newRange);
+        resetToToday();
+    }
 
     // Helper para mostrar el nombre del periodo actual
     const getPeriodLabel = () => {
@@ -60,32 +48,13 @@ export default function SalesDashboard() {
                 </header>
 
                 {/* Controles de Filtros y Navegación */}
-                <div style={{ display: 'flex', gap: '20px', alignItems: 'center', marginBottom: '32px', flexWrap: 'wrap' }}>
-
-                    {/* Selector de Rango (Día/Semana/Mes) */}
-                    <div style={filterContainer}>
-                        {(['today', 'week', 'month'] as DateRange[]).map((r) => (
-                            <button
-                                key={r}
-                                onClick={() => { setRange(r); resetToToday(); }}
-                                style={{
-                                    ...filterBadge,
-                                    backgroundColor: range === r ? '#54C4F0' : 'rgba(255,255,255,0.05)',
-                                    color: range === r ? '#0F1115' : 'white',
-                                }}
-                            >
-                                {r === 'today' ? 'Hoy' : r === 'week' ? 'Semana' : 'Mes'}
-                            </button>
-                        ))}
-                    </div>
-
-                    {/* Navegación Temporal (Flechas) */}
-                    <div style={filterContainer}>
-                        <button onClick={handlePrev} style={navButtonStyle}>◀</button>
-                        <ResetButton onClick={() => resetToToday()} />
-                        <button onClick={handleNext} style={navButtonStyle}>▶</button>
-                    </div>
-                </div>
+                <RangeSelector
+                    onClick={HandleSetRange}
+                    range={range}
+                    resetToToday={resetToToday}
+                    handlePrev={handlePrev}
+                    handleNext={handleNext}
+                />
 
                 {/* State: Loading */}
                 {isLoading && (
@@ -164,23 +133,3 @@ export default function SalesDashboard() {
     );
 }
 
-const navButtonStyle: React.CSSProperties = {
-    backgroundColor: '#1A1D23',
-    border: '1px solid rgba(255,255,255,0.1)',
-    color: 'white',
-    padding: '10px 15px',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    fontSize: '0.8rem'
-};
-
-// const todayButtonStyle: React.CSSProperties = {
-//     backgroundColor: 'transparent',
-//     border: '1px solid #54C4F0',
-//     color: '#54C4F0',
-//     padding: '8px 16px',
-//     borderRadius: '8px',
-//     cursor: 'pointer',
-//     fontSize: '0.8rem',
-//     fontWeight: 600
-// };

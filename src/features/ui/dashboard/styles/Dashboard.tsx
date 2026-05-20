@@ -100,12 +100,8 @@ export const fullScreenCenter: React.CSSProperties = {
 export const filterContainer: React.CSSProperties = {
     display: 'flex',
     gap: '10px',
-    marginBottom: '24px',
-    backgroundColor: '#1A1D23',
-    padding: '6px',
+    padding: '2px',
     borderRadius: '12px',
-    width: 'fit-content',
-    border: '1px solid rgba(255,255,255,0.05)'
 };
 
 export const filterBadge: React.CSSProperties = {
@@ -116,4 +112,22 @@ export const filterBadge: React.CSSProperties = {
     fontSize: '0.85rem',
     fontWeight: 600,
     transition: 'all 0.2s ease',
+};
+
+export const navButtonStyle: React.CSSProperties = {
+    backgroundColor: '#1A1D23',
+    border: '1px solid rgba(255,255,255,0.1)',
+    color: 'white',
+    padding: '10px 15px',
+    borderRadius: '8px',
+    cursor: 'pointer',
+    fontSize: '0.8rem'
+};
+
+export const navFilterStyle: React.CSSProperties = {
+    display: 'flex',
+    gap: '8px',
+    padding: '6px',
+    borderRadius: '100px',
+    width: 'fit-content'
 };

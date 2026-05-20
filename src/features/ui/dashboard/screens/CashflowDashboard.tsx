@@ -4,24 +4,20 @@ import { useCashflow } from '../../../domain/hook/useCashFlow';
 import { formatCurrency } from "../../../../utils/formats";
 import ExpenseForm from '../components/ExpenseForm';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
+import { format, startOfWeek } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 import {
     cardStyle, kpiLabel, accentText,
-    filterBadge, fullScreenCenter
+    fullScreenCenter
 } from '../styles/Dashboard';
 
+import { RangeSelector } from '../components/Common';
+
 export default function CashFlowDashboard() {
-    const { stats, isLoading, range, setRange, refetch } = useCashflow();
+    const { stats, isLoading, range, setRange, refetch, handleNext, handlePrev, resetToToday, referenceDate } = useCashflow();
     const [showExpenseModal, setShowExpenseModal] = useState(false);
     const navigate = useNavigate();
-
-    if (isLoading) return (
-        <div style={fullScreenCenter}>
-            <div className="pulse-animation" style={loaderTextStyle}>
-                CONSOLIDANDO FLUJO DE CAJA...
-            </div>
-        </div>
-    );
 
     // Datos procesados para el orden visual
     const incomeData = [
@@ -37,6 +33,19 @@ export default function CashFlowDashboard() {
         { label: 'Otros', val: stats?.byCategory.otherOut, color: '#FF4081' }
     ];
 
+    const HandleSetRange = (newRange: typeof range) => {
+        setRange(newRange);
+        resetToToday();
+    }
+
+    // Helper para mostrar el nombre del periodo actual
+    const getPeriodLabel = () => {
+        if (range === 'today') return format(referenceDate, "EEEE d 'de' MMMM", { locale: es });
+        if (range === 'week') return `Semana del ${format(startOfWeek(referenceDate, { weekStartsOn: 1 }), "d 'de' MMM")}`;
+        if (range === 'month') return format(referenceDate, "MMMM yyyy", { locale: es }).toUpperCase();
+        return "";
+    };
+
     return (
         <div style={containerStyle}>
             <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
@@ -45,7 +54,7 @@ export default function CashFlowDashboard() {
                 <header style={headerStyle}>
                     <div>
                         <h2 style={mainTitleStyle}>Salud Financiera</h2>
-                        <div style={statusBadge}>PERÍODO: {range.toUpperCase()}</div>
+                        <div style={statusBadge}>PERÍODO: {getPeriodLabel()}</div>
                     </div>
                     <div style={{ display: 'flex', gap: '12px' }}>
                         <button onClick={() => setShowExpenseModal(true)} style={primaryButtonStyle}>
@@ -56,120 +65,125 @@ export default function CashFlowDashboard() {
                 </header>
 
                 {/* Filtros Integrados */}
-                <nav style={navFilterStyle}>
-                    {['today', 'week', 'month'].map((r) => (
-                        <button
-                            key={r}
-                            onClick={() => setRange(r as any)}
-                            style={{
-                                ...filterBadge,
-                                backgroundColor: range === r ? '#54C4F0' : 'transparent',
-                                color: range === r ? '#0F1115' : 'rgba(255,255,255,0.4)',
-                                border: 'none',
-                                borderRadius: '100px',
-                                padding: '8px 24px'
-                            }}
-                        >
-                            {r === 'today' ? 'Hoy' : r === 'week' ? 'Semana' : 'Mes'}
-                        </button>
-                    ))}
-                </nav>
+                <RangeSelector
+                    onClick={HandleSetRange}
+                    range={range}
+                    resetToToday={resetToToday}
+                    handlePrev={handlePrev}
+                    handleNext={handleNext}
+                />
 
-                {/* Main KPI: La Cifra de Oro */}
-                <div style={mainKpiCard}>
-                    <span style={{ ...kpiLabel, marginBottom: '12px' }}>
-                        DINERO DISPONIBLE (LIQUIDEZ REAL)
-                    </span>
-                    <h1 style={{ ...accentText, fontSize: '3.8rem', margin: '10px 0' }}>
-                        {formatCurrency(stats?.netBalance || 0)}
-                    </h1>
-                    <p style={{ ...helperTextStyle, marginTop: '12px' }}>Efectivo y banco disponible tras cubrir todos los gastos registrados.</p>
-                </div>
-
-                {/* Grilla de Análisis Comparativo */}
-                <div style={dashboardGrid}>
-
-                    {/* Bloque de Ingresos: El Origen */}
-                    <div style={sectionCard}>
-                        <div style={cardHeader}>
-                            <h3 style={sectionTitle}>Ingresos Totales</h3>
-                            <span style={{ color: '#4CAF50', fontWeight: 700 }}>{formatCurrency(stats?.totalIncome || 0)}</span>
+                {isLoading && (
+                    <div style={fullScreenCenter}>
+                        <div className="pulse-animation" style={loaderTextStyle}>
+                            CONSOLIDANDO FLUJO DE CAJA...
                         </div>
-                        <div style={{ height: '180px', margin: '20px 0' }}>
-                            <ResponsiveContainer width="100%" height="100%">
-                                <PieChart>
-                                    <Pie data={incomeData} innerRadius={65} outerRadius={80} paddingAngle={8} dataKey="value">
-                                        {incomeData.map((entry, index) => <Cell key={index} fill={entry.color} stroke="none" />)}
-                                    </Pie>
-                                    <Tooltip contentStyle={tooltipStyle} formatter={(v: any) => formatCurrency(v)} />
-                                </PieChart>
-                            </ResponsiveContainer>
+                    </div>
+                )}
+
+                {!isLoading && (
+                    <>
+                        {/* Main KPI: La Cifra de Oro */}
+                        <div style={mainKpiCard}>
+                            <span style={{ ...kpiLabel, marginBottom: '12px' }}>
+                                DINERO DISPONIBLE (LIQUIDEZ REAL)
+                            </span>
+                            <h1 style={{ ...accentText, fontSize: '3.8rem', margin: '10px 0' }}>
+                                {formatCurrency(stats?.netBalance || 0)}
+                            </h1>
+                            <p style={{ ...helperTextStyle, marginTop: '12px' }}>Efectivo y banco disponible tras cubrir todos los gastos registrados.</p>
                         </div>
-                        <div style={legendGrid}>
-                            {incomeData.map(item => (
-                                <div key={item.name} style={legendItem}>
-                                    <div style={{ ...dot, backgroundColor: item.color }}></div>
-                                    <span style={legendLabel}>{item.name}</span>
-                                    <span style={legendValue}>{formatCurrency(item.value)}</span>
+
+                        {/* Grilla de Análisis Comparativo */}
+                        <div style={dashboardGrid}>
+
+                            {/* Bloque de Ingresos: El Origen */}
+                            <div style={sectionCard}>
+                                <div style={cardHeader}>
+                                    <h3 style={sectionTitle}>Ingresos Totales</h3>
+                                    <span style={{ color: '#4CAF50', fontWeight: 700 }}>{formatCurrency(stats?.totalIncome || 0)}</span>
                                 </div>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Bloque de Egresos: El Destino */}
-                    <div style={sectionCard}>
-                        <div style={cardHeader}>
-                            <h3 style={sectionTitle}>Egresos Totales</h3>
-                            <span style={{ color: '#FF5252', fontWeight: 700 }}>{formatCurrency(stats?.totalExpense || 0)}</span>
-                        </div>
-                        <div style={categoryList}>
-                            {expenseCategories.map(cat => (
-                                <div key={cat.label} style={categoryRow}>
-                                    <span style={{ color: 'rgba(255,255,255,0.5)' }}>{cat.label}</span>
-                                    <div style={barContainer}>
-                                        <div style={{
-                                            width: `${((cat.val || 0) / (stats?.totalExpense || 1)) * 100}%`,
-                                            height: '100%',
-                                            backgroundColor: cat.color,
-                                            borderRadius: '4px'
-                                        }}></div>
-                                    </div>
-                                    <span style={{ fontWeight: 600 }}>{formatCurrency(cat.val || 0)}</span>
+                                <div style={{ height: '180px', margin: '20px 0' }}>
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <PieChart>
+                                            <Pie data={incomeData} innerRadius={65} outerRadius={80} paddingAngle={8} dataKey="value">
+                                                {incomeData.map((entry, index) => <Cell key={index} fill={entry.color} stroke="none" />)}
+                                            </Pie>
+                                            <Tooltip contentStyle={tooltipStyle} formatter={(v: any) => formatCurrency(v)} />
+                                        </PieChart>
+                                    </ResponsiveContainer>
                                 </div>
-                            ))}
-                        </div>
-                    </div>
-                </div>
+                                <div style={legendGrid}>
+                                    {incomeData.map(item => (
+                                        <div key={item.name} style={legendItem}>
+                                            <div style={{ ...dot, backgroundColor: item.color }}></div>
+                                            <span style={legendLabel}>{item.name}</span>
+                                            <span style={legendValue}>{formatCurrency(item.value)}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
 
-                {/* Footer de Gestión de Riesgo */}
-                <div style={riskCard}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                        <div style={warningIcon}>!</div>
-                        <div>
-                            <h4 style={{ margin: 0, fontSize: '0.9rem', color: '#FFAB40' }}>CUENTAS POR COBRAR</h4>
-                            <p style={{ margin: 0, fontSize: '0.8rem', opacity: 0.6 }}>Dinero fuera de caja en posesión de clientes.</p>
+                            {/* Bloque de Egresos: El Destino */}
+                            <div style={sectionCard}>
+                                <div style={cardHeader}>
+                                    <h3 style={sectionTitle}>Egresos Totales</h3>
+                                    <span style={{ color: '#FF5252', fontWeight: 700 }}>{formatCurrency(stats?.totalExpense || 0)}</span>
+                                </div>
+                                <div style={categoryList}>
+                                    {expenseCategories.map(cat => (
+                                        <div key={cat.label} style={categoryRow}>
+                                            <span style={{ color: 'rgba(255,255,255,0.5)' }}>{cat.label}</span>
+                                            <div style={barContainer}>
+                                                <div style={{
+                                                    width: `${((cat.val || 0) / (stats?.totalExpense || 1)) * 100}%`,
+                                                    height: '100%',
+                                                    backgroundColor: cat.color,
+                                                    borderRadius: '4px'
+                                                }}></div>
+                                            </div>
+                                            <span style={{ fontWeight: 600 }}>{formatCurrency(cat.val || 0)}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                    <span style={{ fontSize: '1.8rem', fontWeight: 700, color: '#FFAB40' }}>
-                        {formatCurrency(stats?.pendingToCollect || 0)}
-                    </span>
-                </div>
+
+                        {/* Footer de Gestión de Riesgo */}
+                        <div style={riskCard}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                                <div style={warningIcon}>!</div>
+                                <div>
+                                    <h4 style={{ margin: 0, fontSize: '0.9rem', color: '#FFAB40' }}>CUENTAS POR COBRAR</h4>
+                                    <p style={{ margin: 0, fontSize: '0.8rem', opacity: 0.6 }}>Dinero fuera de caja en posesión de clientes.</p>
+                                </div>
+                            </div>
+                            <span style={{ fontSize: '1.8rem', fontWeight: 700, color: '#FFAB40' }}>
+                                {formatCurrency(stats?.pendingToCollect || 0)}
+                            </span>
+                        </div>
+                    </>
+
+                )}
+
 
             </div>
 
             {/* Modal Optimizado */}
-            {showExpenseModal && (
-                <div style={modalOverlay}>
-                    <div style={modalContent}>
-                        <header style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '32px' }}>
-                            <h3 style={{ margin: 0, fontSize: '1.3rem' }}>Registrar Gasto</h3>
-                            <button onClick={() => setShowExpenseModal(false)} style={closeBtn}>✕</button>
-                        </header>
-                        <ExpenseForm onComplete={() => { setShowExpenseModal(false); refetch(); }} />
+            {
+                showExpenseModal && (
+                    <div style={modalOverlay}>
+                        <div style={modalContent}>
+                            <header style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '32px' }}>
+                                <h3 style={{ margin: 0, fontSize: '1.3rem' }}>Registrar Gasto</h3>
+                                <button onClick={() => setShowExpenseModal(false)} style={closeBtn}>✕</button>
+                            </header>
+                            <ExpenseForm onComplete={() => { setShowExpenseModal(false); refetch(range, referenceDate); }} />
+                        </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     );
 }
 
@@ -178,7 +192,6 @@ const containerStyle: React.CSSProperties = { padding: '40px 20px', backgroundCo
 const headerStyle: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', marginBottom: '32px', alignItems: 'center' };
 const mainTitleStyle: React.CSSProperties = { fontSize: '1.8rem', fontWeight: 700, margin: 0 };
 const statusBadge: React.CSSProperties = { fontSize: '0.7rem', color: '#54C4F0', letterSpacing: '1px', fontWeight: 800, marginTop: '5px' };
-const navFilterStyle: React.CSSProperties = { display: 'flex', gap: '8px', marginBottom: '32px', backgroundColor: '#1A1D23', padding: '6px', borderRadius: '100px', width: 'fit-content' };
 const mainKpiCard: React.CSSProperties = { ...cardStyle, textAlign: 'center', padding: '30px 20px', background: 'radial-gradient(circle at top right, #1E2228, #1A1D23)', border: '1px solid rgba(84, 196, 240, 0.1)', marginBottom: '30px', justifyContent: 'space-between', };
 const dashboardGrid: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '24px' };
 const sectionCard: React.CSSProperties = { ...cardStyle, padding: '24px', display: 'flex', flexDirection: 'column' };

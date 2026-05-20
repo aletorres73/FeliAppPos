@@ -3,7 +3,20 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { salesRepository } from '../../data/repositories/SalesRepository';
 import { expenseRepository } from '../../data/repositories/ExpenseRepository';
 import { type DateRange } from '../types/salesTypes';
-import { startOfDay, endOfDay, startOfMonth, startOfWeek } from 'date-fns';
+import {
+    startOfDay,
+    endOfDay,
+    startOfMonth,
+    startOfWeek,
+    addDays,
+    addWeeks,
+    addMonths,
+    subWeeks,
+    subMonths,
+    subDays,
+    endOfWeek,
+    endOfMonth
+} from 'date-fns';
 import { type OrderModel, type PaymentMethod, type PaymentType } from '../types/orderTypes';
 import { type Expense } from '../types/expenseTypes';
 
@@ -12,23 +25,35 @@ export const useCashflow = () => {
     const [orders, setOrders] = useState<OrderModel[]>([]);
     const [expenses, setExpenses] = useState<Expense[]>([]);
     const [range, setRange] = useState<DateRange>('today');
+    const [referenceDate, setReferenceDate] = useState(new Date());
 
-    const fetchData = useCallback(async () => {
+    const fetchData = useCallback(async (selectedRange: DateRange, refDate: Date) => {
         setIsLoading(true);
         const now = new Date();
         let start: Date;
-        const end = endOfDay(now);
+        let end = endOfDay(now);
 
         // Definición de rangos temporales consistentes con Feli App
-        switch (range) {
-            case 'today': start = startOfDay(now); break;
-            case 'week': start = startOfWeek(now, { weekStartsOn: 1 }); break;
-            case 'month': start = startOfMonth(now); break;
-            default: start = startOfMonth(now);
+        switch (selectedRange) {
+            case 'today':
+                start = startOfDay(refDate);
+                end = endOfDay(refDate);
+                break;
+            case 'week':
+                start = startOfWeek(refDate, { weekStartsOn: 1 });
+                end = endOfWeek(refDate, { weekStartsOn: 1 });
+                break;
+            case 'month':
+                start = startOfMonth(refDate);
+                end = endOfMonth(refDate);
+                break;
+            default:
+                start = startOfMonth(refDate);
+                end = endOfDay(refDate);
         }
 
         try {
-            console.log(`Fetching Cash Flow data for range: ${range} (${start} - ${end})`);
+            console.log(`Fetching Cash Flow data for range: ${selectedRange} (${start} - ${end})`);
             // Consultas en paralelo para optimizar performance
             const [salesData, expensesData] = await Promise.all([
                 salesRepository.getOrdersByDateRange(start.getTime(), end.getTime()),
@@ -44,7 +69,22 @@ export const useCashflow = () => {
         }
     }, [range]);
 
-    useEffect(() => { fetchData(); }, [fetchData]);
+    useEffect(() => { fetchData(range, referenceDate); }, [fetchData, range, referenceDate]);
+
+    // Handlers para la UI
+    const handleNext = () => {
+        if (range === 'today') setReferenceDate(prev => addDays(prev, 1));
+        if (range === 'week') setReferenceDate(prev => addWeeks(prev, 1));
+        if (range === 'month') setReferenceDate(prev => addMonths(prev, 1));
+    };
+
+    const handlePrev = () => {
+        if (range === 'today') setReferenceDate(prev => subDays(prev, 1));
+        if (range === 'week') setReferenceDate(prev => subWeeks(prev, 1));
+        if (range === 'month') setReferenceDate(prev => subMonths(prev, 1));
+    };
+
+    const resetToToday = () => setReferenceDate(new Date());
 
     const stats = useMemo(() => {
         // Permitimos que calcule aunque una de las dos listas esté vacía
@@ -93,10 +133,10 @@ export const useCashflow = () => {
             const expenseAmt = Number(expense.amount) || 0;
             switch (expense.category) {
                 case 'SUPPLIER': categories.supplierOut += expenseAmt; break;
-                case 'SALARY':   categories.salaryOut += expenseAmt; break;
+                case 'SALARY': categories.salaryOut += expenseAmt; break;
                 case 'SUPPLIES': categories.suppliesOut += expenseAmt; break;
                 case 'SERVICES': categories.servicesOut += expenseAmt; break;
-                case 'OTHER':    categories.otherOut += expenseAmt; break;
+                case 'OTHER': categories.otherOut += expenseAmt; break;
             }
         });
 
@@ -111,7 +151,7 @@ export const useCashflow = () => {
             totalIncome: totalIn,
             totalExpense: totalOut,
             // CÁLCULO NETO: Ingreso real cobrado menos Egreso real pagado
-            netBalance: totalIn - totalOut, 
+            netBalance: totalIn - totalOut,
             availableCash: cashIn /* - cashOut */,
             availableBank: transferIn /* - transferOut */,
             byCategory: categories,
@@ -119,5 +159,15 @@ export const useCashflow = () => {
         };
     }, [orders, expenses]);
 
-    return { isLoading, stats, range, setRange, refetch: fetchData };
+    return {
+        isLoading,
+        stats, range,
+        setRange,
+        refetch: fetchData,
+        handleNext,
+        handlePrev,
+        resetToToday,
+        referenceDate
+    };
+
 };
