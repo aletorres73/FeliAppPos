@@ -173,13 +173,9 @@ export default function CashFlowDashboard() {
             {
                 showExpenseModal && (
                     <div style={modalOverlay}>
-                        <div style={modalContent}>
-                            <header style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '32px' }}>
-                                <h3 style={{ margin: 0, fontSize: '1.3rem' }}>Registrar Gasto</h3>
-                                <button onClick={() => setShowExpenseModal(false)} style={closeBtn}>✕</button>
-                            </header>
-                            <ExpenseForm onComplete={() => { setShowExpenseModal(false); refetch(range, referenceDate); }} />
-                        </div>
+                        <ExpenseForm
+                            onComplete={() => { setShowExpenseModal(false); refetch(range, referenceDate); }}
+                            onClose={() => setShowExpenseModal(false)} />
                     </div>
                 )
             }
@@ -213,5 +209,3 @@ const helperTextStyle: React.CSSProperties = { color: 'rgba(255,255,255,0.3)', f
 const loaderTextStyle: React.CSSProperties = { fontSize: '1rem', color: '#54C4F0', letterSpacing: '2px', fontWeight: 300 };
 const tooltipStyle: React.CSSProperties = { backgroundColor: '#1A1D23', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', fontSize: '0.8rem' };
 const modalOverlay: React.CSSProperties = { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, backdropFilter: 'blur(10px)' };
-const modalContent: React.CSSProperties = { backgroundColor: '#1A1D23', padding: '40px', borderRadius: '24px', width: '100%', maxWidth: '450px', border: '1px solid rgba(255,255,255,0.05)' };
-const closeBtn: React.CSSProperties = { background: 'none', border: 'none', color: 'rgba(255,255,255,0.3)', cursor: 'pointer', fontSize: '1.2rem' };

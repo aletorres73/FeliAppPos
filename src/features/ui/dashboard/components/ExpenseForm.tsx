@@ -12,10 +12,11 @@ const CATEGORIES: { value: string, label: string }[] = [
 ];
 
 interface Props {
-    onComplete: () => void; // Callback para notificar al padre que se guardó con éxito
+    onComplete: () => void; // Callback para notificar al padre que se guardó con éxito,
+    onClose?: () => void; // Opcional, para cerrar el modal si se implementa un botón de cierre
 }
 
-export default function ExpenseForm({ onComplete }: Props) {
+export default function ExpenseForm({ onComplete, onClose }: Props) {
     const { formData, setFormData, saveExpense, isLoading } = useExpenseForm(onComplete);
 
     // Handler de guardado para asegurar consistencia
@@ -32,8 +33,8 @@ export default function ExpenseForm({ onComplete }: Props) {
         }));
 
         // Si el array está vacío (no eligió nada), creamos uno por defecto en CASH
-        const paymentData = finalizedPaymentMethod.length > 0 
-            ? finalizedPaymentMethod 
+        const paymentData = finalizedPaymentMethod.length > 0
+            ? finalizedPaymentMethod
             : [{ type: 'CASH' as PaymentType, amount: formData.amount }];
 
         await saveExpense({
@@ -43,16 +44,19 @@ export default function ExpenseForm({ onComplete }: Props) {
     };
 
     return (
-        <div style={cardStyle}>
-            <h3 style={{ color: '#54C4F0', marginBottom: '20px' }}>Registrar Egreso</h3>
-            
+        <div style={{ ...cardStyle, width: '600px', margin: '0 auto', border: '1px solid rgba(255,255,255,0.05)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
+                <h2 style={{ color: '#54C4F0', fontSize: '1.3rem' }}>Registrar Nuevo Gasto</h2>
+                {onClose && <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.3)', cursor: 'pointer', fontSize: '1.2rem' }}>✕</button>}
+            </div>
+
             <div style={formGroup}>
                 <label style={kpiLabel}>Categoría</label>
                 <div style={categoryGrid}>
                     {CATEGORIES.map(cat => (
                         <button
                             key={cat.value}
-                            onClick={() => setFormData({...formData, category: cat.value as any})}
+                            onClick={() => setFormData({ ...formData, category: cat.value as any })}
                             style={{
                                 ...categoryTab,
                                 backgroundColor: formData.category === cat.value ? '#54C4F0' : 'rgba(255,255,255,0.05)',
@@ -87,9 +91,9 @@ export default function ExpenseForm({ onComplete }: Props) {
                                 key={m}
                                 type="button"
                                 onClick={() => setFormData({
-                                    ...formData, 
+                                    ...formData,
                                     // Guardamos la intención del tipo, el monto lo actualiza handleSave
-                                    paymentMethod: [{ type: m as PaymentType, amount: 0 }] 
+                                    paymentMethod: [{ type: m as PaymentType, amount: 0 }]
                                 })}
                                 style={{
                                     ...methodBtn,
@@ -107,9 +111,9 @@ export default function ExpenseForm({ onComplete }: Props) {
 
             <div style={formGroup}>
                 <label style={kpiLabel}>Nota / Concepto</label>
-                <textarea 
+                <textarea
                     value={formData.note}
-                    onChange={e => setFormData({...formData, note: e.target.value})}
+                    onChange={e => setFormData({ ...formData, note: e.target.value })}
                     style={textareaStyle}
                     placeholder="Ej: Pago de luz abril..."
                 />
@@ -119,7 +123,7 @@ export default function ExpenseForm({ onComplete }: Props) {
 
             <button
                 disabled={isLoading}
-                onClick={handleSave} 
+                onClick={handleSave}
                 style={{
                     ...submitBtn,
                     opacity: isLoading ? 0.6 : 1,
