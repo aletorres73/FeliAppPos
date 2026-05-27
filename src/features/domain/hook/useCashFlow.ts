@@ -114,7 +114,7 @@ export const useCashflow = () => {
                 : "Consumidor Final"
         }));
 
-        const incomeOrders = enrichedOrders.filter(o => o.status === 'CONFIRMED');
+        const incomeOrders = enrichedOrders.filter(o => o.payStatus === 'PAID');
         const debtOrders = enrichedOrders.filter(o => (o.total - (o.payed || 0)) > 0);
 
         incomeOrders.forEach(order => {
