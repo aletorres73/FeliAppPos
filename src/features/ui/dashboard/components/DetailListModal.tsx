@@ -5,8 +5,9 @@ import { formatCurrency } from '../../../../utils/formats';
 import { type OrderModel } from '../../../domain/types/orderTypes';
 import { type Expense } from '../../../domain/types/expenseTypes';
 
-// Definimos la unión de tipos para los datos que puede mostrar el modal
-type DetailItem = OrderModel | Expense;
+type IncomeOrder = OrderModel & { clientName?: string };
+
+type DetailItem = IncomeOrder | Expense;
 
 interface DetailListModalProps {
   title: string;
@@ -46,17 +47,24 @@ export const DetailListModal: React.FC<DetailListModalProps> = ({
               // Lógica de mapeo según el tipo de dato
               const isOrder = 'total' in item;
               const date = new Date(item.createdAt);
-              const amount = isOrder 
-                ? (type === 'DEUDAS' ? item.total - item.payed : item.payed) 
+              const amount = isOrder
+                ? (type === 'DEUDAS' ? item.total - item.payed : item.payed)
                 : item.amount;
-              const concept = isOrder 
-                ? `Orden #${item.id || 'Draft'} ${item.client ? `- ${item.client}` : ''}`
-                : `[${item.category}] ${item.note || 'Sin nota'}`;
+              const concept = isOrder
+                ? `Orden #${item.id || 'Draft'}`
+                : `[${item.category}]  ${item.note || 'Sin nota'}`;
+
+              const clientName = isOrder && item.clientName ? ` ${item.clientName}` : '';
 
               return (
                 <div key={idx} style={itemRow}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <span style={itemConcept}>{concept}</span>
+                    <span style={itemConcept}>{concept.trim()}</span>
+                    <span style={itemDate}
+                      {...clientName &&
+                      { fontStyle: 'italic', color: 'rgba(255,255,255,0.2)' }}> 
+                      {clientName} 
+                    </span>
                     <span style={itemDate}>
                       {format(date, "dd/MM/yyyy HH:mm 'hs'", { locale: es })}
                     </span>
@@ -66,8 +74,8 @@ export const DetailListModal: React.FC<DetailListModalProps> = ({
                       {formatCurrency(amount)}
                     </span>
                     <div style={paymentBadge}>
-                       {/* Aquí podrías mapear iconos de CASH/TRANSFER si lo deseas */}
-                       {isOrder ? 'Venta' : 'Egreso'}
+                      {/* Aquí podrías mapear iconos de CASH/TRANSFER si lo deseas */}
+                      {isOrder ? 'Venta' : 'Egreso'}
                     </div>
                   </div>
                 </div>
@@ -89,7 +97,7 @@ const modalOverlay: React.CSSProperties = {
 };
 
 const modalContent: React.CSSProperties = {
-  backgroundColor: '#1A1D23', width: '100%', maxWidth: '550px',
+  backgroundColor: '#1A1D23', width: '100%', maxWidth: '700px',
   maxHeight: '80vh', borderRadius: '24px', display: 'flex',
   flexDirection: 'column', border: '1px solid rgba(255,255,255,0.05)',
   boxShadow: '0 25px 50px rgba(0,0,0,0.5)', overflow: 'hidden'
@@ -101,17 +109,17 @@ const modalHeader: React.CSSProperties = {
 };
 
 const listContainer: React.CSSProperties = {
-  padding: '10px 0', overflowY: 'auto', flex: 1
+  padding: '10px 25px', overflowY: 'auto', flex: 1
 };
 
 const itemRow: React.CSSProperties = {
-  padding: '16px 32px', display: 'flex', justifyContent: 'space-between',
+  padding: '16px 4px', display: 'flex', justifyContent: 'space-between',
   alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.02)',
   transition: '0.2s'
 };
 
 const itemConcept: React.CSSProperties = {
-  fontSize: '0.95rem', fontWeight: 500, color: 'white'
+  fontSize: '0.95rem', fontWeight: 500, color: 'white', paddingRight: '60px'
 };
 
 const itemDate: React.CSSProperties = {
@@ -128,5 +136,5 @@ const closeButtonStyle: React.CSSProperties = {
 };
 
 const paymentBadge: React.CSSProperties = {
-    fontSize: '0.65rem', opacity: 0.4, textTransform: 'uppercase', letterSpacing: '1px', marginTop: '2px'
+  fontSize: '0.65rem', opacity: 0.4, textTransform: 'uppercase', letterSpacing: '1px', marginTop: '2px'
 }

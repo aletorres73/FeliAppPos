@@ -16,7 +16,7 @@ import { RangeSelector } from '../components/Common';
 import { DetailListModal } from '../components/DetailListModal';
 
 export default function CashFlowDashboard() {
-    const { stats, isLoading, range, setRange, refetch, handleNext, handlePrev, resetToToday, referenceDate, orders, expenses } = useCashflow();
+    const { stats, isLoading, range, setRange, refetch, handleNext, handlePrev, resetToToday, referenceDate } = useCashflow();
     const [showExpenseModal, setShowExpenseModal] = useState(false);
     const navigate = useNavigate();
 
@@ -34,11 +34,11 @@ export default function CashFlowDashboard() {
     ];
 
     const expenseCategories = [
-        { label: 'Proveedores', val: stats?.byCategory.supplierOut, color: '#FFAB40' },
-        { label: 'Sueldos', val: stats?.byCategory.salaryOut, color: '#FF5252' },
-        { label: 'Insumos', val: stats?.byCategory.suppliesOut, color: '#9C27B0' },
-        { label: 'Servicios', val: stats?.byCategory.servicesOut, color: '#E91E63' },
-        { label: 'Otros', val: stats?.byCategory.otherOut, color: '#FF4081' }
+        { label: 'Proveedores', val: stats?.categories.supplierOut, color: '#FFAB40' },
+        { label: 'Sueldos', val: stats?.categories.salaryOut, color: '#FF5252' },
+        { label: 'Insumos', val: stats?.categories.suppliesOut, color: '#9C27B0' },
+        { label: 'Servicios', val: stats?.categories.servicesOut, color: '#E91E63' },
+        { label: 'Otros', val: stats?.categories.otherOut, color: '#FF4081' }
     ];
 
     const HandleSetRange = (newRange: typeof range) => {
@@ -110,7 +110,7 @@ export default function CashFlowDashboard() {
                                 onClick={() => setActiveDetail({
                                     title: 'Detalle de Ingresos',
                                     type: 'INGRESOS',
-                                    items: orders.filter(o => o.payed && o.payed > 0),
+                                    items: stats?.lists.incomes || [],
                                     color: '#4CAF50'
                                 })}
                                 style={sectionCard}>
@@ -144,7 +144,7 @@ export default function CashFlowDashboard() {
                                 onClick={() => setActiveDetail({
                                     title: 'Detalle de Egresos',
                                     type: 'EGRESOS',
-                                    items: expenses,
+                                    items: stats?.lists.expenses || [],
                                     color: '#FF5252'
                                 })}
                                 style={{ ...sectionCard, justifyContent: 'flex-start' }}
@@ -177,7 +177,7 @@ export default function CashFlowDashboard() {
                             onClick={() => setActiveDetail({
                                 title: 'Detalle de Deudas',
                                 type: 'DEUDAS',
-                                items: orders.filter(o => o.total - (o.payed || 0) > 0),
+                                items: stats?.lists.debts || [],
                                 color: '#FFAB40'
                             })}
                             style={riskCard}
@@ -205,7 +205,7 @@ export default function CashFlowDashboard() {
                 showExpenseModal && (
                     <div style={modalOverlay}>
                         <ExpenseForm
-                            onComplete={() => { setShowExpenseModal(false); refetch(range, referenceDate); }}
+                            onComplete={() => { setShowExpenseModal(false); refetch(); }}
                             onClose={() => setShowExpenseModal(false)} />
                     </div>
                 )

@@ -1,12 +1,12 @@
-import { 
-  doc, 
-  collection, 
-  runTransaction, 
-  getDocs, 
-  query, 
-  where, 
-  setDoc, 
-  DocumentSnapshot, 
+import {
+  doc,
+  collection,
+  runTransaction,
+  getDocs,
+  query,
+  where,
+  setDoc,
+  DocumentSnapshot,
 } from "firebase/firestore";
 import { db } from "../services/FirebaseService"
 import type { Customer } from "../../domain/types/customersTypes";
@@ -86,10 +86,10 @@ export class CustomerRepository {
     try {
       // 1. Buscamos el documento donde el campo 'id' coincida
       const q = query(
-        collection(db, this.CUSTOMER_COLLECTION), 
+        collection(db, this.CUSTOMER_COLLECTION),
         where("id", "==", customer.id)
       );
-      
+
       const querySnapshot = await getDocs(q);
 
       if (!querySnapshot.empty) {
@@ -104,6 +104,27 @@ export class CustomerRepository {
       }
     } catch (e) {
       console.error("Error en updateCustomer:", e);
+    }
+  }
+
+  async getById(id: string): Promise<Customer> {
+    try {
+      const q = query(
+        collection(db, this.CUSTOMER_COLLECTION),
+        where("id", "==", id)
+      );
+
+      const querySnapshot = await getDocs(q);
+      
+      if (!querySnapshot.empty) {
+        return querySnapshot.docs[0].data() as Customer;
+      } else {
+        console.warn(`No se encontró el cliente con ID: ${id}`);
+        return AnonymousCustomer;
+      }
+    } catch (e) {
+      console.error(`Error al obtener cliente por ID (${id}):`, e);
+      return AnonymousCustomer;
     }
   }
 }

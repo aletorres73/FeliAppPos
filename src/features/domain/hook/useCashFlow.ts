@@ -1,65 +1,70 @@
-// src/domain/hook/useCashFlow.ts
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { salesRepository } from '../../data/repositories/SalesRepository';
 import { expenseRepository } from '../../data/repositories/ExpenseRepository';
+import { customerRepository } from '../../data/repositories/CustomerRepository';
 import { type DateRange } from '../types/salesTypes';
 import {
-    startOfDay,
-    endOfDay,
-    startOfMonth,
-    startOfWeek,
-    addDays,
-    addWeeks,
-    addMonths,
-    subWeeks,
-    subMonths,
-    subDays,
-    endOfWeek,
-    endOfMonth
+    startOfDay, endOfDay, startOfMonth, endOfMonth, startOfWeek, endOfWeek,
+    addDays, subDays, addWeeks, subWeeks, addMonths, subMonths
 } from 'date-fns';
-import { type OrderModel, type PaymentMethod, type PaymentType } from '../types/orderTypes';
+import { type OrderModel } from '../types/orderTypes';
 import { type Expense } from '../types/expenseTypes';
 
 export const useCashflow = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [orders, setOrders] = useState<OrderModel[]>([]);
     const [expenses, setExpenses] = useState<Expense[]>([]);
+    const [customersMap, setCustomersMap] = useState<Record<string, string>>({});
     const [range, setRange] = useState<DateRange>('today');
+
+    // El pivote central para la navegación
     const [referenceDate, setReferenceDate] = useState(new Date());
 
-    const fetchData = useCallback(async (selectedRange: DateRange, refDate: Date) => {
+    const fetchData = useCallback(async () => {
         setIsLoading(true);
-        const now = new Date();
         let start: Date;
-        let end = endOfDay(now);
+        let end: Date;
 
-        // Definición de rangos temporales consistentes con Feli App
-        switch (selectedRange) {
+        // Definición de rangos dinámicos basados en la fecha de referencia
+        switch (range) {
             case 'today':
-                start = startOfDay(refDate);
-                end = endOfDay(refDate);
+                start = startOfDay(referenceDate);
+                end = endOfDay(referenceDate);
                 break;
             case 'week':
-                start = startOfWeek(refDate, { weekStartsOn: 1 });
-                end = endOfWeek(refDate, { weekStartsOn: 1 });
+                start = startOfWeek(referenceDate, { weekStartsOn: 1 });
+                end = endOfWeek(referenceDate, { weekStartsOn: 1 });
                 break;
             case 'month':
-                start = startOfMonth(refDate);
-                end = endOfMonth(refDate);
+                start = startOfMonth(referenceDate);
+                end = endOfMonth(referenceDate);
                 break;
             default:
-                start = startOfMonth(refDate);
-                end = endOfDay(refDate);
+                start = startOfDay(referenceDate);
+                end = endOfDay(referenceDate);
         }
 
         try {
-            console.log(`Fetching Cash Flow data for range: ${selectedRange} (${start} - ${end})`);
-            // Consultas en paralelo para optimizar performance
             const [salesData, expensesData] = await Promise.all([
                 salesRepository.getOrdersByDateRange(start.getTime(), end.getTime()),
                 expenseRepository.getByRange(start.getTime(), end.getTime())
             ]);
 
+            // Hidratación de nombres de clientes
+            const uniqueClientIds = Array.from(new Set(
+                salesData.map(o => o.client).filter(id => id && id !== null)
+            )) as string[];
+
+            const customerProfiles = await Promise.all(
+                uniqueClientIds.map(id => customerRepository.getById(id))
+            );
+
+            const cMap: Record<string, string> = {};
+            customerProfiles.forEach(c => {
+                if (c) cMap[c.id!] = c.name + ' ' + c.lastname;
+            });
+
+            setCustomersMap(cMap);
             setOrders(salesData);
             setExpenses(expensesData);
         } catch (error) {
@@ -67,11 +72,11 @@ export const useCashflow = () => {
         } finally {
             setIsLoading(false);
         }
-    }, [range]);
+    }, [range, referenceDate]);
 
-    useEffect(() => { fetchData(range, referenceDate); }, [fetchData, range, referenceDate]);
+    useEffect(() => { fetchData(); }, [fetchData]);
 
-    // Handlers para la UI
+    // --- Manejadores de Navegación (Handle Next/Prev) ---
     const handleNext = () => {
         if (range === 'today') setReferenceDate(prev => addDays(prev, 1));
         if (range === 'week') setReferenceDate(prev => addWeeks(prev, 1));
@@ -86,14 +91,12 @@ export const useCashflow = () => {
 
     const resetToToday = () => setReferenceDate(new Date());
 
+    // --- Procesamiento de Estadísticas ---
     const stats = useMemo(() => {
-        // Permitimos que calcule aunque una de las dos listas esté vacía
         if (orders.length === 0 && expenses.length === 0) return null;
 
-        let cashIn = 0;
-        let transferIn = 0;
-        let cashOut = 0;
-        let transferOut = 0;
+        let cashIn = 0; let transferIn = 0;
+        let cashOut = 0; let transferOut = 0;
 
         // Totales por categoría inicializados en 0
         const categories = {
@@ -104,26 +107,27 @@ export const useCashflow = () => {
             otherOut: 0
         };
 
-        // 1. Cálculo de INGRESOS (Ventas)
-        orders.forEach(order => {
-            // Normalización defensiva para paymentMethod
+        const enrichedOrders = orders.map(order => ({
+            ...order,
+            clientName: order.client && customersMap[order.client]
+                ? customersMap[order.client]
+                : "Consumidor Final"
+        }));
+
+        const incomeOrders = enrichedOrders.filter(o => o.status === 'CONFIRMED');
+        const debtOrders = enrichedOrders.filter(o => (o.total - (o.payed || 0)) > 0);
+
+        incomeOrders.forEach(order => {
             const methods = Array.isArray(order.paymentMethod) ? order.paymentMethod : [];
-            methods.forEach((m: PaymentMethod) => {
+            methods.forEach(m => {
                 if (m.type === "CASH") cashIn += m.amount;
                 if (m.type === "TRANSFER") transferIn += m.amount;
             });
         });
 
-        // 2. Cálculo de EGRESOS (Gastos) - Un solo bucle para todo
         expenses.forEach(expense => {
-            // NORMALIZACIÓN CRÍTICA: Manejamos Array o String (Legacy)
-            const methods: PaymentMethod[] = Array.isArray(expense.paymentMethod)
-                ? expense.paymentMethod
-                : (typeof expense.paymentMethod === 'string')
-                    ? [{ type: expense.paymentMethod as PaymentType, amount: expense.amount || 0 }]
-                    : [];
-
-            methods.forEach((m: PaymentMethod) => {
+            const methods = Array.isArray(expense.paymentMethod) ? expense.paymentMethod : [];
+            methods.forEach(m => {
                 const amt = Number(m.amount) || 0;
                 if (m.type === 'CASH') cashOut += amt;
                 if (m.type === 'TRANSFER') transferOut += amt;
@@ -148,28 +152,24 @@ export const useCashflow = () => {
         });
 
         return {
-            totalIncome: totalIn,
-            totalExpense: totalOut,
-            // CÁLCULO NETO: Ingreso real cobrado menos Egreso real pagado
-            netBalance: totalIn - totalOut,
-            availableCash: cashIn /* - cashOut */,
-            availableBank: transferIn /* - transferOut */,
-            byCategory: categories,
-            pendingToCollect: orders.reduce((acc, o) => acc + (o.total - (o.payed || 0)), 0)
+            totalIncome: cashIn + transferIn,
+            totalExpense: cashOut + transferOut,
+            netBalance: (cashIn + transferIn) - (cashOut + transferOut),
+            availableCash: cashIn,
+            availableBank: transferIn,
+            pendingToCollect: debtOrders.reduce((acc, o) => acc + (o.total - (o.payed || 0)), 0),
+            lists: {
+                incomes: incomeOrders,
+                expenses: expenses,
+                debts: debtOrders
+            },
+            categories
         };
-    }, [orders, expenses]);
+    }, [orders, expenses, customersMap]);
 
     return {
-        isLoading,
-        stats, range,
-        setRange,
-        refetch: fetchData,
-        handleNext,
-        handlePrev,
-        resetToToday,
-        referenceDate,
-        orders,
-        expenses
+        isLoading, stats, range, setRange,
+        referenceDate, handleNext, handlePrev, resetToToday,
+        refetch: fetchData
     };
-
 };
