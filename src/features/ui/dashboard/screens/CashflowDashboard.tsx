@@ -13,11 +13,19 @@ import {
 } from '../styles/Dashboard';
 
 import { RangeSelector } from '../components/Common';
+import { DetailListModal } from '../components/DetailListModal';
 
 export default function CashFlowDashboard() {
-    const { stats, isLoading, range, setRange, refetch, handleNext, handlePrev, resetToToday, referenceDate } = useCashflow();
+    const { stats, isLoading, range, setRange, refetch, handleNext, handlePrev, resetToToday, referenceDate, orders, expenses } = useCashflow();
     const [showExpenseModal, setShowExpenseModal] = useState(false);
     const navigate = useNavigate();
+
+    const [activeDetail, setActiveDetail] = useState<{
+        title: string;
+        type: 'INGRESOS' | 'EGRESOS' | 'DEUDAS';
+        items: any[];
+        color: string;
+    } | null>(null);
 
     // Datos procesados para el orden visual
     const incomeData = [
@@ -98,7 +106,14 @@ export default function CashFlowDashboard() {
                         <div style={dashboardGrid}>
 
                             {/* Bloque de Ingresos: El Origen */}
-                            <div style={sectionCard}>
+                            <div
+                                onClick={() => setActiveDetail({
+                                    title: 'Detalle de Ingresos',
+                                    type: 'INGRESOS',
+                                    items: orders.filter(o => o.payed && o.payed > 0),
+                                    color: '#4CAF50'
+                                })}
+                                style={sectionCard}>
                                 <div style={cardHeader}>
                                     <h3 style={sectionTitle}>Ingresos Totales</h3>
                                     <span style={{ color: '#4CAF50', fontWeight: 700 }}>{formatCurrency(stats?.totalIncome || 0)}</span>
@@ -125,7 +140,15 @@ export default function CashFlowDashboard() {
                             </div>
 
                             {/* Bloque de Egresos: El Destino */}
-                            <div style={{...sectionCard, justifyContent: 'flex-start'}}>
+                            <div
+                                onClick={() => setActiveDetail({
+                                    title: 'Detalle de Egresos',
+                                    type: 'EGRESOS',
+                                    items: expenses,
+                                    color: '#FF5252'
+                                })}
+                                style={{ ...sectionCard, justifyContent: 'flex-start' }}
+                            >
                                 <div style={cardHeader}>
                                     <h3 style={sectionTitle}>Egresos Totales</h3>
                                     <span style={{ color: '#FF5252', fontWeight: 700 }}>{formatCurrency(stats?.totalExpense || 0)}</span>
@@ -150,7 +173,15 @@ export default function CashFlowDashboard() {
                         </div>
 
                         {/* Footer de Gestión de Riesgo */}
-                        <div style={riskCard}>
+                        <div
+                            onClick={() => setActiveDetail({
+                                title: 'Detalle de Deudas',
+                                type: 'DEUDAS',
+                                items: orders.filter(o => o.total - (o.payed || 0) > 0),
+                                color: '#FFAB40'
+                            })}
+                            style={riskCard}
+                        >
                             <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                                 <div style={warningIcon}>!</div>
                                 <div>
@@ -177,6 +208,18 @@ export default function CashFlowDashboard() {
                             onComplete={() => { setShowExpenseModal(false); refetch(range, referenceDate); }}
                             onClose={() => setShowExpenseModal(false)} />
                     </div>
+                )
+            }
+
+            {
+                activeDetail && (
+                    <DetailListModal
+                        title={activeDetail.title}
+                        type={activeDetail.type}
+                        items={activeDetail.items}
+                        onClose={() => setActiveDetail(null)}
+                        accentColor={activeDetail.color}
+                    />
                 )
             }
         </div >

@@ -167,7 +167,9 @@ export const useCashflow = () => {
         handleNext,
         handlePrev,
         resetToToday,
-        referenceDate
+        referenceDate,
+        orders,
+        expenses
     };
 
 };
