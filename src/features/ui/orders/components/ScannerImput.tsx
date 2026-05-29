@@ -5,17 +5,29 @@ type Props = {
   onScan: (code: string) => void;
   externalValue: string;
   onChange: (val: string) => void;
-  suggestions: Product[]; // Cambiado de any[] a Product para type-safety
+  suggestions: Product[];
 };
 
 export function ScannerInput({ onScan, externalValue, onChange, suggestions }: Props) {
   const ref = useRef<HTMLInputElement>(null);
+  // 1. NUEVO: Agregamos la referencia para la lista
+  const listRef = useRef<HTMLDivElement>(null); 
   const [selectedIndex, setSelectedIndex] = useState<number>(-1);
 
-  // Reiniciar el índice cuando cambian las sugerencias
   useEffect(() => {
     setSelectedIndex(-1);
   }, [suggestions]);
+
+  // 2. NUEVO: Efecto para hacer scroll al elemento seleccionado
+  useEffect(() => {
+    if (selectedIndex >= 0 && listRef.current) {
+      const activeElement = listRef.current.children[selectedIndex] as HTMLElement;
+      if (activeElement) {
+        // 'nearest' hace scroll solo lo necesario para que el elemento sea visible
+        activeElement.scrollIntoView({ block: "nearest" });
+      }
+    }
+  }, [selectedIndex]);
 
   useEffect(() => {
     const handleFocus = (e: MouseEvent) => {
@@ -54,10 +66,8 @@ export function ScannerInput({ onScan, externalValue, onChange, suggestions }: P
       case "Enter":
         e.preventDefault();
         if (selectedIndex >= 0 && suggestions[selectedIndex]) {
-          // Seleccionamos el producto resaltado
           onScan(suggestions[selectedIndex].id);
         } else if (externalValue.trim()) {
-          // Si no hay nada resaltado pero hay texto, escaneamos el texto (ej. código de barras)
           onScan(externalValue.trim());
         }
         onChange("");
@@ -157,7 +167,7 @@ export function ScannerInput({ onScan, externalValue, onChange, suggestions }: P
         />
 
         {suggestions.length > 0 && (
-          <div className="suggestions-list">
+          <div className="suggestions-list" ref={listRef}>
             {suggestions.map((p, index) => (
               <div
                 key={p.id}
