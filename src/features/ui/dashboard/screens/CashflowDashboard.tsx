@@ -102,6 +102,31 @@ export default function CashFlowDashboard() {
                             <p style={{ ...helperTextStyle, marginTop: '12px' }}>Efectivo y banco disponible tras cubrir todos los gastos registrados.</p>
                         </div>
 
+                        {/* ======================================================= */}
+                        {/* NUEVA SECCIÓN: Rendimiento Comercial (Solo Mensual)       */}
+                        {/* ======================================================= */}
+                        {range === 'month' && stats && (
+                            <div style={monthlySalesGrid}>
+                                <div style={monthlyKpiCard}>
+                                    <span style={monthlyKpiLabel}>CANTIDAD DE VENTAS</span>
+                                    <h2 style={monthlyKpiValue}>
+                                        {stats.monthlySalesCount ?? 0}
+                                        <span style={monthlyUnitLabel}> transacciones</span>
+                                    </h2>
+                                    <p style={helperTextStyle}>Órdenes concretadas o parciales en el mes.</p>
+                                </div>
+
+                                <div style={monthlyKpiCard}>
+                                    <span style={monthlyKpiLabel}>TICKET PROMEDIO</span>
+                                    <h2 style={{ ...monthlyKpiValue, color: '#54C4F0' }}>
+                                        {formatCurrency(stats.monthlyAverageTicket || 0)}
+                                    </h2>
+                                    <p style={helperTextStyle}>Valor medio de ingresos por cada venta.</p>
+                                </div>
+                            </div>
+                        )}
+                        {/* ======================================================= */}
+
                         {/* Grilla de Análisis Comparativo */}
                         <div style={dashboardGrid}>
 
@@ -194,39 +219,70 @@ export default function CashFlowDashboard() {
                             </span>
                         </div>
                     </>
-
                 )}
-
-
             </div>
 
-            {/* Modal Optimizado */}
-            {
-                showExpenseModal && (
-                    <div style={modalOverlay}>
-                        <ExpenseForm
-                            onComplete={() => { setShowExpenseModal(false); refetch(); }}
-                            onClose={() => setShowExpenseModal(false)} />
-                    </div>
-                )
-            }
+            {/* Modales */}
+            {showExpenseModal && (
+                <div style={modalOverlay}>
+                    <ExpenseForm
+                        onComplete={() => { setShowExpenseModal(false); refetch(); }}
+                        onClose={() => setShowExpenseModal(false)} />
+                </div>
+            )}
 
-            {
-                activeDetail && (
-                    <DetailListModal
-                        title={activeDetail.title}
-                        type={activeDetail.type}
-                        items={activeDetail.items}
-                        onClose={() => setActiveDetail(null)}
-                        accentColor={activeDetail.color}
-                    />
-                )
-            }
-        </div >
+            {activeDetail && (
+                <DetailListModal
+                    title={activeDetail.title}
+                    type={activeDetail.type}
+                    items={activeDetail.items}
+                    onClose={() => setActiveDetail(null)}
+                    accentColor={activeDetail.color}
+                />
+            )}
+        </div>
     );
 }
 
-// ESTILOS INLINE PARA MANTENER LA CONSISTENCIA DE FELI APP
+// ESTILOS INLINE ADICIONALES (Para las nuevas tarjetas mensuales)
+const monthlySalesGrid: React.CSSProperties = {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+    gap: '24px',
+    marginBottom: '30px'
+};
+
+const monthlyKpiCard: React.CSSProperties = {
+    ...cardStyle,
+    padding: '20px 24px',
+    backgroundColor: '#16191E',
+    border: '1px solid rgba(255, 255, 255, 0.03)',
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'center'
+};
+
+const monthlyKpiLabel: React.CSSProperties = {
+    fontSize: '0.75rem',
+    fontWeight: 700,
+    color: 'rgba(255, 255, 255, 0.4)',
+    letterSpacing: '0.5px'
+};
+
+const monthlyKpiValue: React.CSSProperties = {
+    fontSize: '1.8rem',
+    fontWeight: 700,
+    margin: '8px 0',
+    color: '#FFF'
+};
+
+const monthlyUnitLabel: React.CSSProperties = {
+    fontSize: '0.9rem',
+    fontWeight: 400,
+    color: 'rgba(255, 255, 255, 0.5)'
+};
+
+// ESTILOS INLINE EXISTENTES MANTENIDOS PARA TU CONSISTENCIA
 const containerStyle: React.CSSProperties = { padding: '12px 20px', backgroundColor: '#0F1115', minHeight: '100vh', color: 'white', fontFamily: "'Inter', sans-serif" };
 const headerStyle: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', marginBottom: '32px', alignItems: 'center' };
 const mainTitleStyle: React.CSSProperties = { fontSize: '1.8rem', fontWeight: 700, margin: 0 };

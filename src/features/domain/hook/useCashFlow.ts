@@ -92,6 +92,7 @@ export const useCashflow = () => {
     const resetToToday = () => setReferenceDate(new Date());
 
     // --- Procesamiento de Estadísticas ---
+    // --- Procesamiento de Estadísticas ---
     const stats = useMemo(() => {
         if (orders.length === 0 && expenses.length === 0) return null;
 
@@ -137,7 +138,6 @@ export const useCashflow = () => {
                 if (m.type === 'TRANSFER') transferOut += amt;
             });
 
-            // Acumulamos por categoría usando el amount global del gasto
             const expenseAmt = Number(expense.amount) || 0;
             switch (expense.category) {
                 case 'SUPPLIER': categories.supplierOut += expenseAmt; break;
@@ -151,14 +151,28 @@ export const useCashflow = () => {
         const totalIn = cashIn + transferIn;
         const totalOut = cashOut + transferOut;
 
+        // ==========================================
+        // NUEVO: Métricas exclusivas para el periodo Mensual
+        // ==========================================
+        const isMonthly = range === 'month';
+        const monthlySalesCount = isMonthly ? incomeOrders.length : null;
+
+        // Calculamos el ticket promedio basándonos en lo efectivamente cobrado (totalIn)
+        // Evitamos la división por cero si no hay ventas
+        const monthlyAverageTicket = isMonthly && monthlySalesCount && monthlySalesCount > 0
+            ? totalIn / monthlySalesCount
+            : null;
+        // ==========================================
+
         console.log("CASH FLOW STATS CALCULATED:", {
-            totalIn, totalOut, netBalance: totalIn - totalOut, availableCash: cashIn - cashOut, availableBank: transferIn - transferOut, categories
+            totalIn, totalOut, netBalance: totalIn - totalOut, availableCash: cashIn - cashOut, availableBank: transferIn - transferOut, categories,
+            monthlySalesCount, monthlyAverageTicket // Agregado al log informativo
         });
 
         return {
-            totalIncome: cashIn + transferIn,
-            totalExpense: cashOut + transferOut,
-            netBalance: (cashIn + transferIn) - (cashOut + transferOut),
+            totalIncome: totalIn,
+            totalExpense: totalOut,
+            netBalance: totalIn - totalOut,
             availableCash: cashIn,
             availableBank: transferIn,
             pendingToCollect: debtOrders.reduce((acc, o) => acc + (o.total - (o.payed || 0)), 0),
@@ -167,9 +181,13 @@ export const useCashflow = () => {
                 expenses: expenses,
                 debts: debtOrders
             },
-            categories
+            categories,
+            // Agregamos las nuevas propiedades al retorno
+            monthlySalesCount,
+            monthlyAverageTicket
         };
-    }, [orders, expenses, customersMap]);
+        // IMPORTANTE: Agregamos 'range' a las dependencias de useMemo ya que ahora lo lee internamente
+    }, [orders, expenses, customersMap, range]);
 
     return {
         isLoading, stats, range, setRange,

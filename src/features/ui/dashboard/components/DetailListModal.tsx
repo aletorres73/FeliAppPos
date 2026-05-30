@@ -62,8 +62,8 @@ export const DetailListModal: React.FC<DetailListModalProps> = ({
                     <span style={itemConcept}>{concept.trim()}</span>
                     <span style={itemDate}
                       {...clientName &&
-                      { fontStyle: 'italic', color: 'rgba(255,255,255,0.2)' }}> 
-                      {clientName} 
+                      { fontStyle: 'italic', color: 'rgba(255,255,255,0.2)' }}>
+                      {clientName}
                     </span>
                     <span style={itemDate}>
                       {format(date, "dd/MM/yyyy HH:mm 'hs'", { locale: es })}
