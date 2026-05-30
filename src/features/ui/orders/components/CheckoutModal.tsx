@@ -4,11 +4,10 @@ import { type PaymentType, type PaymentMethod } from "../../../domain/types/orde
 
 interface Props {
   total: number;
-  // Ajustamos onConfirm para enviar el desglose completo
   onConfirm: (
     status: "PAID" | "PENDING",
     totalPayed: number,
-    paymentMethod: PaymentMethod[] | null// Método principal o "MIXED"
+    paymentMethod: PaymentMethod[] | null
   ) => void;
   onClose: () => void;
   comments: string;
@@ -24,36 +23,57 @@ export function CheckoutModal({
   onCommentsChange,
   isLoading
 }: Props) {
-  // Estados para montos específicos
   const [cashAmount, setCashAmount] = useState<string>(total.toString());
   const [transferAmount, setTransferAmount] = useState<string>("0");
-
-  // Tipo de operación: "TOTAL" (paga todo) o "PARTIAL" (paga una parte)
-  // const [paymentType, setPaymentType] = useState<"TOTAL" | "PARTIAL">("TOTAL");
   const [activeMode, setActiveMode] = useState<"CASH" | "TRANSFER" | "MIXED">("CASH");
 
   const cashInputRef = useRef<HTMLInputElement>(null);
+  const transferInputRef = useRef<HTMLInputElement>(null);
 
   // Lógica de reseteo al cambiar de modo
   useEffect(() => {
     if (activeMode === "CASH") {
       setCashAmount(total.toString());
       setTransferAmount("0");
+      setTimeout(() => cashInputRef.current?.focus(), 50);
     } else if (activeMode === "TRANSFER") {
       setCashAmount("0");
       setTransferAmount(total.toString());
+      setTimeout(() => transferInputRef.current?.focus(), 50);
     } else {
-      // MIXED: dejamos que el usuario edite ambos, pero inicializamos 50/50
-      setCashAmount((total / 2).toString());
-      setTransferAmount((total / 2).toString());
+      // MIXED: Inicializamos con todo en 0 para que el usuario empiece a tipear en uno,
+      // o podrías dejarlo en 50/50. Lo dejamos en 0 y Total para mejor UX inicial.
+      setCashAmount("0");
+      setTransferAmount(total.toString());
+      setTimeout(() => cashInputRef.current?.focus(), 50);
     }
   }, [activeMode, total]);
+
+  // --- NUEVO: Manejadores dinámicos para calcular el resto automáticamente ---
+  const handleCashChange = (val: string) => {
+    setCashAmount(val);
+    if (activeMode === "MIXED") {
+      const parsedCash = parseFloat(val) || 0;
+      // Calculamos lo que falta para llegar al total
+      const remaining = total - parsedCash;
+      // Si el efectivo supera el total (hay vuelto), la transferencia es 0
+      setTransferAmount(remaining > 0 ? remaining.toString() : "0");
+    }
+  };
+
+  const handleTransferChange = (val: string) => {
+    setTransferAmount(val);
+    if (activeMode === "MIXED") {
+      const parsedTransfer = parseFloat(val) || 0;
+      const remaining = total - parsedTransfer;
+      setCashAmount(remaining > 0 ? remaining.toString() : "0");
+    }
+  };
 
   const numCash = parseFloat(cashAmount) || 0;
   const numTransfer = parseFloat(transferAmount) || 0;
 
   const paymentType: PaymentMethod[] = [];
-
   if(numCash > 0 ) paymentType.push({ type: "CASH" as PaymentType, amount: numCash });
   if(numTransfer > 0) paymentType.push({ type: "TRANSFER" as PaymentType, amount: numTransfer });
 
@@ -62,10 +82,43 @@ export function CheckoutModal({
   const vuelto = numCash > (total - numTransfer) ? numCash - (total - numTransfer) : 0;
 
   const handleFinalConfirm = () => {
+    if (isLoading) return;
     const status = totalPayed >= total ? "PAID" : "PENDING";
-    // El paymentMethod enviado es para el reporte (CASH, TRANSFER o MIXED)
     onConfirm(status, totalPayed, paymentType.length > 0 ? paymentType : null);
   };
+
+  // Atajos de teclado del Modal
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLTextAreaElement) return;
+
+      switch (e.key) {
+        case "F1":
+          e.preventDefault();
+          setActiveMode("CASH");
+          break;
+        case "F2":
+          e.preventDefault();
+          setActiveMode("TRANSFER");
+          break;
+        case "F3":
+          e.preventDefault();
+          setActiveMode("MIXED");
+          break;
+        case "Enter":
+          e.preventDefault();
+          handleFinalConfirm();
+          break;
+        case "Escape":
+          e.preventDefault();
+          onClose();
+          break;
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [activeMode, numCash, numTransfer, isLoading]);
 
   return (
     <div style={modalStyles.overlay} role="dialog">
@@ -74,27 +127,31 @@ export function CheckoutModal({
           {isLoading ? "Procesando..." : "Finalizar Venta"}
         </h2>
 
-        {/* 1. Selector de Modo de Pago */}
         <label style={modalStyles.label}>Forma de Pago:</label>
         <div style={modalStyles.tabs}>
-          {["CASH", "TRANSFER", "MIXED"].map((mode) => (
-            <button
-              key={mode}
-              disabled={isLoading}
-              onClick={() => setActiveMode(mode as any)}
-              style={{
-                ...modalStyles.tab,
-                backgroundColor: activeMode === mode ? "#54C4F0" : "transparent",
-                color: activeMode === mode ? "#0F1115" : "white",
-                borderColor: activeMode === mode ? "#54C4F0" : "rgba(255,255,255,0.1)"
-              }}
-            >
-              {mode === "CASH" ? "Efectivo" : mode === "TRANSFER" ? "Transf." : "Mixto"}
-            </button>
-          ))}
+          <button
+            disabled={isLoading}
+            onClick={() => setActiveMode("CASH")}
+            style={getTabStyle("CASH", activeMode)}
+          >
+            Efectivo [F1]
+          </button>
+          <button
+            disabled={isLoading}
+            onClick={() => setActiveMode("TRANSFER")}
+            style={getTabStyle("TRANSFER", activeMode)}
+          >
+            Transf. [F2]
+          </button>
+          <button
+            disabled={isLoading}
+            onClick={() => setActiveMode("MIXED")}
+            style={getTabStyle("MIXED", activeMode)}
+          >
+            Mixto [F3]
+          </button>
         </div>
 
-        {/* 2. Inputs Dinámicos según el modo */}
         <div style={{ display: 'flex', gap: '15px', marginBottom: '20px' }}>
           {(activeMode === "CASH" || activeMode === "MIXED") && (
             <div style={{ flex: 1 }}>
@@ -103,7 +160,7 @@ export function CheckoutModal({
                 ref={cashInputRef}
                 type="number"
                 value={cashAmount}
-                onChange={(e) => setCashAmount(e.target.value)}
+                onChange={(e) => handleCashChange(e.target.value)} // <-- Cambiado
                 style={modalStyles.inputSmall}
                 onFocus={(e) => e.target.select()}
               />
@@ -113,9 +170,10 @@ export function CheckoutModal({
             <div style={{ flex: 1 }}>
               <label style={modalStyles.label}>Monto Transf.:</label>
               <input
+                ref={transferInputRef}
                 type="number"
                 value={transferAmount}
-                onChange={(e) => setTransferAmount(e.target.value)}
+                onChange={(e) => handleTransferChange(e.target.value)} // <-- Cambiado
                 style={modalStyles.inputSmall}
                 onFocus={(e) => e.target.select()}
               />
@@ -123,7 +181,7 @@ export function CheckoutModal({
           )}
         </div>
 
-        {/* 3. Resumen de Pago */}
+        {/* El resto del JSX (Resumen, Comentarios, Botones) se mantiene idéntico */}
         <div style={modalStyles.summaryBox}>
           <div style={modalStyles.summaryRow}>
             <span>Total Venta:</span>
@@ -146,7 +204,6 @@ export function CheckoutModal({
           )}
         </div>
 
-        {/* 4. Comentarios */}
         <div style={{ marginBottom: 20 }}>
           <label style={modalStyles.label}>Notas de la venta:</label>
           <textarea
@@ -158,22 +215,21 @@ export function CheckoutModal({
           />
         </div>
 
-        {/* 5. Acciones */}
         <div style={modalStyles.actions}>
           <button onClick={onClose} disabled={isLoading} style={modalStyles.btnCancel}>
-            Cancelar
+            Cancelar [Esc]
           </button>
           <button
-            disabled={isLoading /* || totalPayed === 0 */}
+            disabled={isLoading}
             onClick={handleFinalConfirm}
             style={{
               ...modalStyles.btnConfirm,
-              backgroundColor: remanente > 0 ? "#FFAB40" : "#54C4F0" // Naranja si es parcial
+              backgroundColor: remanente > 0 ? "#FFAB40" : "#54C4F0"
             }}
           >
             {isLoading ? "Guardando..." :
-              remanente === total ? "Pendiente" :
-              remanente > 0 ? "Pago Parcial" : "Finalizar Venta"}
+              remanente === total ? "Pendiente [Enter]" :
+              remanente > 0 ? "Pago Parcial [Enter]" : "Finalizar Venta [Enter]"}
           </button>
         </div>
       </div>
@@ -181,8 +237,14 @@ export function CheckoutModal({
   );
 }
 
+const getTabStyle = (mode: string, activeMode: string) => ({
+  ...modalStyles.tab,
+  backgroundColor: activeMode === mode ? "#54C4F0" : "transparent",
+  color: activeMode === mode ? "#0F1115" : "white",
+  borderColor: activeMode === mode ? "#54C4F0" : "rgba(255,255,255,0.1)"
+});
+
 const modalStyles = {
-  // ... (overlay y card se mantienen iguales)
   overlay: { position: "fixed" as const, top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.85)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 },
   card: { backgroundColor: "#1A1D23", padding: 30, borderRadius: 16, width: "100%", maxWidth: "450px", border: "1px solid rgba(255,255,255,0.1)" },
   tabs: { display: "flex", gap: "8px", marginBottom: 20 },

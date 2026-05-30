@@ -17,6 +17,7 @@ import type { Product, OrderItem, OrderPayStatus, PaymentMethod } from "../../..
 import { AnonymousCustomer, type Customer } from "../../../domain/types/customersTypes";
 import { useNavigate } from 'react-router-dom'; // Importamos el hook de navegación
 import { useOrder } from "../../../domain/hook/useOrder";
+import { useEffect } from "react";
 
 export default function OrderScreen() {
   const {
@@ -42,13 +43,53 @@ export default function OrderScreen() {
   const [showCreateCustomerModal, setShowCreateCustomerModal] = useState(false);
   const [globalDiscount, setGlobalDiscount] = useState(0);
 
-  // Derivación de datos (Selectors)
-  // const subtotal = draft.subtotal;
-  // const totalDiscount = Math.max(0, subtotal - globalDiscount);
   const totalFinal = draft.total
 
   const navigate = useNavigate();
 
+  // --- NUEVO: Atajo de teclado Global (F9) para abrir Cobro ---
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      // Si presiona F9, hay items cargados y no hay modales abiertos
+      if (
+        e.key === "F9" &&
+        draft.items.length > 0 &&
+        !showCheckout &&
+        !showCustomerModal &&
+        !showCreateCustomerModal &&
+        !manualCode
+      ) {
+        e.preventDefault(); // Evita el comportamiento por defecto del navegador
+        setShowCheckout(true);
+      }
+    };
+
+    window.addEventListener("keydown", handleGlobalKeyDown);
+    return () => window.removeEventListener("keydown", handleGlobalKeyDown);
+  }, [
+    draft.items.length,
+    showCheckout,
+    showCustomerModal,
+    showCreateCustomerModal,
+    manualCode
+  ]);
+
+  useEffect(() => {
+    const isAnyModalOpen = showCheckout || showCustomerModal || manualCode;
+
+    if (!isAnyModalOpen) {
+      // 50ms para asegurarnos de que React ya quitó los modales del DOM
+      const focusTimer = setTimeout(() => {
+        const scannerInput = document.getElementById("scanner-input") as HTMLInputElement;
+        if (scannerInput) {
+          scannerInput.focus();
+        }
+      }, 50);
+
+      return () => clearTimeout(focusTimer);
+    }
+  }, [showCheckout, showCustomerModal, manualCode]);
+  
   // Handlers
   const handleSaveNewCustomer = async (data: any) => {
     setIsLoading(true);

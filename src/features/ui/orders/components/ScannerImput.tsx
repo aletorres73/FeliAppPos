@@ -10,40 +10,22 @@ type Props = {
 
 export function ScannerInput({ onScan, externalValue, onChange, suggestions }: Props) {
   const ref = useRef<HTMLInputElement>(null);
-  // 1. NUEVO: Agregamos la referencia para la lista
-  const listRef = useRef<HTMLDivElement>(null); 
+  const listRef = useRef<HTMLDivElement>(null);
   const [selectedIndex, setSelectedIndex] = useState<number>(-1);
 
   useEffect(() => {
     setSelectedIndex(-1);
   }, [suggestions]);
 
-  // 2. NUEVO: Efecto para hacer scroll al elemento seleccionado
   useEffect(() => {
     if (selectedIndex >= 0 && listRef.current) {
       const activeElement = listRef.current.children[selectedIndex] as HTMLElement;
       if (activeElement) {
-        // 'nearest' hace scroll solo lo necesario para que el elemento sea visible
         activeElement.scrollIntoView({ block: "nearest" });
       }
     }
   }, [selectedIndex]);
 
-  useEffect(() => {
-    const handleFocus = (e: MouseEvent) => {
-      const isModalOpen = document.querySelector('[role="dialog"]');
-      const target = e.target as HTMLElement;
-      const clickedInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
-
-      if (!isModalOpen && !clickedInput) {
-        ref.current?.focus();
-      }
-    };
-
-    ref.current?.focus();
-    document.addEventListener("click", handleFocus);
-    return () => document.removeEventListener("click", handleFocus);
-  }, []);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (suggestions.length === 0) {
@@ -144,20 +126,22 @@ export function ScannerInput({ onScan, externalValue, onChange, suggestions }: P
       `}</style>
 
       <div style={{ position: "relative", width: "100%", maxWidth: "600px" }}>
-        <span style={{ 
-          position: "absolute", 
-          left: 20, 
-          top: "50%", 
-          transform: "translateY(-50%)", 
+        <span style={{
+          position: "absolute",
+          left: 20,
+          top: "50%",
+          transform: "translateY(-50%)",
           fontSize: "1.2rem",
           color: "#54C4F0",
-          zIndex: 1 
+          zIndex: 1
         }}>
           🔍
         </span>
 
         <input
+          id="scanner-input" 
           ref={ref}
+          autoFocus 
           className="scanner-field"
           placeholder="Escanear código o buscar por nombre..."
           value={externalValue}
@@ -165,7 +149,6 @@ export function ScannerInput({ onScan, externalValue, onChange, suggestions }: P
           onKeyDown={handleKeyDown}
           autoComplete="off"
         />
-
         {suggestions.length > 0 && (
           <div className="suggestions-list" ref={listRef}>
             {suggestions.map((p, index) => (
@@ -173,7 +156,7 @@ export function ScannerInput({ onScan, externalValue, onChange, suggestions }: P
                 key={p.id}
                 className={`suggestion-item ${index === selectedIndex ? 'active' : ''}`}
                 onMouseDown={(e) => {
-                  e.preventDefault(); 
+                  e.preventDefault();
                   onScan(p.id);
                   onChange("");
                 }}
@@ -182,7 +165,7 @@ export function ScannerInput({ onScan, externalValue, onChange, suggestions }: P
                   <div style={{ fontSize: "0.9rem", fontWeight: 600, color: "white" }}>{p.article}</div>
                   <div style={{ fontSize: "0.7rem", color: "rgba(255,255,255,0.4)", textTransform: "uppercase" }}>{p.branch}</div>
                 </div>
-                
+
                 <div style={{ textAlign: "right" }}>
                   <div style={{ color: "#54C4F0", fontWeight: "bold", fontSize: "0.9rem" }}>
                     ${p.price.toLocaleString()}
