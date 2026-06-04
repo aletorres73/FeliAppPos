@@ -1,21 +1,25 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { lazy, Suspense } from 'react';
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import MainLayout from "./features/ui/MainLayout";
+import OrderScreen from "./features/ui/orders/screens/OrdersScreen"; 
+import CashFlowDashboard from "./features/ui/dashboard/screens/CashflowDashboard"; 
+import SalesDashboard from "./features/ui/dashboard/screens/SalesDashboard";      
 
-const SalesDashboard = lazy(() => import('./features/ui/dashboard/screens/SalesDashboard'));
-const OrderScreen = lazy(() => import('./features/ui/orders/screens/OrdersScreen'));
-const CashFlowDashboard = lazy(() => import('./features/ui/dashboard/screens/CashflowDashboard'));
-
-
-export default function App() {
+export default function AppRouter() {
   return (
-    <Router>
-      <Suspense fallback={<div style={{ color: '#54C4F0' }}>Cargando Feli App...</div>}>
-        <Routes>
-          <Route path="/" element={<OrderScreen />} />
-          <Route path="/reports" element={<SalesDashboard />} />
-          <Route path="/cashflow" element={<CashFlowDashboard />} />
-        </Routes>
-      </Suspense>
-    </Router>
+    <BrowserRouter>
+      <Routes>
+        
+        {/* Envolvemos todas las pantallas internas bajo el MainLayout */}
+        <Route path="/" element={<MainLayout />}>
+          <Route index element={<OrderScreen />} />
+          <Route path="cashflow" element={<CashFlowDashboard />} />
+          <Route path="reports" element={<SalesDashboard />} />
+        </Route>
+        
+        {/* Aquí podrías poner rutas externas al dashboard si hiciera falta, ej: login */}
+        {/* <Route path="/login" element={<Login />} /> */}
+
+      </Routes>
+    </BrowserRouter>
   );
-};
+}

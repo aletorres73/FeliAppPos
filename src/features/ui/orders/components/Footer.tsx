@@ -93,20 +93,26 @@ const styles: Record<string, React.CSSProperties> = {
     padding: "20px",
     display: "flex",
     justifyContent: "space-between",
-    alignItems: "start", // Cambiado a center para mejor alineación responsive
+    alignItems: "center", /* Cambiado a center para mejor alineación */
+    
+    // --- NUEVA ESTRATEGIA DE CENTRADO CON SIDEBAR ---
     position: "fixed",
     bottom: 0,
-    left: "50%", // Centrado dinámico
-    transform: "translateX(-50%)", // Centrado dinámico
+    right: 0,
+    left: "260px", // Deja el espacio exacto del Sidebar de tu MainLayout
+    
+    // Quitamos el left 50% y el transform que causaban el desvío
+    
+    // Centramos el contenido dentro de la zona útil de la derecha
+    margin: "0 auto", 
     width: "100%",
-    maxWidth: "1000px", // Se ajusta al ancho de tu 'content'
-    height: "auto", // Permitimos que crezca si el contenido se apila
-    minHeight: "100px",
+    maxWidth: "1000px", // Limita exactamente al ancho del contentWrapper de la orden
+    
     borderTopLeftRadius: "24px",
     borderTopRightRadius: "24px",
     zIndex: 100,
     boxShadow: "0 -10px 25px rgba(0,0,0,0.5)",
-    boxSizing: "border-box", // Vital para que el padding no rompa el width
+    boxSizing: "border-box",
   },
   section: {
     display: "flex",

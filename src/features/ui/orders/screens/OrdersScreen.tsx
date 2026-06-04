@@ -1,4 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useOrder } from "../../../domain/hook/useOrder";
+
+// Componentes UI de la orden
 import { ScannerInput } from "../../../ui/orders/components/ScannerImput";
 import { CustomerSelector } from "../../../ui/orders/components/CustomerSelector";
 import { OrderList } from "../../../ui/orders/components/OrderList";
@@ -7,17 +10,12 @@ import { CustomerSelectorModal } from "../../../ui/orders/components/CustomerSel
 import { Footer } from "../../../ui/orders/components/Footer";
 import { CustomerCreateModal } from "../../../ui/orders/components/CustomerCreateModal";
 import { CheckoutModal } from "../../../ui/orders/components/CheckoutModal";
-import feliLogo from "../../../../assets/logo-feli.webp"
-import { CashFlowButton, SaleDashboardButton } from "../../navigation/navigationButtons";
 
+// Repositorios y Tipos
 import { getProductById } from "../../../data/repositories/ProductRepository";
 import { customerRepository } from "../../../data/repositories/CustomerRepository";
-
 import type { Product, OrderItem, OrderPayStatus, PaymentMethod } from "../../../domain/types/orderTypes";
 import { AnonymousCustomer, type Customer } from "../../../domain/types/customersTypes";
-import { useNavigate } from 'react-router-dom'; // Importamos el hook de navegación
-import { useOrder } from "../../../domain/hook/useOrder";
-import { useEffect } from "react";
 
 export default function OrderScreen() {
   const {
@@ -43,14 +41,11 @@ export default function OrderScreen() {
   const [showCreateCustomerModal, setShowCreateCustomerModal] = useState(false);
   const [globalDiscount, setGlobalDiscount] = useState(0);
 
-  const totalFinal = draft.total
+  const totalFinal = draft.total;
 
-  const navigate = useNavigate();
-
-  // --- NUEVO: Atajo de teclado Global (F9) para abrir Cobro ---
+  // --- Atajo de teclado Global (F9) para abrir Cobro ---
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
-      // Si presiona F9, hay items cargados y no hay modales abiertos
       if (
         e.key === "F9" &&
         draft.items.length > 0 &&
@@ -59,38 +54,30 @@ export default function OrderScreen() {
         !showCreateCustomerModal &&
         !manualCode
       ) {
-        e.preventDefault(); // Evita el comportamiento por defecto del navegador
+        e.preventDefault();
         setShowCheckout(true);
       }
     };
 
     window.addEventListener("keydown", handleGlobalKeyDown);
     return () => window.removeEventListener("keydown", handleGlobalKeyDown);
-  }, [
-    draft.items.length,
-    showCheckout,
-    showCustomerModal,
-    showCreateCustomerModal,
-    manualCode
-  ]);
+  }, [draft.items.length, showCheckout, showCustomerModal, showCreateCustomerModal, manualCode]);
 
+  // --- Auto-focus del scanner ---
   useEffect(() => {
     const isAnyModalOpen = showCheckout || showCustomerModal || manualCode;
 
     if (!isAnyModalOpen) {
-      // 50ms para asegurarnos de que React ya quitó los modales del DOM
       const focusTimer = setTimeout(() => {
         const scannerInput = document.getElementById("scanner-input") as HTMLInputElement;
-        if (scannerInput) {
-          scannerInput.focus();
-        }
+        if (scannerInput) scannerInput.focus();
       }, 50);
 
       return () => clearTimeout(focusTimer);
     }
   }, [showCheckout, showCustomerModal, manualCode]);
   
-  // Handlers
+  // --- Handlers ---
   const handleSaveNewCustomer = async (data: any) => {
     setIsLoading(true);
     try {
@@ -100,20 +87,12 @@ export default function OrderScreen() {
         lastPurchaseDate: null,
       };
 
-      // 1. Guardar en Firebase (nos devuelve el ID generado por la transacción)
       const newId = await customerRepository.saveClient(newCustomerBase);
 
       if (newId) {
-        // 2. Crear el objeto completo para el estado local
-        const fullCustomer: Customer = {
-          ...newCustomerBase,
-          id: newId
-        };
-
-        // 3. SELECCIONAR AUTOMÁTICAMENTE
+        const fullCustomer: Customer = { ...newCustomerBase, id: newId };
         setSelectedCustomer(fullCustomer);
         setShowCreateCustomerModal(false);
-        console.log("Cliente creado y seleccionado:", fullCustomer);
       }
     } catch (error) {
       alert("Error al crear el cliente");
@@ -122,7 +101,6 @@ export default function OrderScreen() {
     }
   };
 
-
   const handleScan = async (code: string) => {
     const normalizedCode = code.trim().toUpperCase();
     if (!normalizedCode) return;
@@ -130,27 +108,22 @@ export default function OrderScreen() {
     setIsLoading(true);
     try {
       const product = await getProductById(normalizedCode);
-      console.log("Producto encontrado:", product);
 
       if (!product) {
-        // CASO A: Producto no existe en BD -> Modal Manual para crear uno nuevo
         setManualCode(normalizedCode);
-        setSelectedProduct(null); // Aseguramos que esté limpio
+        setSelectedProduct(null);
         return;
       }
 
       if (product.saleWeight) {
-        // CASO B: Existe y es pesable -> Modal para ingresar peso
         setSelectedProduct(product);
         setManualCode(normalizedCode);
       } else {
-        // CASO C: Existe y es unidad simple -> Agregar directo
         addItem(mapProductToOrderItem(product));
-        setSearchTerm(""); // Limpiamos el buscador tras agregar
+        setSearchTerm("");
       }
     } catch (error) {
       console.error("Error en Scanner:", error);
-      // Si hay error de red, también podemos permitir el ingreso manual
       setManualCode(normalizedCode);
     } finally {
       setIsLoading(false);
@@ -160,8 +133,8 @@ export default function OrderScreen() {
   const handleFinalizeOrder = async (
     payStatus: OrderPayStatus,
     customerPayment: number,
-    paymentMethod: PaymentMethod[] | null) => {
-    // 1. Evitar ejecución si ya está en curso
+    paymentMethod: PaymentMethod[] | null
+  ) => {
     if (isLoading) return;
 
     try {
@@ -171,8 +144,8 @@ export default function OrderScreen() {
       if (orderId) {
         clearDraft();
         setShowCheckout(false);
-        setSelectedCustomer(AnonymousCustomer); // Resetear para la próxima venta
-        setGlobalDiscount(0)
+        setSelectedCustomer(AnonymousCustomer);
+        setGlobalDiscount(0);
         alert(`Venta guardada con éxito. ID: ${orderId}`);
       }
     } catch (error) {
@@ -193,15 +166,15 @@ export default function OrderScreen() {
   };
 
   return (
-    <div style={styles.container}>
-      <div style={styles.content}>
-        <Header isLoading={isLoading} onNavigate={(route) => navigate(route)} />
+    <div style={styles.screenContainer}>
+      <div style={styles.contentWrapper}>
+        <Header isLoading={isLoading} />
 
         <CustomerSelector
           selected={selectedCustomer}
           onClick={() => setShowCustomerModal(true)}
-          onClear={() => setSelectedCustomer(AnonymousCustomer)} // <--- Aquí la lógica
-          onOpenCreate={() => setShowCreateCustomerModal(true)} // <--- Aquí la lógica
+          onClear={() => setSelectedCustomer(AnonymousCustomer)}
+          onOpenCreate={() => setShowCreateCustomerModal(true)}
         />
 
         <section style={{ marginBottom: 40 }}>
@@ -217,7 +190,7 @@ export default function OrderScreen() {
           <OrderList
             items={draft.items}
             onRemove={removeItem}
-            onUpdate={(index, newQty) => updateQuantity(index, newQty)} // Conexión aquí
+            onUpdate={(index, newQty) => updateQuantity(index, newQty)}
           />
         </section>
 
@@ -233,6 +206,7 @@ export default function OrderScreen() {
         />
       </div>
 
+      {/* --- MODALES --- */}
       {showCreateCustomerModal && (
         <CustomerCreateModal
           isLoading={isLoading}
@@ -245,9 +219,9 @@ export default function OrderScreen() {
         <CheckoutModal
           total={totalFinal}
           comments={draft.comments || ""}
-          isLoading={isLoading} // <--- IMPORTANTE: Conecta el estado de carga aquí
+          isLoading={isLoading}
           onCommentsChange={updateComments}
-          onClose={() => !isLoading && setShowCheckout(false)} // No deja cerrar si está guardando
+          onClose={() => !isLoading && setShowCheckout(false)}
           onConfirm={handleFinalizeOrder}
         />
       )}
@@ -265,7 +239,6 @@ export default function OrderScreen() {
         <CustomerSelectorModal
           onClose={() => setShowCustomerModal(false)}
           onSelect={(c) => {
-            console.log("Cliente seleccionado:", c);
             setSelectedCustomer(c);
             setShowCustomerModal(false);
           }}
@@ -275,37 +248,24 @@ export default function OrderScreen() {
   );
 }
 
-// --- Sub-componentes internos para mayor claridad ---
-
+// --- Header simplificado ---
 interface HeaderProps {
   isLoading: boolean;
-  onNavigate: (route: string) => void;
 }
 
-
-const Header = ({ isLoading, onNavigate }: HeaderProps) => (
+const Header = ({ isLoading }: HeaderProps) => (
   <header style={styles.header}>
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%" }}>
-      <div style={styles.headerBrand}>
-        <div style={styles.logoWrapper}>
-          <img src={feliLogo} alt="Logo" style={styles.logo} />
-        </div>
-        <div>
-          <h1 style={styles.title}>Feli App - Nuevo Pedido</h1>
-          <p style={styles.subtitle}>Escanea productos para comenzar</p>
-        </div>
+      <div>
+        <h1 style={styles.title}>Nuevo Pedido</h1>
+        <p style={styles.subtitle}>Escanea productos o búscalos manualmente</p>
       </div>
 
-      <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
-        {isLoading && (
-          <div style={styles.loader}>
-            <span className="pulse-animation">●</span> Buscando...
-          </div>
-        )}
-        {/* Ahora el botón ejecuta la navegación */}
-        <CashFlowButton onClick={() => onNavigate('cashflow')} />
-        <SaleDashboardButton onClick={() => onNavigate('reports')} />
-      </div>
+      {isLoading && (
+        <div style={styles.loader}>
+          <span className="pulse-animation">●</span> Buscando...
+        </div>
+      )}
     </div>
   </header>
 );
@@ -321,23 +281,18 @@ const mapProductToOrderItem = (p: Product): OrderItem => ({
   subtotal: p.price
 });
 
-// --- Objeto de Estilos ---
+// --- Objeto de Estilos Optimizado para Layout ---
 const styles: Record<string, React.CSSProperties> = {
-  container: {
-    minHeight: "100vh",
-    backgroundColor: "#0F1115",
-    color: "white",
-    fontFamily: "'Inter', sans-serif",
+  screenContainer: {
     display: "flex",
-    flexDirection: "column",
-    alignItems: "center", // Asegura que el contenido esté centrado
+    justifyContent: "center",
+    width: "100%",
+    backgroundColor: "#0F1115", /* Asegura consistencia de fondo */
   },
-  content: {
-    flex: 1,
+  contentWrapper: {
     maxWidth: "1000px",
     width: "100%",
-    // Aumentamos el padding lateral para móviles y el inferior para el footer
-    padding: "20px 20px 160px 20px",
+    padding: "30px 40px 160px 40px",
     boxSizing: "border-box",
   },
   header: {
@@ -348,34 +303,15 @@ const styles: Record<string, React.CSSProperties> = {
     borderBottom: "1px solid rgba(255,255,255,0.05)",
     paddingBottom: 20
   },
-  headerBrand: {
-    display: "flex",
-    alignItems: "center",
-    gap: "18px"
-  },
-  logoWrapper: {
-    width: "80px", height: "80px",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(255,255,255,0.03)",
-    borderRadius: "12px",
-    border: "1px solid rgba(255,255,255,0.05)",
-    overflow: "hidden"
-  },
-  logo: {
-    width: "100%",
-    height: "100%",
-    objectFit: "contain"
-  },
   title: {
-    fontSize: "1.35rem",
+    fontSize: "1.6rem",
     fontWeight: 600,
-    margin: 2
+    margin: "0 0 4px 0",
+    color: "white"
   },
   subtitle: {
     color: "rgba(255,255,255,0.4)",
-    fontSize: "0.8rem",
+    fontSize: "0.85rem",
     margin: 0
   },
   loader: {
@@ -383,30 +319,4 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: "0.85rem",
     fontWeight: 500
   },
-  label: {
-    color: "rgba(255,255,255,0.4)",
-    fontSize: "0.9rem",
-    display: "block",
-    marginBottom: 4
-  },
-  subtotalValue: {
-    color: "rgba(255,255,255,0.7)",
-    fontSize: "1.2rem"
-  },
-  itemCount: {
-    color: "rgba(255,255,255,0.3)"
-  },
-  totalLabel: {
-    color: "#54C4F0",
-    fontSize: "0.9rem",
-    fontWeight: 600, display: "block",
-    // marginBottom: 5
-  },
-  totalValue: {
-    fontSize: "2.5rem",
-    // margin: 0,
-    color: "#54C4F0",
-    fontWeight: 700
-  },
 };
-
