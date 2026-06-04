@@ -50,32 +50,84 @@ export const DetailListModal: React.FC<DetailListModalProps> = ({
               const amount = isOrder
                 ? (type === 'DEUDAS' ? item.total - item.payed : item.payed)
                 : item.amount;
+
+              // --- NUEVO: Traductor y Limpiador de Categorías de Egresos ---
+              const traducirCategoria = (cat: string) => {
+                const diccionario: Record<string, string> = {
+                  SUPPLIER: 'Proveedor',
+                  SERVICES: 'Servicios',
+                  SALARY: 'Sueldos',
+                  EXPENSE: 'Gasto General',
+                  TAX: 'Impuestos',
+                  RENT: 'Alquiler'
+                };
+                return diccionario[cat.toUpperCase()] || cat;
+              };
+
+              // Definición limpia de Concepto y Badge de categoría
               const concept = isOrder
                 ? `Orden #${item.id || 'Draft'}`
-                : `[${item.category}]  ${item.note || 'Sin nota'}`;
+                : (item.note || 'Sin nota');
+
+              const categoryLabel = !isOrder ? traducirCategoria(item.category) : null;
 
               const clientName = isOrder && item.clientName ? ` ${item.clientName}` : '';
+              const orderItems = isOrder && 'items' in item ? item.items : [];
 
               return (
                 <div key={idx} style={itemRow}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  {/* CONTENEDOR IZQUIERDO: Todo alineado al inicio (flex-start) */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1, alignItems: 'flex-start' }}>
+
+                    {/* Concepto Principal */}
                     <span style={itemConcept}>{concept.trim()}</span>
-                    <span style={itemDate}
-                      {...clientName &&
-                      { fontStyle: 'italic', color: 'rgba(255,255,255,0.2)' }}>
-                      {clientName}
-                    </span>
+
+                    {/* Badge de Categoría (Solo para Egresos) */}
+                    {categoryLabel && (
+                      <span style={categoryTag}>
+                        {categoryLabel}
+                      </span>
+                    )}
+
+                    {/* Nombre del Cliente (Solo para Órdenes) */}
+                    {clientName && (
+                      <span style={{ ...itemDate, fontStyle: 'italic', color: 'rgba(255,255,255,0.4)' }}>
+                        Cliente: {clientName}
+                      </span>
+                    )}
+
+                    {/* Listado de Productos (Solo para Órdenes) */}
+                    {isOrder && orderItems && orderItems.length > 0 && (
+                      <div style={productsDetailsContainer}>
+                        {orderItems.map((prod: any, pIdx: number) => (
+                          <div key={pIdx} style={productDetailRow}>
+                            <span>
+                              {prod.article} {prod.branch ? `(${prod.branch})` : ''}
+                              <span style={{ color: 'rgba(255,255,255,0.3)', marginLeft: '6px' }}>
+                                x{prod.quantity}
+                              </span>
+                            </span>
+                            <span style={{ color: 'rgba(255, 255, 255, 0.5)' }}>
+                              {formatCurrency(prod.subtotal)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Fecha y Hora del movimiento */}
                     <span style={itemDate}>
                       {format(date, "dd/MM/yyyy HH:mm 'hs'", { locale: es })}
                     </span>
                   </div>
-                  <div style={{ textAlign: 'right' }}>
+
+                  {/* CONTENEDOR DERECHO: Monto e indicador de tipo */}
+                  <div style={{ textAlign: 'right', alignSelf: 'flex-start', minWidth: '100px' }}>
                     <span style={{ ...itemAmount, color: accentColor }}>
                       {formatCurrency(amount)}
                     </span>
                     <div style={paymentBadge}>
-                      {/* Aquí podrías mapear iconos de CASH/TRANSFER si lo deseas */}
-                      {isOrder ? 'Venta' : 'Egreso'}
+                      {isOrder ? (type === 'DEUDAS' ? 'Deuda Cta' : 'Venta') : 'Egreso'}
                     </div>
                   </div>
                 </div>
@@ -88,7 +140,7 @@ export const DetailListModal: React.FC<DetailListModalProps> = ({
   );
 };
 
-// --- Estilos Inline con el Estándar Feli App ---
+// --- Estilos Inline Modificados e Inyectados con el Estándar Feli App ---
 const modalOverlay: React.CSSProperties = {
   position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
   backgroundColor: 'rgba(10,12,16,0.9)', display: 'flex',
@@ -113,21 +165,27 @@ const listContainer: React.CSSProperties = {
 };
 
 const itemRow: React.CSSProperties = {
-  padding: '16px 4px', display: 'flex', justifyContent: 'space-between',
-  alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.02)',
-  transition: '0.2s'
+  padding: '18px 8px', 
+  display: 'flex', 
+  justifyContent: 'space-between',
+  alignItems: 'flex-start', // Mantiene los montos alineados al tope de la fila
+  borderBottom: '1px solid rgba(255,255,255,0.03)',
+  gap: '16px'
 };
 
 const itemConcept: React.CSSProperties = {
-  fontSize: '0.95rem', fontWeight: 500, color: 'white', paddingRight: '60px'
+  fontSize: '1rem', 
+  fontWeight: 600, 
+  color: 'white',
+  textAlign: 'left' // Fuerza la alineación al inicio
 };
 
 const itemDate: React.CSSProperties = {
-  fontSize: '0.75rem', color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase'
+  fontSize: '0.75rem', color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', marginTop: '2px'
 };
 
 const itemAmount: React.CSSProperties = {
-  fontSize: '1rem', fontWeight: 700
+  fontSize: '1.05rem', fontWeight: 700
 };
 
 const closeButtonStyle: React.CSSProperties = {
@@ -136,5 +194,40 @@ const closeButtonStyle: React.CSSProperties = {
 };
 
 const paymentBadge: React.CSSProperties = {
-  fontSize: '0.65rem', opacity: 0.4, textTransform: 'uppercase', letterSpacing: '1px', marginTop: '2px'
-}
+  fontSize: '0.65rem', opacity: 0.4, textTransform: 'uppercase', letterSpacing: '1px', marginTop: '4px'
+};
+
+// --- NUEVOS ESTILOS PARA LOS ARTÍCULOS DETALLADOS ---
+const productsDetailsContainer: React.CSSProperties = {
+  backgroundColor: 'rgba(255, 255, 255, 0.02)',
+  borderLeft: '2px solid rgba(84, 196, 240, 0.3)', // Detalle azul sutil Feli App
+  padding: '8px 12px',
+  borderRadius: '4px',
+  marginTop: '6px',
+  marginBottom: '6px',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '4px'
+};
+
+const productDetailRow: React.CSSProperties = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  fontSize: '0.82rem',
+  color: 'rgba(255, 255, 255, 0.7)',
+  fontFamily: 'Inter, sans-serif'
+};
+
+const categoryTag: React.CSSProperties = {
+  backgroundColor: 'rgba(255, 255, 255, 0.05)',
+  color: 'rgba(255, 255, 255, 0.6)',
+  fontSize: '0.7rem',
+  fontWeight: 600,
+  padding: '3px 8px',
+  borderRadius: '4px',
+  textTransform: 'uppercase',
+  letterSpacing: '0.5px',
+  display: 'inline-block',
+  marginTop: '2px',
+  marginBottom: '2px'
+};
