@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import MainLayout from "./features/ui/MainLayout";
+import MainLayout from "./features/ui/navigation/MainLayout";
 import { lazy } from "react";
 
 const CashFlowDashboard = lazy(() => import("./features/ui/dashboard/screens/CashflowDashboard"));

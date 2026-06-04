@@ -1,6 +1,6 @@
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
-import feliLogo from "../../../src/assets/logo-feli.webp";
-import { CashFlowButton, SaleDashboardButton } from "../../features/ui/navigation/navigationButtons";
+import feliLogo from "../../../../src/assets/logo-feli.webp";
+import { CashFlowButton, SaleDashboardButton } from "./navigationButtons";
 
 export default function MainLayout() {
   const navigate = useNavigate();

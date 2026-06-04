@@ -11,12 +11,10 @@ import {
     addMonths, subMonths
 } from 'date-fns';
 
-
 export const useSalesReports = () => {
     const [orders, setOrders] = useState<OrderModel[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [range, setRange] = useState<DateRange>('today');
-    // FECHA DE REFERENCIA: El "pivote" para movernos entre periodos
     const [referenceDate, setReferenceDate] = useState(new Date());
 
     const fetchSales = useCallback(async (selectedRange: DateRange, refDate: Date) => {
@@ -43,7 +41,6 @@ export const useSalesReports = () => {
         }
 
         try {
-            console.log(`Cargando ventas desde ${startDate} hasta ${endDate}...`);
             const data = await salesRepository.getOrdersByDateRange(
                 startDate.getTime(),
                 endDate.getTime()
@@ -56,12 +53,10 @@ export const useSalesReports = () => {
         }
     }, []);
 
-    // Se dispara cuando cambia el rango O la fecha de referencia
     useEffect(() => {
         fetchSales(range, referenceDate);
     }, [range, referenceDate, fetchSales]);
 
-    // Handlers para la UI
     const handleNext = () => {
         if (range === 'today') setReferenceDate(prev => addDays(prev, 1));
         if (range === 'week') setReferenceDate(prev => addWeeks(prev, 1));
@@ -76,7 +71,6 @@ export const useSalesReports = () => {
 
     const resetToToday = () => setReferenceDate(new Date());
 
-    // --- Lógica de Stats (Se mantiene igual, optimizada con useMemo) ---
     const stats = useMemo(() => {
         if (orders.length === 0) return null;
         let periodTotal = 0;
@@ -86,24 +80,18 @@ export const useSalesReports = () => {
         const productMap: Record<string, any> = {};
 
         orders.forEach((order) => {
-            // console.log("Procesando orden:", order);
             periodTotal += order.total;
             pendingCollect += (order.total - (order.payed || 0));
-            /*  if (order.paymentMethod.type === "CASH") periodCash += (order.payed || 0);
-             if (order.paymentMethod.type === "TRANSFER") periodTransfer += (order.payed || 0); */
-            // Nueva lógica para procesar el array de métodos de pago
-            console.log("Procesando métodos de pago para orden:", order.docId, order.paymentMethod);
+            
             if (Array.isArray(order.paymentMethod)) {
                 order.paymentMethod.forEach(method => {
                     if (method.type === "CASH") periodCash += method.amount;
                     if (method.type === "TRANSFER") periodTransfer += method.amount;
                 });
             }
-            else{
-
-            }
 
             order.items.forEach((item) => {
+                // Mantenemos tu productMap exactamente igual
                 if (!productMap[item.productId]) {
                     productMap[item.productId] = { branch: item.branch, article: item.article, quantity: 0, total: 0 };
                 }
@@ -112,12 +100,12 @@ export const useSalesReports = () => {
             });
         });
 
-        const sortedProducts = Object.values(productMap).sort((a, b) => b.quantity - a.quantity);
+        // Retornamos todos los productos procesados sin recortar
+        const allProducts = Object.values(productMap);
 
         return {
             periodTotal, periodCash, periodTransfer, pendingCollect,
-            topProducts: sortedProducts.slice(0, 10),
-            bottomProducts: sortedProducts.filter(p => p.quantity > 0).reverse().slice(0, 10)
+            products: allProducts
         };
     }, [orders]);
 

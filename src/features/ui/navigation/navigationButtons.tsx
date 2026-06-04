@@ -13,7 +13,7 @@ export function SaleDashboardButton({ onClick }: Props) {
             onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#1A1D23'}
         >
             <ChartBarIcon style={iconStyle} />
-            Ver Reportes
+            Reporte de Ventas
         </button>
     )
 }
@@ -27,7 +27,7 @@ export function CashFlowButton({ onClick }: Props) {
             onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#1A1D23'}
         >
             <WalletIcon style={iconStyle} />
-            Cash Flow
+            Flujo de Caja
         </button>
     )
 }
