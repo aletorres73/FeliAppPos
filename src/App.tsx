@@ -1,8 +1,11 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import MainLayout from "./features/ui/MainLayout";
-import OrderScreen from "./features/ui/orders/screens/OrdersScreen"; 
-import CashFlowDashboard from "./features/ui/dashboard/screens/CashflowDashboard"; 
-import SalesDashboard from "./features/ui/dashboard/screens/SalesDashboard";      
+import { lazy } from "react";
+
+const CashFlowDashboard = lazy(() => import("./features/ui/dashboard/screens/CashflowDashboard"));
+const SalesDashboard = lazy(() => import("./features/ui/dashboard/screens/SalesDashboard"));
+const OrderScreen = lazy(() => import("./features/ui/orders/screens/OrdersScreen"));
+
 
 export default function AppRouter() {
   return (
@@ -15,9 +18,6 @@ export default function AppRouter() {
           <Route path="cashflow" element={<CashFlowDashboard />} />
           <Route path="reports" element={<SalesDashboard />} />
         </Route>
-        
-        {/* Aquí podrías poner rutas externas al dashboard si hiciera falta, ej: login */}
-        {/* <Route path="/login" element={<Login />} /> */}
 
       </Routes>
     </BrowserRouter>
