@@ -14,7 +14,8 @@ import { CheckoutModal } from "../../../ui/orders/components/CheckoutModal";
 // Repositorios y Tipos
 import { getProductById } from "../../../data/repositories/ProductRepository";
 import { customerRepository } from "../../../data/repositories/CustomerRepository";
-import type { Product, OrderItem, OrderPayStatus, PaymentMethod } from "../../../domain/types/orderTypes";
+import type { OrderItem, OrderPayStatus, PaymentMethod } from "../../../domain/types/orderTypes";
+import type { Product } from "../../../domain/types/productTypes";
 import { AnonymousCustomer, type Customer } from "../../../domain/types/customersTypes";
 
 export default function OrderScreen() {
@@ -76,7 +77,7 @@ export default function OrderScreen() {
       return () => clearTimeout(focusTimer);
     }
   }, [showCheckout, showCustomerModal, manualCode]);
-  
+
   // --- Handlers ---
   const handleSaveNewCustomer = async (data: any) => {
     setIsLoading(true);

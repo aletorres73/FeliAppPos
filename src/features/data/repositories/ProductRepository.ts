@@ -1,6 +1,6 @@
 import { db } from "../services/FirebaseService";
-import { doc, getDoc, getDocs, collection, onSnapshot, query } from "firebase/firestore";
-import type { Product } from "../../domain/types/orderTypes";
+import { doc, getDoc, getDocs, collection, onSnapshot, query, deleteDoc } from "firebase/firestore";
+import type { Product } from "../../domain/types/productTypes";
 
 export const getProductById = async (docId: string): Promise<Product | null> => {
   try {
@@ -39,7 +39,18 @@ export const getProducts = async (): Promise<Product[]> => {
     return products;
   } catch (error) {
     console.error("Error al obtener productos:", error);
-    return []; 
+    return [];
+  }
+};
+
+export const deleteProduct = async (docId: string): Promise<void> => {
+  try {
+    const docRef = doc(db, "products", docId);
+    await deleteDoc(docRef);
+    
+    console.log(`Producto con ID ${docId} eliminado`);
+  } catch (error) {
+    console.error("Error al eliminar producto:", error);
   }
 };
 
@@ -64,7 +75,7 @@ export const mapToProduct = (data: any): Product => {
 
 export const subscribeToProducts = (onUpdate: (products: Product[]) => void) => {
   const colRef = collection(db, "products");
-  
+
   // Opcional: puedes usar query(colRef, where("activo", "==", true)) si quieres filtrar
   const q = query(colRef);
 
@@ -75,7 +86,7 @@ export const subscribeToProducts = (onUpdate: (products: Product[]) => void) => 
       // Importante: Asegúrate de incluir el ID del documento
       return mapToProduct({ ...data, id: doc.id });
     });
-    
+
     console.log(`Actualización en tiempo real: ${products.length} productos`);
     onUpdate(products);
   }, (error) => {

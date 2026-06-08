@@ -32,6 +32,20 @@ export function CashFlowButton({ onClick }: Props) {
     )
 }
 
+export function StockButton({ onClick }: Props) {
+    return (
+        <button
+            onClick={onClick}
+            style={buttonStyles}
+            onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#252a33'}
+            onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#1A1D23'}
+        >
+            <span style={{ fontSize: '18px', fontWeight: 700 }}>📦</span>
+            Stock
+        </button>
+    )
+}
+
 export const buttonStyles: React.CSSProperties = {
     backgroundColor: '#1A1D23',
     border: '1px solid #54C4F0',

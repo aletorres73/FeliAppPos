@@ -93,20 +93,21 @@ const styles: Record<string, React.CSSProperties> = {
     padding: "20px",
     display: "flex",
     justifyContent: "space-between",
-    alignItems: "center", /* Cambiado a center para mejor alineación */
+    alignItems: "center",
     
-    // --- NUEVA ESTRATEGIA DE CENTRADO CON SIDEBAR ---
+    // --- ESTRATEGIA DINÁMICA ---
     position: "fixed",
     bottom: 0,
     right: 0,
-    left: "260px", // Deja el espacio exacto del Sidebar de tu MainLayout
+    // Lee la variable del Layout. Si por alguna razón no la encuentra, usa 260px de respaldo.
+    left: "var(--sidebar-width, 260px)", 
     
-    // Quitamos el left 50% y el transform que causaban el desvío
+    // Animación idéntica a la del Sidebar para que se muevan juntos
+    transition: "left 0.3s cubic-bezier(0.4, 0, 0.2, 1)", 
     
-    // Centramos el contenido dentro de la zona útil de la derecha
     margin: "0 auto", 
     width: "100%",
-    maxWidth: "1000px", // Limita exactamente al ancho del contentWrapper de la orden
+    maxWidth: "1000px", 
     
     borderTopLeftRadius: "24px",
     borderTopRightRadius: "24px",
