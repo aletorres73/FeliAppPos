@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { Product } from "../../../domain/types/orderTypes";
+import type { Product } from "../../../domain/types/productTypes";
 
 type Props = {
   onScan: (code: string) => void;

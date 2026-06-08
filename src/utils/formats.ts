@@ -9,6 +9,7 @@ export const roundToNearestHundred = (value: number): number => {
  * Formatea un número como moneda local (Argentina).
  */
 export const formatCurrency = (value: number): string => {
+  console.log(`Formateando valor: ${value}`);
   return value.toLocaleString('es-AR', {
     style: 'currency',
     currency: 'ARS',

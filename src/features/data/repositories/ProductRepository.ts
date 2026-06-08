@@ -1,5 +1,5 @@
 import { db } from "../services/FirebaseService";
-import { doc, getDoc, getDocs, collection, onSnapshot, query, deleteDoc } from "firebase/firestore";
+import { doc, getDoc, getDocs, collection, onSnapshot, query, deleteDoc, setDoc, updateDoc } from "firebase/firestore";
 import type { Product } from "../../domain/types/productTypes";
 
 export const getProductById = async (docId: string): Promise<Product | null> => {
@@ -47,7 +47,7 @@ export const deleteProduct = async (docId: string): Promise<void> => {
   try {
     const docRef = doc(db, "products", docId);
     await deleteDoc(docRef);
-    
+
     console.log(`Producto con ID ${docId} eliminado`);
   } catch (error) {
     console.error("Error al eliminar producto:", error);
@@ -73,6 +73,25 @@ export const mapToProduct = (data: any): Product => {
   };
 }
 
+export const mapToFirestoreProduct = (product: Product): any => {
+  return {
+    id: product.id,
+    articulo: product.article,
+    marca: product.branch,
+    precio: product.price,
+    costo: product.cost,
+    stock: product.stock,
+    activo: product.active,
+    ventaPorPeso: product.saleWeight,
+    ganancia: product.gains,
+    peso: product.weight,
+    cantidadVendida: product.quantitySold,
+    createdAt: product.createdAt,
+    updatedAt: product.updatedAt,
+    pesoVendido: product.weightSold
+  };
+}
+
 export const subscribeToProducts = (onUpdate: (products: Product[]) => void) => {
   const colRef = collection(db, "products");
 
@@ -93,3 +112,26 @@ export const subscribeToProducts = (onUpdate: (products: Product[]) => void) => 
     console.error("Error en el listener de productos:", error);
   });
 };
+
+export const addProduct = async (product: Product): Promise<void> => {
+  try {
+    const docRef = doc(db, "products", product.id.trim());  
+    
+    await setDoc(docRef, mapToFirestoreProduct(product));
+    
+    console.log(`Producto agregado con ID personalizado: ${product.article}`);
+  } catch (error) {
+    console.error("Error al agregar producto:", error);
+  }
+};
+
+export const updateProduct = async (docId: string, updatedData: Partial<Product>): Promise<void> => {
+  try {
+    const docRef = doc(db, "products", docId);
+    await updateDoc(docRef, mapToFirestoreProduct(updatedData as Product));  
+    console.log(`Producto actualizado: ${docId}`);
+  } catch (error) {
+    console.error("Error al actualizar producto:", error);  
+  }
+};
+

@@ -11,6 +11,6 @@ export type Product = {
   saleWeight: boolean
   quantitySold: number
   createdAt: number
-  updatedAt: number
+  updatedAt: number | null
   weightSold: number
 }
