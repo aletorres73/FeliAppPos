@@ -15,7 +15,7 @@ import {
     branchLabel,
     soldValueStyle,
     fullScreenCenter,
-} from '../../stock/styles/styles';
+} from '../styles/StockScreenStyles';
 
 export default function StockScreen() {
     const [products, setProducts] = useState<Product[]>([]);
