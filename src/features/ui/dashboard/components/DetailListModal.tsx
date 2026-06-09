@@ -1,7 +1,7 @@
 import React from 'react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { formatCurrency } from '../../../../utils/formats';
+import { formatCurrency } from '../../../domain/utils/formats';
 import { type OrderModel } from '../../../domain/types/orderTypes';
 import { type Expense } from '../../../domain/types/expenseTypes';
 

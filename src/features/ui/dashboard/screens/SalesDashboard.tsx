@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
-import { useSalesReports } from '../../../domain/hook/useSalesReports';
-import { formatCurrency } from "../../../../utils/formats";
+import { useSalesReports } from '../hooks/useSalesReports';
+import { formatCurrency } from "../../../domain/utils/formats";
 import { useNavigate } from 'react-router-dom';
 import { format, startOfWeek } from 'date-fns';
 import { es } from 'date-fns/locale';

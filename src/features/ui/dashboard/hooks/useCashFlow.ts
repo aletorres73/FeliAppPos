@@ -1,14 +1,14 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { salesRepository } from '../../data/repositories/SalesRepository';
-import { expenseRepository } from '../../data/repositories/ExpenseRepository';
-import { customerRepository } from '../../data/repositories/CustomerRepository';
-import { type DateRange } from '../types/salesTypes';
+import { salesRepository } from '../../../data/repositories/SalesRepository';
+import { expenseRepository } from '../../../data/repositories/ExpenseRepository';
+import { customerRepository } from '../../../data/repositories/CustomerRepository';
+import { type DateRange } from '../../../domain/types/salesTypes';
 import {
     startOfDay, endOfDay, startOfMonth, endOfMonth, startOfWeek, endOfWeek,
     addDays, subDays, addWeeks, subWeeks, addMonths, subMonths
 } from 'date-fns';
-import { type OrderModel } from '../types/orderTypes';
-import { type Expense } from '../types/expenseTypes';
+import { type OrderModel } from '../../../domain/types/orderTypes';
+import { type Expense } from '../../../domain/types/expenseTypes';
 
 export const useCashflow = () => {
     const [isLoading, setIsLoading] = useState(true);

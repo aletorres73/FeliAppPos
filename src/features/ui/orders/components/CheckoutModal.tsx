@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { formatCurrency } from "../../../../utils/formats";
+import { formatCurrency } from "../../../domain/utils/formats";
 import { type PaymentType, type PaymentMethod } from "../../../domain/types/orderTypes";
 
 interface Props {

@@ -1,5 +1,5 @@
 import React from 'react';
-import { useExpenseForm } from '../../../domain/hook/useExpenseForm';
+import { useExpenseForm } from '../hooks/useExpenseForm';
 import { cardStyle, kpiLabel, /* backButtonStyle */ } from '../../dashboard/styles/Dashboard';
 import type { PaymentType } from '../../../domain/types/orderTypes';
 

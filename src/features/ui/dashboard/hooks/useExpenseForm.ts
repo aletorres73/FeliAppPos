@@ -1,7 +1,7 @@
 // src/features/expenses/hooks/useExpenseForm.ts
 import { useState } from 'react';
-import { expenseRepository } from '../../data/repositories/ExpenseRepository';
-import type { Expense } from '../../domain/types/expenseTypes';
+import { expenseRepository } from '../../../data/repositories/ExpenseRepository';
+import type { Expense } from '../../../domain/types/expenseTypes';
 
 export const useExpenseForm = (onSuccess?: () => void) => {
     const [isLoading, setIsLoading] = useState(false);

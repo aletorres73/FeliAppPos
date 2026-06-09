@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useCashflow } from '../../../domain/hook/useCashFlow';
-import { formatCurrency } from "../../../../utils/formats";
+import { useCashflow } from '../hooks/useCashFlow';
+import { formatCurrency } from "../../../domain/utils/formats";
 import ExpenseForm from '../components/ExpenseForm';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { format, startOfWeek } from 'date-fns';

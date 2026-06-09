@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useOrder } from "../../../domain/hook/useOrder";
+import { useOrder } from "../hooks/useOrder";
 
 // Componentes UI de la orden
 import { ScannerInput } from "../../../ui/orders/components/ScannerImput";
