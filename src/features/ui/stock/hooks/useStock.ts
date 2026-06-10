@@ -198,6 +198,28 @@ export function useStock() {
         }
     };
 
+    // 🆕 Cálculo de la inversión total en tiempo real de lo que está en pantalla
+    const totalInvestment = useMemo(() => {
+        return groupedProducts.reduce((total, parent) => {
+            // 1. Sumar la inversión del producto principal (Padre o Independiente)
+            const parentCost = parent.cost || 0;
+            const parentInvestment = parent.saleWeight
+                ? parentCost * (parent.weight || 0)
+                : parentCost * (parent.stock || 0);
+
+            // 2. Sumar la inversión de cada una de sus variaciones (hijos) si existen
+            const childrenInvestment = (parent.variations || []).reduce((subTotal, child) => {
+                const childCost = child.cost || 0;
+                const childValue = child.saleWeight
+                    ? childCost * (child.weight || 0)
+                    : childCost * (child.stock || 0);
+                return subTotal + childValue;
+            }, 0);
+
+            return total + parentInvestment + childrenInvestment;
+        }, 0);
+    }, [groupedProducts]);
+
     return {
         // Estados
         products,
@@ -206,9 +228,9 @@ export function useStock() {
         isModalOpen,
         isEditingMode,
         editingProduct,
-        // filteredProducts,
         groupedProducts,
         selectedProductIds,
+        totalInvestment,
 
         // Modificadores de estado directos (para los subcomponentes)
         setSearchTerm,

@@ -6,6 +6,7 @@ import {
 import { StockModal } from '../components/StockModal';
 import { SearchContainer } from '../components/SearchContainer';
 import { ProductList } from '../components/ProductList';
+import { formatCurrency } from '../../../domain/utils/formats';
 
 export default function StockScreen() {
     const {
@@ -17,6 +18,7 @@ export default function StockScreen() {
         editingProduct,
         groupedProducts,
         selectedProductIds,
+        totalInvestment,
         toggleSelectProduct,
         handleBulkGroupAssignment,
         setSearchTerm,
@@ -65,7 +67,26 @@ export default function StockScreen() {
                 </button>
             </header>
 
-            <SearchContainer searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
+
+            <div style={
+                {
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                }}>
+
+                <SearchContainer searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
+                {/* ─── 🆕 TARJETA DE INVERSIÓN TOTAL EN PANTALLA ─── */}
+                <div style={investmentCardStyle}>
+                    <span style={investmentLabelStyle}>
+                        Inversión estimada
+                    </span>
+                    <span style={investmentValueStyle}>
+                        {formatCurrency(totalInvestment)}
+                    </span>
+                </div>
+
+            </div>
 
             <ProductList
                 filteredProducts={groupedProducts}
@@ -98,3 +119,32 @@ export default function StockScreen() {
         </div>
     );
 }
+
+const investmentCardStyle: React.CSSProperties = {
+    backgroundColor: '#1C2028',
+    border: '1px solid rgba(255, 255, 255, 0.08)',
+    borderRadius: '6px',
+    padding: '1em',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 'fit-content',
+    boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+    marginBottom: '20px'
+};
+
+const investmentLabelStyle: React.CSSProperties = {
+    fontSize: '0.7rem',
+    color: 'rgba(255, 255, 255, 0.4)',
+    textTransform: 'uppercase',
+    letterSpacing: '0.5px',
+    marginBottom: '2px'
+};
+
+const investmentValueStyle: React.CSSProperties = {
+    fontSize: '1.25rem',
+    color: '#47D6A7', // Color verde para denotar dinero/activo
+    fontWeight: '700',
+    fontFamily: 'monospace' // Para que los números no bailen al cambiar el filtro
+};

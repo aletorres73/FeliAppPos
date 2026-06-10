@@ -122,7 +122,7 @@ export function ProductList({
                             {/* Acciones Padre */}
                             <div style={{ flex: '1.2', display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
                                 {hasVariations && (
-                                    <button style={destroyGroupButtonStyle} onClick={() => handleDestroyGroup(product.id)}>💥 DISOLVER</button>
+                                    <button style={destroyGroupButtonStyle} onClick={() => handleDestroyGroup(product.id)}>DISOLVER</button>
                                 )}
                                 <button style={{ ...editAction, padding: '6px 12px', fontSize: '0.7rem', borderRadius: '4px' }} onClick={() => { setIsEditingMode(true); setEditingProduct(product); setIsModalOpen(true); }}>{hasVariations ? 'CONFIG' : 'EDITAR'}</button>
                                 <button style={{ ...deleteAction, padding: '6px 12px', fontSize: '0.7rem', borderRadius: '4px', ...(hasVariations ? disabledDeleteActionStyle : {}) }} disabled={hasVariations} onClick={() => handleDelete(product.id, true)}>ELIMINAR</button>
