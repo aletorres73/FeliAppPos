@@ -207,7 +207,6 @@ export const bulkActionRepository = {
       batch.update(childRef, {
         precio: updates.price ?? childData.precio,
         costo: updates.cost ?? childData.costo,
-        marca: updates.branch ?? childData.marca,
         activo: updates.active ?? childData.activo,
         ganancia: updates.gains ?? childData.ganancia,
         updatedAt: Date.now()
@@ -280,7 +279,6 @@ export const bulkActionRepository = {
           isParent: false, // Un hijo no puede ser padre
           precio: parentData.precio, // Hereda precio nativo
           costo: parentData.costo,   // Hereda costo nativo
-          marca: parentData.marca,   // Hereda marca nativa
           ganancia: parentData.ganancia,
           updatedAt: Date.now()
         });
