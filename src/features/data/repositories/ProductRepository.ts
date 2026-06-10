@@ -249,5 +249,46 @@ export const bulkActionRepository = {
     // Ejecutar lote en Firebase
     await batch.commit();
     console.log(`Grupo ${parentId} destruido. Hijos desvinculados con éxito.`);
+  },
+
+  async assignProductsToGroup(parentId: string, productIds: string[]): Promise<void> {
+    const batch = writeBatch(db);
+    
+    // 1. Obtener la información del Padre para que los hijos la hereden
+    const parentRef = doc(db, "products", parentId);
+    const parentSnap = await getDoc(parentRef);
+    
+    if (!parentSnap.exists()) {
+      throw new Error("El producto padre seleccionado no existe.");
+    }
+    
+    const parentData = parentSnap.data();
+
+    // 2. Marcar explícitamente al producto raíz como Padre (por si no lo estaba)
+    batch.update(parentRef, {
+      isParent: true,
+      updatedAt: Date.now()
+    });
+
+    // 3. Vincular cada ID seleccionado al nuevo grupo
+    productIds.forEach((id) => {
+      // Evitamos que el padre se auto-asigne como hijo si se coló en la selección
+      if (id !== parentId) {
+        const childRef = doc(db, "products", id);
+        batch.update(childRef, {
+          parentId: parentId,
+          isParent: false, // Un hijo no puede ser padre
+          precio: parentData.precio, // Hereda precio nativo
+          costo: parentData.costo,   // Hereda costo nativo
+          marca: parentData.marca,   // Hereda marca nativa
+          ganancia: parentData.ganancia,
+          updatedAt: Date.now()
+        });
+      }
+    });
+
+    await batch.commit();
+    console.log(`Asignación masiva completada: ${productIds.length} productos añadidos al grupo ${parentId}`);
   }
+
 };

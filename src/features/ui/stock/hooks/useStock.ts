@@ -9,10 +9,31 @@ export function useStock() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEditingMode, setIsEditingMode] = useState(false);
     const [editingProduct, setEditingProduct] = useState<Partial<Product> | null>(null);
+    const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]); // 🆕 Estado de selección
 
     useEffect(() => {
         loadProducts();
     }, []);
+
+    const toggleSelectProduct = (id: string) => {
+        setSelectedProductIds(prev =>
+            prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+        );
+    };
+
+    // 🆕 Acción masiva
+    const handleBulkGroupAssignment = async (parentId: string) => {
+        if (selectedProductIds.length === 0) return;
+        setIsLoading(true);
+        try {
+            await bulkActionRepository.assignProductsToGroup(parentId, selectedProductIds);
+            setSelectedProductIds([]); // Limpiamos los checkboxes
+            await loadProducts();      // Recargamos el inventario
+        } catch (error) {
+            console.error("Error en asignación masiva:", error);
+            setIsLoading(false);
+        }
+    };
 
     const loadProducts = async () => {
         setIsLoading(true);
@@ -187,12 +208,14 @@ export function useStock() {
         editingProduct,
         // filteredProducts,
         groupedProducts,
+        selectedProductIds,
 
         // Modificadores de estado directos (para los subcomponentes)
         setSearchTerm,
         setIsEditingMode,
         setEditingProduct,
         setIsModalOpen,
+        setSelectedProductIds,
 
         // Acciones y Handlers
         handleDelete,
@@ -202,6 +225,8 @@ export function useStock() {
         handlePriceChange,
         handleDestroyGroup,
         openCreateModal,
-        closeModal
+        closeModal,
+        toggleSelectProduct,
+        handleBulkGroupAssignment, // 🆕 Nueva acción enviada a la vista
     };
 }

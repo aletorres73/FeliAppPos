@@ -16,6 +16,9 @@ export default function StockScreen() {
         isEditingMode,
         editingProduct,
         groupedProducts,
+        selectedProductIds,
+        toggleSelectProduct,
+        handleBulkGroupAssignment,
         setSearchTerm,
         setIsEditingMode,
         setEditingProduct,
@@ -70,7 +73,10 @@ export default function StockScreen() {
                 setEditingProduct={setEditingProduct}
                 setIsModalOpen={setIsModalOpen}
                 handleDelete={handleDelete}
-                handleDestroyGroup={handleDestroyGroup} 
+                handleDestroyGroup={handleDestroyGroup}
+                selectedProductIds={selectedProductIds}
+                toggleSelectProduct={toggleSelectProduct}
+                handleBulkGroupAssignment={handleBulkGroupAssignment}
             />
 
             {/* --- MODAL DINÁMICA DE CREACIÓN / EDICIÓN --- */}
