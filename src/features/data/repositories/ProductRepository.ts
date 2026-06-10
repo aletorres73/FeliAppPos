@@ -216,5 +216,38 @@ export const bulkActionRepository = {
 
     await batch.commit();
     console.log(`Actualización en lote completada para el grupo de: ${parentId}`);
+  },
+
+  async destroyGroup(parentId: string): Promise<void> {
+    const batch = writeBatch(db);
+    const parentRef = doc(db, "products", parentId);
+
+    // 1. Modificar el producto Padre para que deje de serlo
+    batch.update(parentRef, {
+      isParent: false,
+      updatedAt: Date.now()
+    });
+
+    // 2. Traer todos los hijos vinculados
+    const childrenQuery = query(
+      collection(db, "products"),
+      where("parentId", "==", parentId)
+    );
+    const childrenSnap = await getDocs(childrenQuery);
+
+    // 3. Romper la relación quitando el parentId y el stock linked a cada uno
+    childrenSnap.forEach((childDoc) => {
+      const childRef = doc(db, "products", childDoc.id);
+      batch.update(childRef, {
+        parentId: null,
+        stockLinked: false,
+        conversionFactor: null,
+        updatedAt: Date.now()
+      });
+    });
+
+    // Ejecutar lote en Firebase
+    await batch.commit();
+    console.log(`Grupo ${parentId} destruido. Hijos desvinculados con éxito.`);
   }
 };

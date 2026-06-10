@@ -26,6 +26,18 @@ export function useStock() {
         }
     };
 
+    const handleDestroyGroup = async (parentId: string) => {
+        setIsLoading(true);
+        try {
+            await bulkActionRepository.destroyGroup(parentId);
+            console.log("Grupo disuelto correctamente.");
+            await loadProducts(); // Recarga la lista actualizada desde Firebase
+        } catch (error) {
+            console.error("Error al destruir el grupo:", error);
+            setIsLoading(false);
+        }
+    };
+
     const groupedProducts = useMemo(() => {
         // 1. Separamos los productos que son "Padres" o "Independientes"
         const parents = products.filter(p => p.isParent || !p.parentId);
@@ -188,6 +200,7 @@ export function useStock() {
         handleCostChange,
         handleGainsChange,
         handlePriceChange,
+        handleDestroyGroup,
         openCreateModal,
         closeModal
     };

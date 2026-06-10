@@ -25,6 +25,7 @@ export default function StockScreen() {
         handleCostChange,
         handleGainsChange,
         handlePriceChange,
+        handleDestroyGroup,
         openCreateModal,
         closeModal
     } = useStock();
@@ -69,6 +70,7 @@ export default function StockScreen() {
                 setEditingProduct={setEditingProduct}
                 setIsModalOpen={setIsModalOpen}
                 handleDelete={handleDelete}
+                handleDestroyGroup={handleDestroyGroup} 
             />
 
             {/* --- MODAL DINÁMICA DE CREACIÓN / EDICIÓN --- */}

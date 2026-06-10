@@ -4,8 +4,6 @@ import {
     articleName,
     branchLabel,
     productBadge,
-    labelStyle,
-    valueStyle,
     soldValueStyle,
     editAction,
     deleteAction
@@ -20,98 +18,130 @@ interface ProductListProps {
     setIsEditingMode: (isEditing: boolean) => void;
     setEditingProduct: (product: Partial<Product> | null) => void;
     setIsModalOpen: (isOpen: boolean) => void;
-    handleDelete: (id: string, isParent?: boolean) => void; // 💡 Agregamos flag opcional
+    handleDelete: (id: string, isParent?: boolean) => void;
+    handleDestroyGroup: (parentId: string) => void; // 🆕 Callback para deshacer el grupo
 }
 
-export function ProductList({ filteredProducts, setIsEditingMode, setEditingProduct, setIsModalOpen, handleDelete }: ProductListProps) {
+export function ProductList({ 
+    filteredProducts, 
+    setIsEditingMode, 
+    setEditingProduct, 
+    setIsModalOpen, 
+    handleDelete,
+    handleDestroyGroup 
+}: ProductListProps) {
+    
     return (
         <div style={listWrapperStyle}>
+            {/* Cabecera de la tabla para guiar la vista */}
+            <div style={tableHeaderStyle}>
+                <div style={{ flex: '2' }}>PRODUCTO / DETALLE</div>
+                <div style={{ flex: '1' }}>COSTO</div>
+                <div style={{ flex: '1' }}>GANANCIA (%)</div>
+                <div style={{ flex: '1' }}>P. VENTA</div>
+                <div style={{ flex: '1' }}>STOCK</div>
+                <div style={{ flex: '1' }}>VENDIDOS</div>
+                <div style={{ flex: '1.2', textAlign: 'right' }}>ACCIONES</div>
+            </div>
+
             {filteredProducts.map(product => {
                 const variations = product.variations || [];
                 const hasVariations = variations.length > 0;
 
-                // 🧮 Métricas del grupo o producto simple
-                const totalGroupStock = variations.reduce((acc, v) => acc + (v.stock || 0), 0);
-                const totalGroupWeight = variations.reduce((acc, v) => acc + (v.weight || 0), 0);
+                // 🧮 Métricas acumuladas de ventas para el Grupo (Padre + Hijos)
                 const totalGroupSold = variations.reduce((acc, v) => acc + (v.quantitySold || 0), 0) + (product.quantitySold || 0);
                 const totalGroupWeightSold = variations.reduce((acc, v) => acc + (v.weightSold || 0), 0) + (product.weightSold || 0);
-                const groupPrice = product.price || (hasVariations ? variations[0].price : 0);
 
                 return (
                     <div key={product.id} style={cardContainerStyle}>
-
-                        {/* 1. SECCIÓN SUPERIOR: Información Principal y Precios */}
-                        <div style={topSectionStyle}>
-
-                            {/* Bloque Identificador */}
-                            <div style={mainInfoBlockStyle}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '6px' }}>
-                                    <span style={{ ...articleName, fontSize: '1.2rem' }}>{product.article}</span>
+                        
+                        {/* ─── FILA PADRE O PRODUCTO SIMPLE ─── */}
+                        <div style={rowStyle(true)}>
+                            
+                            {/* Columna 1: Info Principal */}
+                            <div style={{ flex: '2', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <span style={{ ...articleName, fontSize: '1.05rem' }}>{product.article}</span>
                                     {hasVariations && (
-                                        <span style={productBadge(product.active)}>
-                                            GRUPO
-                                        </span>
+                                        <span style={productBadge(product.active)}>GRUPO</span>
                                     )}
                                 </div>
                                 <span style={branchLabel}>
-                                    {product.branch || 'Sin Marca'}
-                                    <span style={{ color: 'rgba(255,255,255,0.15)', marginLeft: '10px', fontSize: '0.75rem' }}>ID: {product.id}</span>
+                                    {product.branch || 'Sin Marca'} 
+                                    <span style={{ color: 'rgba(255,255,255,0.15)', marginLeft: '8px', fontSize: '0.7rem' }}>ID: {product.id}</span>
                                 </span>
                             </div>
 
-                            {/* Bloque Financiero y Rendimiento */}
-                            <div style={metricsBlockStyle}>
-                                <div style={metricItemStyle}>
-                                    <span style={labelStyle}>PRECIO DE VENTA</span>
-                                    <span style={{ ...valueStyle, color: '#54C4F0', fontSize: '1.2rem', fontWeight: '700' }}>
-                                        {formatCurrency(groupPrice)}
-                                    </span>
-                                </div>
-
-                                <div style={metricItemStyle}>
-                                    <span style={labelStyle}>HISTORIAL DE VENTAS</span>
-                                    <span style={{ ...soldValueStyle, margin: 0, fontSize: '0.85rem', color: 'rgba(255,255,255,0.7)' }}>
-                                        {product.saleWeight ? `${totalGroupWeightSold.toFixed(3)} kg` : `${totalGroupSold} un.`}
-                                    </span>
-                                </div>
-
-                                {/* Stock Global (Se muestra aquí si es un producto simple) */}
-                                {!hasVariations && (
-                                    <div style={metricItemStyle}>
-                                        <span style={labelStyle}>STOCK DISPONIBLE</span>
-                                        <span style={{
-                                            ...valueStyle,
-                                            fontSize: '1.1rem',
-                                            color: (product.stock <= 5 && !product.saleWeight) ? '#FFAB40' : '#47D6A7'
-                                        }}>
-                                            {product.saleWeight ? `${(product.weight || 0).toFixed(3)} kg` : `${product.stock || 0} un.`}
-                                        </span>
-                                    </div>
-                                )}
+                            {/* Columna 2: Costo */}
+                            <div style={{ flex: '1' }}>
+                                <span style={cellValueStyle}>{formatCurrency(product.cost || 0)}</span>
                             </div>
 
-                            {/* Botones de Control Superiores */}
-                            <div style={actionsBlockStyle}>
+                            {/* Columna 3: Margen de Ganancia */}
+                            <div style={{ flex: '1' }}>
+                                <span style={{ ...cellValueStyle, color: '#47D6A7' }}>
+                                    {product.gains ? `${product.gains}%` : '0%'}
+                                </span>
+                            </div>
+
+                            {/* Columna 4: Precio de Venta */}
+                            <div style={{ flex: '1' }}>
+                                <span style={{ ...cellValueStyle, color: '#54C4F0', fontWeight: '700' }}>
+                                    {formatCurrency(product.price || 0)}
+                                </span>
+                            </div>
+
+                            {/* Columna 5: Stock Disponible */}
+                            <div style={{ flex: '1' }}>
+                                <span style={{ 
+                                    ...cellValueStyle, 
+                                    color: (product.stock <= 5 && !product.saleWeight) ? '#FFAB40' : '#FFF' 
+                                }}>
+                                    {product.saleWeight ? `${(product.weight || 0).toFixed(3)} kg` : `${product.stock || 0} un.`}
+                                </span>
+                            </div>
+
+                            {/* Columna 6: Cantidad Vendida */}
+                            <div style={{ flex: '1' }}>
+                                <span style={{ ...soldValueStyle, fontSize: '0.9rem', margin: 0 }}>
+                                    {product.saleWeight ? `${totalGroupWeightSold.toFixed(3)} kg` : `${totalGroupSold} un.`}
+                                </span>
+                            </div>
+
+                            {/* Columna 7: Acciones del Padre */}
+                            <div style={{ flex: '1.2', display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
+                                {hasVariations && (
+                                    <button
+                                        style={destroyGroupButtonStyle}
+                                        title="Destruir grupo (Desvincular variantes)"
+                                        onClick={() => {
+                                            if (window.confirm(`¿Seguro que deseas destruir el grupo "${product.article}"? Las variantes pasarán a ser productos individuales.`)) {
+                                                handleDestroyGroup(product.id);
+                                            }
+                                        }}
+                                    >
+                                        💥 DISOLVER
+                                    </button>
+                                )}
+                                
                                 <button
-                                    style={{ ...editAction, padding: '8px 16px', fontSize: '0.75rem', borderRadius: '6px' }}
+                                    style={{ ...editAction, padding: '6px 12px', fontSize: '0.7rem', borderRadius: '4px' }}
                                     onClick={() => { setIsEditingMode(true); setEditingProduct(product); setIsModalOpen(true); }}
                                 >
-                                    {hasVariations ? 'CONFIG. GRUPO' : 'EDITAR'}
+                                    {hasVariations ? 'CONFIG' : 'EDITAR'}
                                 </button>
 
                                 <button
                                     style={{
                                         ...deleteAction,
-                                        padding: '8px 16px',
-                                        fontSize: '0.75rem',
-                                        borderRadius: '6px',
-                                        // 🎨 Si tiene hijos, aplicamos un estilo desaturado/bloqueado
+                                        padding: '6px 12px',
+                                        fontSize: '0.7rem',
+                                        borderRadius: '4px',
                                         ...(hasVariations ? disabledDeleteActionStyle : {})
                                     }}
-                                    disabled={hasVariations} // 🛑 Bloqueo nativo de HTML
-                                    title={hasVariations ? "No puedes eliminar un grupo que contiene variaciones. Elimina primero todos sus hijos." : "Eliminar este producto"}
+                                    disabled={hasVariations}
+                                    title={hasVariations ? "Borra o disuelve el grupo primero" : "Eliminar producto"}
                                     onClick={() => {
-                                        // Este bloque ahora solo se ejecuta si NO tiene variaciones (es producto simple)
                                         if (window.confirm(`¿Eliminar el producto "${product.article}"?`)) {
                                             handleDelete(product.id, true);
                                         }
@@ -122,63 +152,85 @@ export function ProductList({ filteredProducts, setIsEditingMode, setEditingProd
                             </div>
                         </div>
 
-                        {/* 2. SECCIÓN INFERIOR: Desglose de Variaciones */}
+                        {/* ─── FILAS HIJOS (VARIACIONES) ─── */}
                         {hasVariations && (
-                            <div style={bottomVariationsSectionStyle}>
-                                <div style={variationsHeaderStyle}>
-                                    <span style={{ ...labelStyle, letterSpacing: '1px' }}>VARIACIONES EN CATÁLOGO</span>
-                                    <span style={totalStockBadgeStyle}>
-                                        STOCK TOTAL: {product.saleWeight ? `${totalGroupWeight.toFixed(3)} kg` : `${totalGroupStock} un.`}
-                                    </span>
-                                </div>
-
-                                <div style={variationsGridStyle}>
-                                    {variations.map(v => (
-                                        <div key={v.id} style={variationItemStyle}>
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                                                <span style={variationNameStyle}>
-                                                    {v.article.toUpperCase().replace(product.article.toUpperCase(), '').replace(/[-_]/g, '').trim() || 'Estándar'}
-                                                </span>
-                                                <span style={{ color: 'rgba(255,255,255,0.2)', fontSize: '0.65rem' }}>ID: {v.id}</span>
+                            <div style={variationsListStyle}>
+                                {variations.map(v => {
+                                    // Limpiamos el nombre para que no repita el del padre
+                                    const variantName = v.article.toUpperCase().replace(product.article.toUpperCase(), '').replace(/[-_]/g, '').trim() || 'Estándar';
+                                    
+                                    return (
+                                        <div key={v.id} style={rowStyle(false)}>
+                                            
+                                            {/* Columna 1: Identificador Hijo */}
+                                            <div style={{ flex: '2', paddingLeft: '20px', display: 'flex', flexDirection: 'column' }}>
+                                                <span style={variationNameStyle}> {variantName}</span>
+                                                <span style={{ color: 'rgba(255,255,255,0.2)', fontSize: '0.65rem', marginLeft: '14px' }}>ID: {v.id}</span>
                                             </div>
 
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                                <span style={{
-                                                    fontWeight: '600',
-                                                    fontSize: '0.85rem',
-                                                    marginRight: '4px',
-                                                    color: (v.stock <= 5 && !v.saleWeight) ? '#FFAB40' : '#FFF'
+                                            {/* Columna 2: Costo Hijo */}
+                                            <div style={{ flex: '1' }}>
+                                                <span style={subCellValueStyle}>{formatCurrency(v.cost || 0)}</span>
+                                            </div>
+
+                                            {/* Columna 3: Ganancia Hijo */}
+                                            <div style={{ flex: '1' }}>
+                                                <span style={{ ...subCellValueStyle, color: 'rgba(71, 214, 167, 0.7)' }}>
+                                                    {v.gains ? `${v.gains}%` : '0%'}
+                                                </span>
+                                            </div>
+
+                                            {/* Columna 4: Venta Hijo */}
+                                            <div style={{ flex: '1' }}>
+                                                <span style={{ ...subCellValueStyle, color: '#54C4F0' }}>
+                                                    {formatCurrency(v.price || 0)}
+                                                </span>
+                                            </div>
+
+                                            {/* Columna 5: Stock Hijo */}
+                                            <div style={{ flex: '1' }}>
+                                                <span style={{ 
+                                                    ...subCellValueStyle, 
+                                                    color: (v.stock <= 5 && !v.saleWeight) ? '#FFAB40' : 'rgba(255,255,255,0.8)' 
                                                 }}>
                                                     {v.saleWeight ? `${(v.weight || 0).toFixed(3)} kg` : `${v.stock || 0} un.`}
                                                 </span>
+                                            </div>
 
-                                                {/* Botón Editar variante */}
+                                            {/* Columna 6: Ventas Hijo */}
+                                            <div style={{ flex: '1' }}>
+                                                <span style={subCellValueStyle}>
+                                                    {v.saleWeight ? `${(v.weightSold || 0).toFixed(3)} kg` : `${v.quantitySold || 0} un.`}
+                                                </span>
+                                            </div>
+
+                                            {/* Columna 7: Acciones Hijo */}
+                                            <div style={{ flex: '1.2', display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
                                                 <button
                                                     type="button"
                                                     style={miniActionButtonStyle}
-                                                    title="Editar stock de variante"
+                                                    title="Editar variante"
                                                     onClick={() => { setIsEditingMode(true); setEditingProduct(v); setIsModalOpen(true); }}
                                                 >
                                                     ✏️
                                                 </button>
-
-                                                {/* 🗑️ NUEVO: Botón Eliminar Variante Individual */}
                                                 <button
                                                     type="button"
                                                     style={{ ...miniActionButtonStyle, color: '#E53E3E' }}
-                                                    title="Eliminar esta variación"
+                                                    title="Eliminar variante"
                                                     onClick={() => {
                                                         if (window.confirm(`¿Eliminar la variación "${v.article}"?`)) {
-                                                            handleDelete(v.id, false); // false indica que es un hijo
+                                                            handleDelete(v.id, false);
                                                         }
                                                     }}
                                                 >
                                                     ❌
                                                 </button>
                                             </div>
+
                                         </div>
-                                    ))}
-                                </div>
+                                    );
+                                })}
                             </div>
                         )}
 
@@ -189,139 +241,102 @@ export function ProductList({ filteredProducts, setIsEditingMode, setEditingProd
     );
 }
 
-// --- 🎨 ACTUALIZACIÓN DE ESTILOS ---
+// ─── 🎨 ESTILOS ACTUALIZADOS (SISTEMA DE COLUMNAS) ───
 
 const listWrapperStyle: React.CSSProperties = {
     display: 'flex',
     flexDirection: 'column',
-    gap: '16px',
+    gap: '12px',
     width: '100%',
-    padding: '12px 0',
     boxSizing: 'border-box'
+};
+
+const tableHeaderStyle: React.CSSProperties = {
+    display: 'flex',
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: '10px 20px',
+    color: 'rgba(255, 255, 255, 0.4)',
+    fontSize: '0.75rem',
+    fontWeight: '600',
+    letterSpacing: '0.5px',
+    textTransform: 'uppercase'
 };
 
 const cardContainerStyle: React.CSSProperties = {
     display: 'flex',
     flexDirection: 'column',
     backgroundColor: '#14171C',
-    border: '1px solid rgba(255,255,255,0.03)',
-    borderRadius: '10px',
+    border: '1px solid rgba(255,255,255,0.04)',
+    borderRadius: '8px',
     width: '100%',
-    boxSizing: 'border-box',
-    overflow: 'hidden',
-    boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+    overflow: 'hidden'
 };
 
-const topSectionStyle: React.CSSProperties = {
+// Generador de estilos de fila para sincronizar anchos exactos
+const rowStyle = (isParent: boolean): React.CSSProperties => ({
     display: 'flex',
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: '18px 24px',
-    gap: '24px',
-    width: '100%',
-    boxSizing: 'border-box'
-};
+    padding: isParent ? '14px 20px' : '10px 20px',
+    backgroundColor: isParent ? 'transparent' : 'rgba(255, 255, 255, 0.015)',
+    borderBottom: isParent && !isParent ? '1px solid rgba(255,255,255,0.02)' : 'none',
+    transition: 'background-color 0.2s',
+});
 
-const mainInfoBlockStyle: React.CSSProperties = {
-    flex: '1.5',
+const variationsListStyle: React.CSSProperties = {
     display: 'flex',
     flexDirection: 'column',
-    alignItems: 'flex-start',
-    textAlign: 'left'
-};
-
-const metricsBlockStyle: React.CSSProperties = {
-    flex: '2',
-    display: 'flex',
-    flexDirection: 'row',
-    justifyContent: 'flex-start',
-    gap: '40px',
-    alignItems: 'center'
-};
-
-const metricItemStyle: React.CSSProperties = {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'flex-start',
-    textAlign: 'left'
-};
-
-const actionsBlockStyle: React.CSSProperties = {
-    display: 'flex',
-    flexDirection: 'row',
-    gap: '8px',
-    alignItems: 'center'
-};
-
-const bottomVariationsSectionStyle: React.CSSProperties = {
-    backgroundColor: 'rgba(255,255,255,0.01)',
     borderTop: '1px solid rgba(255,255,255,0.03)',
-    padding: '16px 24px',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '12px'
+    backgroundColor: '#111418'
 };
 
-const variationsHeaderStyle: React.CSSProperties = {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    width: '100%'
+const cellValueStyle: React.CSSProperties = {
+    fontSize: '0.95rem',
+    color: '#FFF',
+    fontWeight: '500'
 };
 
-const totalStockBadgeStyle: React.CSSProperties = {
-    backgroundColor: 'rgba(84, 196, 240, 0.08)',
-    color: '#54C4F0',
-    fontSize: '0.75rem',
-    fontWeight: '700',
-    padding: '4px 10px',
-    borderRadius: '4px',
-    letterSpacing: '0.5px'
-};
-
-const variationsGridStyle: React.CSSProperties = {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', // Ajustado a 240px para acomodar el nuevo botón holgadamente
-    gap: '10px',
-    width: '100%'
-};
-
-const variationItemStyle: React.CSSProperties = {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#1C2028',
-    border: '1px solid rgba(255,255,255,0.02)',
-    borderRadius: '6px',
-    padding: '10px 14px',
-    textAlign: 'left'
+const subCellValueStyle: React.CSSProperties = {
+    fontSize: '0.85rem',
+    color: 'rgba(255,255,255,0.6)'
 };
 
 const variationNameStyle: React.CSSProperties = {
-    color: 'rgba(255,255,255,0.85)',
+    color: 'rgba(255,255,255,0.8)',
     fontSize: '0.85rem',
     fontWeight: '500'
 };
 
-// Unificamos el estilo de los botones internos
 const miniActionButtonStyle: React.CSSProperties = {
     background: 'none',
     border: 'none',
     cursor: 'pointer',
-    fontSize: '0.75rem',
-    padding: '4px',
-    opacity: 0.6,
-    transition: 'opacity 0.2s, transform 0.1s',
+    fontSize: '0.85rem',
+    padding: '4px 8px',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    borderRadius: '4px'
+};
+
+const destroyGroupButtonStyle: React.CSSProperties = {
+    backgroundColor: 'rgba(229, 62, 62, 0.15)',
+    color: '#FEB2B2',
+    border: '1px solid rgba(229, 62, 62, 0.2)',
+    padding: '6px 12px',
+    fontSize: '0.7rem',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    fontWeight: '600',
+    transition: 'all 0.2s'
 };
 
 const disabledDeleteActionStyle: React.CSSProperties = {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    color: 'rgba(255, 255, 255, 0.25)',
-    border: '1px solid rgba(255, 255, 255, 0.02)',
-    cursor: 'not-allowed', // Cambia el puntero a una señal de prohibido
-    opacity: 0.6
+    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+    color: 'rgba(255, 255, 255, 0.15)',
+    border: '1px solid transparent',
+    cursor: 'not-allowed',
+    opacity: 0.5
 };
