@@ -39,7 +39,8 @@ export const modalStyles: Record<string, React.CSSProperties> = {
         minWidth: '0', // Permite que el input se encoja correctamente en flexbox
     },
     checkboxRow: {
-        display: 'flex', flexDirection: 'column', gap: '12px', margin: '8px 0', padding: '14px',
+        display: 'flex', flexDirection: 'row', gap: '12px', margin: '8px 0', padding: '12px',
+        justifyContent: 'space-between',
         backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.03)'
     },
     checkboxLabel: { display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.85rem', color: 'rgba(255,255,255,0.8)', cursor: 'pointer' },

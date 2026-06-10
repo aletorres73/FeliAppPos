@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { getProducts, deleteProduct, addProduct, updateProduct } from '../../../data/repositories/ProductRepository';
+import { getProducts, deleteProduct, addProduct, updateProduct, bulkActionRepository } from '../../../data/repositories/ProductRepository';
 import { type Product } from '../../../domain/types/productTypes';
 
 export function useStock() {
@@ -26,19 +26,28 @@ export function useStock() {
         }
     };
 
-    const filteredProducts = useMemo(() => {
-        return products.filter(p => {
-            const article = p?.article || '';
-            const branch = p?.branch || '';
-            const id = p?.id || '';
+    const groupedProducts = useMemo(() => {
+        // 1. Separamos los productos que son "Padres" o "Independientes"
+        const parents = products.filter(p => p.isParent || !p.parentId);
 
+        // 2. Filtramos los productos que son variaciones (hijos)
+        const children = products.filter(p => p.parentId);
+
+        // 3. Mapeamos cada padre para que contenga su lista de variaciones
+        return parents.map(parent => ({
+            ...parent,
+            variations: children.filter(child => child.parentId === parent.id)
+        })).filter(group => {
+            // Lógica de búsqueda optimizada que revisa marca y artículo
+            const term = searchTerm.toLowerCase();
             return (
-                article.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                branch.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                id.toLowerCase().includes(searchTerm.toLowerCase())
+                group.article.toLowerCase().includes(term) ||
+                group.branch.toLowerCase().includes(term) ||
+                group.variations.some(v => v.article.toLowerCase().includes(term))
             );
         });
     }, [products, searchTerm]);
+
 
     const handleDelete = async (id: string) => {
         if (window.confirm("¿Estás seguro de eliminar este producto?")) {
@@ -88,9 +97,9 @@ export function useStock() {
     // --- Abrir Modal para Nuevo Producto ---
     const openCreateModal = () => {
         setIsEditingMode(false);
-        setEditingProduct({ 
-            id: '', active: true, saleWeight: false, stock: 0, 
-            weight: 0, cost: 0, gains: 0, price: 0 
+        setEditingProduct({
+            id: '', active: true, saleWeight: false, stock: 0,
+            weight: 0, cost: 0, gains: 0, price: 0
         });
         setIsModalOpen(true);
     };
@@ -101,21 +110,28 @@ export function useStock() {
         setEditingProduct(null);
     };
 
-    // --- Guardar Cambios ---
-    const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
+    // ---useStock.ts (Formato optimizado para handleSave) ---
+    const handleSave = async (e: React.SubmitEvent<HTMLFormElement>) => {
         e.preventDefault();
         setIsLoading(true);
 
         if (!editingProduct?.id || !editingProduct?.article || !editingProduct?.price) {
-            alert("Por favor, completa los campos obligatorios (Código, Artículo y Precio).");
-            setIsLoading(false); // Importante para no trabar la app si falla la validación
+            alert("Por favor, completa los campos obligatorios.");
+            setIsLoading(false);
             return;
         }
 
         try {
             if (isEditingMode) {
-                await updateProduct(editingProduct.id, editingProduct as Product);
+                // SI ES UN PADRE: Usamos la actualización en lote (Batch)
+                if (editingProduct.isParent) {
+                    await bulkActionRepository.updateParentAndChildren(editingProduct.id, editingProduct);
+                } else {
+                    // SI ES UN HIJO O INDEPENDIENTE: Actualización normal
+                    await updateProduct(editingProduct.id, editingProduct);
+                }
             } else {
+                // ... (Tu lógica actual de crear nuevo producto se mantiene igual)
                 const newProduct: Product = {
                     id: editingProduct.id.trim(),
                     article: editingProduct.article,
@@ -131,9 +147,16 @@ export function useStock() {
                     weightSold: 0,
                     createdAt: new Date().getTime(),
                     updatedAt: null,
+                    isParent: editingProduct.isParent || false,
+                    parentId: editingProduct.parentId || null,
+                    stockLinked: editingProduct.stockLinked || false,
+                    conversionFactor: editingProduct.conversionFactor || null
+
                 };
                 await addProduct(newProduct);
             }
+
+            console.log(`Producto procesado con éxito`);
             closeModal();
             loadProducts();
         } catch (error) {
@@ -150,8 +173,9 @@ export function useStock() {
         isModalOpen,
         isEditingMode,
         editingProduct,
-        filteredProducts,
-        
+        // filteredProducts,
+        groupedProducts,
+
         // Modificadores de estado directos (para los subcomponentes)
         setSearchTerm,
         setIsEditingMode,

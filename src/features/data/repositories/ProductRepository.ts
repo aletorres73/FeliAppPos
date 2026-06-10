@@ -1,5 +1,12 @@
 import { db } from "../services/FirebaseService";
-import { doc, getDoc, getDocs, collection, onSnapshot, query, deleteDoc, setDoc, updateDoc } from "firebase/firestore";
+
+import {
+  doc, getDoc, getDocs,
+  collection, onSnapshot,
+  query, deleteDoc,
+  setDoc, updateDoc, writeBatch, where
+} from "firebase/firestore";
+
 import type { Product } from "../../domain/types/productTypes";
 
 export const getProductById = async (docId: string): Promise<Product | null> => {
@@ -69,7 +76,11 @@ export const mapToProduct = (data: any): Product => {
     quantitySold: data.cantidadVendida,
     createdAt: data.createdAt,
     updatedAt: data.updatedAt,
-    weightSold: data.pesoVendido
+    weightSold: data.pesoVendido,
+    isParent: data.isParent || false,
+    parentId: data.parentId || null,
+    stockLinked: data.stockLinked || false,
+    conversionFactor: data.conversionFactor || null
   };
 }
 
@@ -88,7 +99,11 @@ export const mapToFirestoreProduct = (product: Product): any => {
     cantidadVendida: product.quantitySold,
     createdAt: product.createdAt,
     updatedAt: product.updatedAt,
-    pesoVendido: product.weightSold
+    pesoVendido: product.weightSold,
+    isParent: product.isParent || false,
+    parentId: product.parentId || null,
+    stockLinked: product.stockLinked || false,
+    conversionFactor: product.conversionFactor || null
   };
 }
 
@@ -115,23 +130,91 @@ export const subscribeToProducts = (onUpdate: (products: Product[]) => void) => 
 
 export const addProduct = async (product: Product): Promise<void> => {
   try {
-    const docRef = doc(db, "products", product.id.trim());  
-    
+    const docRef = doc(db, "products", product.id.trim());
+
     await setDoc(docRef, mapToFirestoreProduct(product));
-    
+
     console.log(`Producto agregado con ID personalizado: ${product.article}`);
   } catch (error) {
     console.error("Error al agregar producto:", error);
   }
 };
 
+// --- ProductRepository.ts ---
+
+// 1. Modificación para soportar actualizaciones parciales sin romper campos
 export const updateProduct = async (docId: string, updatedData: Partial<Product>): Promise<void> => {
   try {
     const docRef = doc(db, "products", docId);
-    await updateDoc(docRef, mapToFirestoreProduct(updatedData as Product));  
+
+    // Convertimos solo los campos que vienen en el Partial a nomenclatura Firestore
+    const firestoreUpdates: any = {};
+    if (updatedData.article !== undefined) firestoreUpdates.articulo = updatedData.article;
+    if (updatedData.branch !== undefined) firestoreUpdates.marca = updatedData.branch;
+    if (updatedData.price !== undefined) firestoreUpdates.precio = updatedData.price;
+    if (updatedData.cost !== undefined) firestoreUpdates.costo = updatedData.cost;
+    if (updatedData.stock !== undefined) firestoreUpdates.stock = updatedData.stock;
+    if (updatedData.active !== undefined) firestoreUpdates.activo = updatedData.active;
+    if (updatedData.saleWeight !== undefined) firestoreUpdates.ventaPorPeso = updatedData.saleWeight;
+    if (updatedData.gains !== undefined) firestoreUpdates.ganancia = updatedData.gains;
+    if (updatedData.weight !== undefined) firestoreUpdates.peso = updatedData.weight;
+    if (updatedData.isParent !== undefined) firestoreUpdates.isParent = updatedData.isParent;
+    if (updatedData.parentId !== undefined) firestoreUpdates.parentId = updatedData.parentId;
+    if (updatedData.stockLinked !== undefined) firestoreUpdates.stockLinked = updatedData.stockLinked;
+    if (updatedData.conversionFactor !== undefined) firestoreUpdates.conversionFactor = updatedData.conversionFactor;
+
+    firestoreUpdates.updatedAt = Date.now();
+
+    await updateDoc(docRef, firestoreUpdates);
     console.log(`Producto actualizado: ${docId}`);
   } catch (error) {
-    console.error("Error al actualizar producto:", error);  
+    console.error("Error al actualizar producto:", error);
   }
 };
 
+// 2. Corrección del BulkAction para usar los nombres correctos de la DB (Español)
+export const bulkActionRepository = {
+  async updateParentAndChildren(parentId: string, updates: Partial<Product>): Promise<void> {
+    const batch = writeBatch(db);
+    const parentRef = doc(db, "products", parentId);
+
+    // Mapear actualizaciones del padre a Firestore
+    const parentFirestoreUpdates: any = {};
+    if (updates.article !== undefined) parentFirestoreUpdates.articulo = updates.article;
+    if (updates.branch !== undefined) parentFirestoreUpdates.marca = updates.branch;
+    if (updates.price !== undefined) parentFirestoreUpdates.precio = updates.price;
+    if (updates.cost !== undefined) parentFirestoreUpdates.costo = updates.cost;
+    if (updates.active !== undefined) parentFirestoreUpdates.activo = updates.active;
+    if (updates.gains !== undefined) parentFirestoreUpdates.ganancia = updates.gains;
+    if (updates.isParent !== undefined) parentFirestoreUpdates.isParent = updates.isParent;
+    parentFirestoreUpdates.updatedAt = Date.now();
+
+    // Aplicar al Padre
+    batch.update(parentRef, parentFirestoreUpdates);
+
+    // Buscar Hijos
+    const childrenQuery = query(
+      collection(db, "products"),
+      where("parentId", "==", parentId)
+    );
+    const childrenSnap = await getDocs(childrenQuery);
+
+    // Replicar a Hijos usando las columnas nativas de Firestore
+    childrenSnap.forEach((childDoc) => {
+      const childRef = doc(db, "products", childDoc.id);
+      const childData = childDoc.data();
+
+      batch.update(childRef, {
+        precio: updates.price ?? childData.precio,
+        costo: updates.cost ?? childData.costo,
+        marca: updates.branch ?? childData.marca,
+        activo: updates.active ?? childData.activo,
+        ganancia: updates.gains ?? childData.ganancia,
+        updatedAt: Date.now()
+      });
+    });
+
+    await batch.commit();
+    console.log(`Actualización en lote completada para el grupo de: ${parentId}`);
+  }
+};

@@ -22,7 +22,7 @@ export class OrderRepository {
 
             batch.set(orderRef, { ...order, docId: orderRef.id }); // Guardamos el docId dentro del documento
 
-            if (transaction) {
+            if (transaction?.clientId) {
 
                 const transRef = doc(collection(db, this.CUSTOMER_TRANSACTIONS));
 

@@ -15,7 +15,7 @@ export default function StockScreen() {
         isModalOpen,
         isEditingMode,
         editingProduct,
-        filteredProducts,
+        groupedProducts,
         setSearchTerm,
         setIsEditingMode,
         setEditingProduct,
@@ -29,7 +29,25 @@ export default function StockScreen() {
         closeModal
     } = useStock();
 
-    if (isLoading) return <div style={fullScreenCenter}>CARGANDO INVENTARIO...</div>;
+    if (isLoading) return <div style={fullScreenCenter}><span>CARGANDO INVENTARIO...</span></div>;
+
+    const handleGroupAssignment = (parentId: string) => {
+        const parent = products.find(p => p.id === parentId);
+        if (parent && editingProduct) {
+            setEditingProduct({
+                ...editingProduct,
+                parentId,
+                price: parent.price,   // Herencia de precio
+                cost: parent.cost,     // Herencia de costo
+                branch: parent.branch, // Herencia de marca
+                isParent: false        // Un hijo no puede ser padre a la vez
+            });
+        } else if (editingProduct) {
+            setEditingProduct({ ...editingProduct, parentId: null });
+        }
+
+        console.log(`Producto ${editingProduct?.id} asignado al grupo ${parentId}`);
+    };
 
     return (
         <div style={stockContainer}>
@@ -46,7 +64,7 @@ export default function StockScreen() {
             <SearchContainer searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
 
             <ProductList
-                filteredProducts={filteredProducts}
+                filteredProducts={groupedProducts}
                 setIsEditingMode={setIsEditingMode}
                 setEditingProduct={setEditingProduct}
                 setIsModalOpen={setIsModalOpen}
@@ -56,15 +74,17 @@ export default function StockScreen() {
             {/* --- MODAL DINÁMICA DE CREACIÓN / EDICIÓN --- */}
             {isModalOpen && editingProduct && (
                 <StockModal
-                    product={editingProduct}
-                    setEditingProduct={setEditingProduct}
                     isEditingMode={isEditingMode}
-                    setIsModalOpen={setIsModalOpen}
-                    onClose={closeModal}
+                    product={editingProduct}
+                    allProducts={products}
+                    setEditingProduct={setEditingProduct}
                     handleSave={handleSave}
                     handleCostChange={handleCostChange}
                     handleGainsChange={handleGainsChange}
                     handlePriceChange={handlePriceChange}
+                    handleGroupAssignment={handleGroupAssignment}
+                    setIsModalOpen={setIsModalOpen}
+                    onClose={closeModal}
                 />
             )}
         </div>
