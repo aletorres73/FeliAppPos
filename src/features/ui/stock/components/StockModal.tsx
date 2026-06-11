@@ -1,11 +1,12 @@
+//stockmodal
 import { modalStyles } from '../styles/ModalStockStyles';
-import { type Product } from '../../../domain/types/productTypes';
+import { type Product, type VolumePrice } from '../../../domain/types/productTypes'; // 🆕 Asegurá tener exportado VolumePrice de tus types
 import { labelStyle, searchInputStyle } from '../styles/StockScreenStyles';
 
 interface StockModalProps {
     isEditingMode: boolean;
-    product: Partial<Product>; // Debería ser un tipo específico de producto
-    allProducts: Product[]; // Para asignar a grupos
+    product: Partial<Product>; 
+    allProducts: Product[]; 
     setEditingProduct: (product: Partial<Product> | null) => void;
     handleSave: (e: React.SubmitEvent<HTMLFormElement>) => void;
     handleCostChange: (cost: number) => void;
@@ -28,13 +29,43 @@ export function StockModal(
         handlePriceChange,
         handleGroupAssignment,
         onClose
-
     }: StockModalProps
 ) {
 
+    // --- 🆕 Funciones Locales para Manejar Escalas de Precios ---
+    const addVolumePriceRule = () => {
+        const currentRules = product.volumePrices || [];
+        const newRule: VolumePrice = { fromQuantity: 0, specialPrice: 0 };
+        setEditingProduct({
+            ...product,
+            volumePrices: [...currentRules, newRule]
+        });
+    };
+
+    const updateVolumePriceRule = (index: number, field: keyof VolumePrice, value: number) => {
+        const currentRules = product.volumePrices ? [...product.volumePrices] : [];
+        currentRules[index] = {
+            ...currentRules[index],
+            [field]: value
+        };
+        setEditingProduct({
+            ...product,
+            volumePrices: currentRules
+        });
+    };
+
+    const removeVolumePriceRule = (index: number) => {
+        const currentRules = product.volumePrices ? [...product.volumePrices] : [];
+        currentRules.splice(index, 1);
+        setEditingProduct({
+            ...product,
+            volumePrices: currentRules
+        });
+    };
+
     return (
         <div style={modalStyles.overlay}>
-            <div style={modalStyles.content}>
+            <div style={{ ...modalStyles.content, maxWidth: '580px', maxHeight: '90vh', overflowY: 'auto' }}> {/* Fix para que no se desborde la modal en pantallas chicas */}
                 <h3 style={modalStyles.title}>
                     {isEditingMode ? 'Editar Artículo' : 'Nuevo Artículo'}
                 </h3>
@@ -51,9 +82,9 @@ export function StockModal(
                     />
                 </div>
 
-                {/* 2. Asignar a un Grupo (Solo si no es padre) */}
+                {/* Asignar a un Grupo */}
                 {!product.isParent && (
-                    <div style={{ marginTop: '15px' }}>
+                    <div style={{ marginTop: '15px', marginBottom: '15px' }}>
                         <span style={labelStyle}>ASIGNAR A GRUPO EXISTENTE</span>
                         <select
                             style={searchInputStyle}
@@ -81,15 +112,13 @@ export function StockModal(
                                 color: isEditingMode ? 'rgba(255,255,255,0.4)' : 'white'
                             }}
                             required
-                            disabled={isEditingMode} // Bloqueado en edición para proteger claves primarias
+                            disabled={isEditingMode}
                             placeholder="Escribe o escanea con el lector..."
-                            autoFocus={!isEditingMode} // Foco automático al crear para pistolear directo
+                            autoFocus={!isEditingMode}
                             value={product.id || ''}
-                            onChange={e => setEditingProduct({ ...product, id: e.target.value.toUpperCase() })} // Convertir a mayúsculas para consistencia en códigos
+                            onChange={e => setEditingProduct({ ...product, id: e.target.value.toUpperCase() })}
                         />
                     </div>
-
-
 
                     <div style={modalStyles.formGroup}>
                         <label style={modalStyles.label}>NOMBRE DEL ARTÍCULO *</label>
@@ -112,7 +141,7 @@ export function StockModal(
                         />
                     </div>
 
-                    {/* Fila Financiera: Costo, Ganancia y Precio Venta Interconectados */}
+                    {/* Fila Financiera */}
                     <div style={modalStyles.row}>
                         <div style={{ ...modalStyles.formGroup, flex: 1 }}>
                             <label style={modalStyles.label}>COSTO ($)</label>
@@ -150,6 +179,68 @@ export function StockModal(
                             />
                         </div>
                     </div>
+
+                    {/* 🆕 SECCIÓN DE PRECIOS POR VOLUMEN / ESCALONADOS */}
+                    <div style={modalStyles.volumeSectionContainer}>
+                        <div style={modalStyles.volumeHeaderRow}>
+                            <label style={modalStyles.label}>PRECIOS ESPECIALES POR CANTIDAD / VOLUMEN</label>
+                            <button 
+                                type="button" 
+                                style={modalStyles.addRuleButton}
+                                onClick={addVolumePriceRule}
+                            >
+                                + AGREGAR ESCALA
+                            </button>
+                        </div>
+
+                        {product.volumePrices && product.volumePrices.length > 0 ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' }}>
+                                {product.volumePrices.map((rule, index) => (
+                                    <div key={index} style={modalStyles.row}>
+                                        <div style={{ ...modalStyles.formGroup, flex: 1 }}>
+                                            <label style={{ ...modalStyles.label, fontSize: '0.55rem' }}>A PARTIR DE ({product.saleWeight ? 'KG' : 'UNID'})</label>
+                                            <input
+                                                type="number"
+                                                style={modalStyles.input}
+                                                min="0.001"
+                                                step="any"
+                                                required
+                                                placeholder={product.saleWeight ? "Ej: 2" : "Ej: 12"}
+                                                value={rule.fromQuantity || ''}
+                                                onChange={e => updateVolumePriceRule(index, 'fromQuantity', Number(e.target.value))}
+                                            />
+                                        </div>
+                                        <div style={{ ...modalStyles.formGroup, flex: 1 }}>
+                                            <label style={{ ...modalStyles.label, fontSize: '0.55rem' }}>PRECIO ESPECIAL UNITARIO ($)</label>
+                                            <input
+                                                type="number"
+                                                style={modalStyles.input}
+                                                min="0"
+                                                step="any"
+                                                required
+                                                placeholder="Ej: 4000"
+                                                value={rule.specialPrice || ''}
+                                                onChange={e => updateVolumePriceRule(index, 'specialPrice', Number(e.target.value))}
+                                            />
+                                        </div>
+                                        <button
+                                            type="button"
+                                            style={modalStyles.deleteRuleButton}
+                                            onClick={() => removeVolumePriceRule(index)}
+                                            title="Eliminar regla"
+                                        >
+                                            ❌
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div style={modalStyles.emptyRulesText}>
+                                No hay precios preferenciales por cantidad configurados para este artículo.
+                            </div>
+                        )}
+                    </div>
+                    {/* --- FIN SECCIÓN NUEVA --- */}
 
                     {/* Fila de Control de Stock / Peso */}
                     <div style={modalStyles.formGroup}>

@@ -19,4 +19,10 @@ export type Product = {
   parentId: string | null; // ID del producto raíz (ej: Galletitas Pitusas base)
   stockLinked: boolean;    // Si es true, descuenta stock del parentId (ej: venta por docena)
   conversionFactor: number | null; // Cuántas unidades del padre representa este hijo (ej: 12 para docena)
+  volumePrices?: VolumePrice[]; // Opcional para soportar los que no tienen escala
+}
+
+export type VolumePrice = {
+  fromQuantity: number;
+  specialPrice: number;
 }

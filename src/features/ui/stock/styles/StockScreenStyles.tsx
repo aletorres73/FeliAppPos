@@ -103,3 +103,131 @@ export const fullScreenCenter: React.CSSProperties = {
   color: 'white',
   gap: '20px'
 };
+
+export const listWrapperStyle: React.CSSProperties = {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '12px',
+    width: '100%',
+    boxSizing: 'border-box'
+};
+
+export const tableHeaderStyle: React.CSSProperties = {
+    display: 'flex',
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: '10px 20px',
+    color: 'rgba(255, 255, 255, 0.4)',
+    fontSize: '0.75rem',
+    fontWeight: '600',
+    letterSpacing: '0.5px',
+    textTransform: 'uppercase'
+};
+
+export const cardContainerStyle: React.CSSProperties = {
+    display: 'flex',
+    flexDirection: 'column',
+    backgroundColor: '#14171C',
+    border: '1px solid rgba(255,255,255,0.04)',
+    borderRadius: '8px',
+    width: '100%',
+    overflow: 'hidden'
+};
+
+// Generador de estilos de fila para sincronizar anchos exactos
+export const rowStyle = (isParent: boolean): React.CSSProperties => ({
+    display: 'flex',
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: isParent ? '14px 20px' : '10px 20px',
+    backgroundColor: isParent ? 'transparent' : 'rgba(255, 255, 255, 0.015)',
+    borderBottom: isParent && !isParent ? '1px solid rgba(255,255,255,0.02)' : 'none',
+    transition: 'background-color 0.2s',
+});
+
+export const variationsListStyle: React.CSSProperties = {
+    display: 'flex',
+    flexDirection: 'column',
+    borderTop: '1px solid rgba(255,255,255,0.03)',
+    backgroundColor: '#111418'
+};
+
+export const cellValueStyle: React.CSSProperties = {
+    fontSize: '0.95rem',
+    color: '#FFF',
+    fontWeight: '500'
+};
+
+export const subCellValueStyle: React.CSSProperties = {
+    fontSize: '0.85rem',
+    color: 'rgba(255,255,255,0.6)'
+};
+
+export const variationNameStyle: React.CSSProperties = {
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: '0.85rem',
+    fontWeight: '500'
+};
+
+export const miniActionButtonStyle: React.CSSProperties = {
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
+    fontSize: '0.85rem',
+    padding: '4px 8px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    borderRadius: '4px'
+};
+
+export const destroyGroupButtonStyle: React.CSSProperties = {
+    backgroundColor: 'rgba(229, 62, 62, 0.15)',
+    color: '#FEB2B2',
+    border: '1px solid rgba(229, 62, 62, 0.2)',
+    padding: '6px 12px',
+    fontSize: '0.7rem',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    fontWeight: '600',
+    transition: 'all 0.2s'
+};
+
+export const disabledDeleteActionStyle: React.CSSProperties = {
+    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+    color: 'rgba(255, 255, 255, 0.15)',
+    border: '1px solid transparent',
+    cursor: 'not-allowed',
+    opacity: 0.5
+};
+
+export const bulkActionBarStyle: React.CSSProperties = {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#1C2028',
+    border: '1px dashed #54C4F0',
+    borderRadius: '6px',
+    padding: '12px 20px',
+    color: '#FFF',
+    fontSize: '0.9rem',
+};
+
+export const bulkSelectStyle: React.CSSProperties = {
+    backgroundColor: '#14171C',
+    color: '#FFF',
+    border: '1px solid rgba(255,255,255,0.15)',
+    padding: '6px 10px',
+    borderRadius: '4px',
+    fontSize: '0.85rem',
+    cursor: 'pointer',
+    outline: 'none'
+};
+
+export const checkboxStyle: React.CSSProperties = {
+    width: '16px',
+    height: '16px',
+    cursor: 'pointer',
+    accentColor: '#54C4F0' // Da un color celeste al check en navegadores modernos
+};

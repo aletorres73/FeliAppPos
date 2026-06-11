@@ -80,7 +80,8 @@ export const mapToProduct = (data: any): Product => {
     isParent: data.isParent || false,
     parentId: data.parentId || null,
     stockLinked: data.stockLinked || false,
-    conversionFactor: data.conversionFactor || null
+    conversionFactor: data.conversionFactor || null,
+    volumePrices: data.volumePrices || []
   };
 }
 
@@ -103,7 +104,8 @@ export const mapToFirestoreProduct = (product: Product): any => {
     isParent: product.isParent || false,
     parentId: product.parentId || null,
     stockLinked: product.stockLinked || false,
-    conversionFactor: product.conversionFactor || null
+    conversionFactor: product.conversionFactor || null,
+    volumePrices: product.volumePrices || []
   };
 }
 
@@ -140,7 +142,6 @@ export const addProduct = async (product: Product): Promise<void> => {
   }
 };
 
-// --- ProductRepository.ts ---
 
 // 1. Modificación para soportar actualizaciones parciales sin romper campos
 export const updateProduct = async (docId: string, updatedData: Partial<Product>): Promise<void> => {
@@ -162,6 +163,7 @@ export const updateProduct = async (docId: string, updatedData: Partial<Product>
     if (updatedData.parentId !== undefined) firestoreUpdates.parentId = updatedData.parentId;
     if (updatedData.stockLinked !== undefined) firestoreUpdates.stockLinked = updatedData.stockLinked;
     if (updatedData.conversionFactor !== undefined) firestoreUpdates.conversionFactor = updatedData.conversionFactor;
+    if (updatedData.volumePrices !== undefined) firestoreUpdates.volumePrices = updatedData.volumePrices;
 
     firestoreUpdates.updatedAt = Date.now();
 
@@ -187,6 +189,7 @@ export const bulkActionRepository = {
     if (updates.active !== undefined) parentFirestoreUpdates.activo = updates.active;
     if (updates.gains !== undefined) parentFirestoreUpdates.ganancia = updates.gains;
     if (updates.isParent !== undefined) parentFirestoreUpdates.isParent = updates.isParent;
+    if (updates.volumePrices !== undefined) parentFirestoreUpdates.volumePrices = updates.volumePrices;
     parentFirestoreUpdates.updatedAt = Date.now();
 
     // Aplicar al Padre

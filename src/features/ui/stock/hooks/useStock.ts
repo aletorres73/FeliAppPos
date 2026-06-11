@@ -183,7 +183,8 @@ export function useStock() {
                     isParent: editingProduct.isParent || false,
                     parentId: editingProduct.parentId || null,
                     stockLinked: editingProduct.stockLinked || false,
-                    conversionFactor: editingProduct.conversionFactor || null
+                    conversionFactor: editingProduct.conversionFactor || null,
+                    volumePrices: editingProduct.volumePrices || []
 
                 };
                 await addProduct(newProduct);

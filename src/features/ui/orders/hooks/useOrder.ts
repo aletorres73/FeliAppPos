@@ -18,8 +18,35 @@ export function useOrder() {
   const [products, setProducts] = useState<Product[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
 
+  // 🆕 DICCIONARIO OPTIMIZADO: Acceso instantáneo O(1) por ID de producto
+  const productsMap = useMemo(() => {
+    const map = new Map<string, Product>();
+    products.forEach(p => map.set(p.id, p));
+    return map;
+  }, [products]);
+
+  // --- 🆕 FUNCIÓN HELPER: DETERMINAR PRECIO SEGÚN VOLUMEN ---
+  const getCurrentUnitPrice = (product: Product, quantity: number): number => {
+    if (!product.volumePrices || product.volumePrices.length === 0) {
+      return product.price; // Si no tiene reglas, va el precio base
+    }
+
+    // Filtramos las reglas que el usuario cumple con la cantidad/peso actual
+    const applicableRules = product.volumePrices.filter(rule => quantity >= rule.fromQuantity);
+
+    if (applicableRules.length === 0) {
+      return product.price; // No llegó al mínimo de ninguna escala
+    }
+
+    // Buscamos la regla con el mayor umbral alcanzado (por si definiste múltiples escalas)
+    const bestRule = applicableRules.reduce((max, rule) =>
+      rule.fromQuantity > max.fromQuantity ? rule : max
+      , applicableRules[0]);
+
+    return bestRule.specialPrice;
+  };
+
   // --- LÓGICA DE CÁLCULO CENTRALIZADA ---
-  // Esta función garantiza que el total siempre sea subtotal - descuento
   const calculateTotals = (items: OrderItem[], discount: number) => {
     const subtotal = items.reduce((acc, i) => acc + i.subtotal, 0);
     const totalBeforeRounding = subtotal - discount;
@@ -48,22 +75,42 @@ export function useOrder() {
     ).slice(0, 10);
   }, [searchTerm, products]);
 
+  // --- 🆕 AGREGAR ÍTEM EVALUANDO ESCALAS EN TIEMPO REAL ---
   const addItem = (newItem: OrderItem) => {
     setDraft(prev => {
       const existingIndex = prev.items.findIndex(i => i.productId === newItem.productId);
       let newItems = [...prev.items];
 
+      // Buscamos el producto en la lista maestra para chequear sus volumePrices
+      const masterProduct = productsMap.get(newItem.productId);
+
       if (existingIndex !== -1) {
         const item = newItems[existingIndex];
         const updatedQty = item.quantity + newItem.quantity;
+
+        // Si encontramos el producto maestro, recalculamos precio unitario por volumen
+        const unitPrice = masterProduct ? getCurrentUnitPrice(masterProduct, updatedQty) : item.unitPrice;
+
         newItems[existingIndex] = {
           ...item,
           quantity: updatedQty,
-          subtotal: updatedQty * item.unitPrice
+          unitPrice: unitPrice,
+          subtotal: updatedQty * unitPrice
         };
       } else {
-        newItems.push(newItem);
+        // Es un ítem nuevo. Evaluamos su cantidad inicial por si entra en escala de una
+        const unitPrice = masterProduct ? getCurrentUnitPrice(masterProduct, newItem.quantity) : newItem.unitPrice;
+
+        newItems.push({
+          ...newItem,
+          unitPrice: unitPrice,
+          subtotal: newItem.quantity * unitPrice
+        });
       }
+
+      // ⚠️ OPTIMIZACIÓN IMPORTANTE: 
+      // Si el precio unitario cambió (ej: pasó de $100 a $75), tenemos que revaluar 
+      // TODOS los ítems por si el cambio de precio de un producto afecta colaterales (opcional pero sano)
       return { ...prev, ...calculateTotals(newItems, prev.discount) };
     });
   };
@@ -75,16 +122,27 @@ export function useOrder() {
     });
   };
 
+  // --- 🆕 ACTUALIZAR CANTIDAD EVALUANDO ESCALAS EN TIEMPO REAL ---
   const updateQuantity = (index: number, newQty: number) => {
     setDraft(prev => {
-      const newItems = prev.items.map((item, i) =>
-        i === index ? { ...item, quantity: newQty, subtotal: item.unitPrice * newQty } : item
-      );
+      const newItems = prev.items.map((item, i) => {
+        if (i === index) {
+          const masterProduct = productsMap.get(item.productId);
+          const unitPrice = masterProduct ? getCurrentUnitPrice(masterProduct, newQty) : item.unitPrice;
+
+          return {
+            ...item,
+            quantity: newQty,
+            unitPrice: unitPrice,
+            subtotal: unitPrice * newQty
+          };
+        }
+        return item;
+      });
       return { ...prev, ...calculateTotals(newItems, prev.discount) };
     });
   };
 
-  // --- CORRECCIÓN DEL DESCUENTO ---
   const applyGlobalDiscount = (discountAmount: number) => {
     setDraft(prev => ({
       ...prev,
@@ -117,7 +175,7 @@ export function useOrder() {
       docId: "",
       id: 0,
       items: draft.items,
-      total: draft.total, // Ya viene calculado y redondeado del draft
+      total: draft.total,
       comments: draft.comments || "",
       discount: draft.discount,
       createdAt: Date.now(),
@@ -142,11 +200,7 @@ export function useOrder() {
       note: `Venta: Total ${draft.total} - Pagó ${customerPayment}`
     } as CustomerTransaction | null;
 
-
     return orderRepository.commitOrderWithTransaction(orderData, transaction);
-    // console.log("Saving order: ", orderData)
-    // console.log("Saving transaction", transaction)
-    // return "test"
   };
 
   return {
@@ -160,6 +214,6 @@ export function useOrder() {
     setSearchTerm,
     suggestions,
     commitOrder,
-    applyGlobalDiscount // Reemplaza a updateDraftSubtotal
+    applyGlobalDiscount
   }
 }
