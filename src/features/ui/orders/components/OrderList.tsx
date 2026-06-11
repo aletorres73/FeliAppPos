@@ -72,11 +72,34 @@ const OrderRow = ({
     }
   };
 
+  // 🆕 LÓGICA DE DETECCIÓN DE PRECIO MAYORISTA / PROMOCIONAL
+  // Comparamos el precio unitario actual contra el original que inyectamos en el mapeo
+  const hasPromoPrice = item.originalPrice !== undefined && item.unitPrice < item.originalPrice;
+  // const discountAmount = hasPromoPrice ? (item.originalPrice! - item.unitPrice) : 0;
+
   return (
     <div className="order-item-row" style={styles.rowGrid}>
       <div style={styles.branchText}>{item.branch || "—"}</div>
-      <div style={styles.articleText}>{item.article}</div>
-      <div style={styles.priceText}>{item.unitPrice.toFixed(2)}</div>
+      
+      {/* 🆕 CONTENEDOR DE ARTÍCULO: Ahora soporta el Badge promocional abajo si aplica */}
+      <div style={styles.articleContainer}>
+        <div style={styles.articleText}>{item.article}</div>
+        {hasPromoPrice && (
+          <span style={styles.promoBadge}>
+            Precio promocional
+          </span>
+        )}
+      </div>
+
+      {/* 🆕 COLUMNA DE PRECIO: Muestra el precio tachado en gris si tiene descuento activo */}
+      <div style={styles.priceContainer}>
+        {hasPromoPrice && (
+          <span style={styles.slashedPrice}>
+            ${item.originalPrice?.toFixed(2)}
+          </span>
+        )}
+        <span style={styles.priceText}>{item.unitPrice.toFixed(2)}</span>
+      </div>
 
       {/* Cantidad ahora es un botón/área interactiva */}
       <div
@@ -144,16 +167,47 @@ const styles: Record<string, React.CSSProperties> = {
     color: "white",
     borderBottom: "1px solid rgba(255, 255, 255, 0.02)"
   },
-  branchText: { color: "rgba(255, 255, 255, 0.4)", fontSize: "0.75rem" },
+  branchText: { color: "rgba(255, 255, 255, 0.4)", fontSize: "0.9rem" },
   articleText: { fontWeight: 500, color: "rgba(255, 255, 255, 0.95)" },
-  priceText: { textAlign: "left", fontFamily: "monospace", color: "rgba(255, 255, 255, 0.7)" },
-  quantityText: { textAlign: "center", fontWeight: 'bold', fontSize: '0.9rem' },
-  subtotalText: { textAlign: "right", fontWeight: "bold", fontSize: '0.9rem', color: "#54C4F0" },
+  
+  // 🆕 NUEVOS ESTILOS OPTIMIZADOS PARA EL FLUJO PROMOCIONAL
+  articleContainer: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "flex-start",
+    gap: "4px"
+  },
+  promoBadge: {
+    backgroundColor: "rgba(74, 222, 128, 0.12)", // Verde traslúcido muy sutil
+    color: "#4ADE80", // Verde vibrante
+    fontSize: "0.7rem",
+    fontWeight: 600,
+    padding: "2px 6px",
+    borderRadius: "4px",
+    textTransform: "uppercase",
+    letterSpacing: "0.03em"
+  },
+  priceContainer: {
+    display: "flex",
+    flexDirection: "column", // Queda impecable uno abajo del otro o en línea si hay espacio. Column evita que rompa el GRID_LAYOUT
+    textAlign: "left"
+  },
+  slashedPrice: {
+    color: "rgba(255, 255, 255, 0.25)",
+    textDecoration: "line-through",
+    fontSize: "1rem",
+    fontFamily: "monospace",
+    marginBottom: "2px"
+  },
+  
+  priceText: { textAlign: "left", fontFamily: "monospace", color: "rgba(255, 255, 255, 0.7)", fontSize: "1rem" },
+  quantityText: { textAlign: "center", fontWeight: 'bold', fontSize: '1rem' },
+  subtotalText: { textAlign: "right", fontWeight: "bold", fontSize: '1.1rem', color: "#54C4F0" },
   deleteBtn: {
     background: "none",
     border: "none",
     color: "#e63946",
-    opacity: 0.15, // Reemplaza el rgba complejo por opacidad
+    opacity: 0.15,
     cursor: "pointer",
     fontSize: "1.1rem",
     transition: "all 0.2s ease"

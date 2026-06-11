@@ -4,6 +4,7 @@ export interface OrderItem {
   branch: string;
   article: string;
   unitPrice: number;
+  originalPrice?: number;
   quantity: number;
   subtotal: number;
 }

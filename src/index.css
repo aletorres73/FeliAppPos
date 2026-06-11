@@ -15,8 +15,9 @@
   --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
   --mono: ui-monospace, Consolas, monospace;
 
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
+  /* ⚡ ANTES: 18px (Muy grande para un POS) -> AHORA: 14px (Tamaño ideal de facturación) */
+  font: 14px/140% var(--sans);
+  letter-spacing: 0.12px;
   color-scheme: light dark;
   color: var(--text);
   background: var(--bg);
@@ -25,8 +26,9 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
+  /* Modificamos el breakpoint para pantallas chicas/tablets si es necesario */
   @media (max-width: 1024px) {
-    font-size: 16px;
+    font-size: 13px;
   }
 }
 
@@ -74,23 +76,30 @@ h2 {
 }
 
 h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
-  }
-}
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
+  font-size: 22px;
+  /* ⚡ Antes 30px */
+  letter-spacing: -0.5px;
+  margin: 16px 0;
+
+  /* ⚡ Reducimos márgenes para ganar espacio vertical */
   @media (max-width: 1024px) {
     font-size: 20px;
+    margin: 12px 0;
   }
 }
+
+h2 {
+  font-size: 18px;
+  /* ⚡ Antes 24px */
+  line-height: 115%;
+  letter-spacing: -0.1px;
+  margin: 0 0 6px;
+
+  @media (max-width: 1024px) {
+    font-size: 16px;
+  }
+}
+
 p {
   margin: 0;
 }

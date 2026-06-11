@@ -195,16 +195,15 @@ export default function OrderScreen() {
   };
 
   const handleConfirmManual = (item: OrderItem) => {
-    // 🆕 Si se abrió la modal manual pero ya teníamos un multiplicador por F1 seteado,
-    // usamos la cantidad acumulada multiplicada.
     const finalQty = item.quantity === 1 && multiplier !== 1 ? multiplier : item.quantity;
     
     addItem({
       ...item,
       quantity: finalQty,
+      originalPrice: item.unitPrice, // 🆕 Seteamos el precio base con el que entró
       subtotal: finalQty * item.unitPrice
     });
-    setMultiplier(1); // Reseteamos
+    setMultiplier(1);
     closeManualModal();
   };
 
@@ -352,9 +351,10 @@ const mapProductToOrderItem = (p: Product, qty: number = 1): OrderItem => ({
   barcode: p.id,
   branch: p.branch,
   article: p.article,
-  unitPrice: p.price,
-  quantity: qty, // 🆕 Ahora acepta la cantidad variable
-  subtotal: p.price * qty // 🆕 Calcula el subtotal inicial correcto
+  unitPrice: p.price, // Este va a cambiar dinámicamente con el volumen
+  originalPrice: p.price, // 🆕 Guardamos el precio base fijo de la fábrica
+  quantity: qty, 
+  subtotal: p.price * qty 
 });
 
 // --- Objeto de Estilos Optimizado para Layout ---

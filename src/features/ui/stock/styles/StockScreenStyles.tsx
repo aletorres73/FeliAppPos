@@ -1,6 +1,6 @@
 // --- Estilos Minimalistas y Justificados ---
 export const stockContainer: React.CSSProperties = {
-  padding: '4em', backgroundColor: '#0F1115', minHeight: '100vh', color: 'white', textAlign: 'left'
+  padding: '5em', backgroundColor: '#0F1115', minHeight: '100vh', color: 'white', textAlign: 'left'
 };
 
 export const headerStyle: React.CSSProperties = {
