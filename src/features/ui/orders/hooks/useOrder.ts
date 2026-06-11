@@ -95,7 +95,7 @@ export function useOrder() {
           ...item,
           quantity: updatedQty,
           unitPrice: unitPrice,
-          subtotal: updatedQty * unitPrice
+          subtotal: masterProduct?.saleWeight ? updatedQty * unitPrice * 10 : updatedQty * unitPrice
         };
       } else {
         // Es un ítem nuevo. Evaluamos su cantidad inicial por si entra en escala de una
@@ -104,7 +104,7 @@ export function useOrder() {
         newItems.push({
           ...newItem,
           unitPrice: unitPrice,
-          subtotal: newItem.quantity * unitPrice
+          subtotal: masterProduct?.saleWeight ? newItem.quantity * unitPrice * 10 : newItem.quantity * unitPrice
         });
       }
 
@@ -134,7 +134,7 @@ export function useOrder() {
             ...item,
             quantity: newQty,
             unitPrice: unitPrice,
-            subtotal: unitPrice * newQty
+            subtotal: masterProduct?.saleWeight ? newQty * unitPrice * 10 : newQty * unitPrice
           };
         }
         return item;
