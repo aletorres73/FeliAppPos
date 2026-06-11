@@ -24,3 +24,4 @@ dist-ssr
 *.sw?
 .firebase/
 src/features/data/services/FirebaseService.ts
+.env
