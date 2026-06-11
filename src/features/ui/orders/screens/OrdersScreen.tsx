@@ -210,7 +210,7 @@ export default function OrderScreen() {
   return (
     <div style={styles.screenContainer}>
       <div style={styles.contentWrapper}>
-        <Header isLoading={isLoading} />
+        {/* <Header isLoading={isLoading} /> */}
 
         {/* 🆕 BANNER INDICADOR DEL MULTIPLICADOR (F1) */}
         <div style={{
@@ -324,26 +324,26 @@ export default function OrderScreen() {
 }
 
 // --- Header simplificado ---
-interface HeaderProps {
-  isLoading: boolean;
-}
+// interface HeaderProps {
+//   isLoading: boolean;
+// }
 
-const Header = ({ isLoading }: HeaderProps) => (
-  <header style={styles.header}>
-    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%" }}>
-      <div>
-        <h1 style={styles.title}>Nuevo Pedido</h1>
-        <p style={styles.subtitle}>Escanea productos o búscalos manualmente</p>
-      </div>
+// const Header = ({ isLoading }: HeaderProps) => (
+//   <header style={styles.header}>
+//     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%" }}>
+//       <div>
+//         <h1 style={styles.title}>Nuevo Pedido</h1>
+//         <p style={styles.subtitle}>Escanea productos o búscalos manualmente</p>
+//       </div>
 
-      {isLoading && (
-        <div style={styles.loader}>
-          <span className="pulse-animation">●</span> Buscando...
-        </div>
-      )}
-    </div>
-  </header>
-);
+//       {isLoading && (
+//         <div style={styles.loader}>
+//           <span className="pulse-animation">●</span> Buscando...
+//         </div>
+//       )}
+//     </div>
+//   </header>
+// );
 
 // --- Funciones de Mapeo actualizadas ---
 const mapProductToOrderItem = (p: Product, qty: number = 1): OrderItem => ({
@@ -368,7 +368,7 @@ const styles: Record<string, React.CSSProperties> = {
   contentWrapper: {
     maxWidth: "1000px",
     width: "100%",
-    padding: "30px 40px 160px 40px",
+    padding: "20px 40px 160px 40px",
     boxSizing: "border-box",
   },
   header: {
@@ -398,10 +398,10 @@ const styles: Record<string, React.CSSProperties> = {
   multiplierBanner: {
     display: "flex",
     alignItems: "center",
-    padding: "12px 20px",
+    padding: "12px 30px",
     borderRadius: "8px",
     border: "1px solid",
-    marginBottom: 20,
+    marginBottom: 10,
     transition: "all 0.2s ease",
     height: "45px",
     boxSizing: "border-box"

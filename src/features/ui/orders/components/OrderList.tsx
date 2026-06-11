@@ -146,7 +146,7 @@ const hoverEffects = `
 `;
 
 const styles: Record<string, React.CSSProperties> = {
-  container: { marginTop: 20, height : "100%" },
+  container: { height : "100%" },
   scrollContainer: { maxHeight: "400px", overflowY: "auto", marginTop: 8 },
   headerGrid: {
     display: "grid",

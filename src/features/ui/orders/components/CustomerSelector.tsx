@@ -21,7 +21,7 @@ export function CustomerSelector({ selected, onClick, onClear, onOpenCreate }: S
         justifyContent: "space-between",
         alignItems: "center",
         transition: "0.2s",
-        marginBottom: "20px"
+        marginBottom: "10px"
       }}
     >
       <div style={{ flex: 1 }}>

@@ -67,7 +67,6 @@ export function ScannerInput({ onScan, externalValue, onChange, suggestions }: P
       display: "flex",
       flexDirection: "column",
       alignItems: "center",
-      margin: "20px 0",
       position: "relative",
       width: "100%",
     }}>
@@ -77,7 +76,7 @@ export function ScannerInput({ onScan, externalValue, onChange, suggestions }: P
           border: 1px solid rgba(255, 255, 255, 0.1);
           border-radius: 8px;
           color: white;
-          padding: 12px 16px 12px 60px;
+          padding: 8px 16px 12px 60px;
           font-size: 0.85rem;
           outline: none;
           transition: all 0.2s ease;
