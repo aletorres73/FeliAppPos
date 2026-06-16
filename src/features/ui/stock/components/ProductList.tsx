@@ -4,7 +4,8 @@ import {
     articleName, branchLabel, productBadge, soldValueStyle, editAction, deleteAction, variationNameStyle,
     miniActionButtonStyle, destroyGroupButtonStyle, disabledDeleteActionStyle, bulkActionBarStyle,
     bulkSelectStyle, checkboxStyle, listWrapperStyle, tableHeaderStyle, cardContainerStyle,
-    rowStyle, variationsListStyle, cellValueStyle, subCellValueStyle
+    rowStyle, variationsListStyle, cellValueStyle, subCellValueStyle,
+    productBadgePromotion
 } from '../styles/StockScreenStyles';
 
 interface GroupedProduct extends Product {
@@ -65,16 +66,15 @@ export function ProductList({
                 </div>
             )}
 
-            {/* Cabecera de la tabla */}
             <div style={tableHeaderStyle}>
-                <div style={{ width: '40px' }}></div> {/* 🆕 Espacio para el checkbox */}
-                <div style={{ flex: '2' }}>PRODUCTO / DETALLE</div>
-                <div style={{ flex: '1' }}>COSTO</div>
-                <div style={{ flex: '1' }}>GANANCIA (%)</div>
-                <div style={{ flex: '1' }}>P. VENTA</div>
-                <div style={{ flex: '1' }}>STOCK</div>
-                <div style={{ flex: '1' }}>VENDIDOS</div>
-                <div style={{ flex: '1.2', textAlign: 'right' }}>ACCIONES</div>
+                <div></div> {/* Espacio Checkbox */}
+                <div>PRODUCTO</div>
+                <div>COSTO</div>
+                <div>GANANCIA (%)</div>
+                <div>P. VENTA</div>
+                <div>STOCK</div>
+                <div>VENDIDOS</div>
+                <div style={{ textAlign: 'right' }}>ACCIONES</div>
             </div>
 
             {filteredProducts.map(product => {
@@ -82,6 +82,7 @@ export function ProductList({
                 const hasVariations = variations.length > 0;
                 const totalGroupSold = variations.reduce((acc, v) => acc + (v.quantitySold || 0), 0) + (product.quantitySold || 0);
                 const totalGroupWeightSold = variations.reduce((acc, v) => acc + (v.weightSold || 0), 0) + (product.weightSold || 0);
+                const hasVolumePrice = (product.volumePrices || []).length > 0;
 
                 return (
                     <div key={product.id} style={cardContainerStyle}>
@@ -104,6 +105,7 @@ export function ProductList({
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                     <span style={{ ...articleName, fontSize: '1.05rem' }}>{product.article}</span>
                                     {hasVariations && <span style={productBadge(product.active)}>GRUPO</span>}
+                                    {hasVolumePrice && <span style={productBadgePromotion(product.active)}>PROMOCION</span>}
                                 </div>
                                 <span style={branchLabel}>
                                     {product.branch || 'Sin Marca'}
@@ -133,7 +135,7 @@ export function ProductList({
                                 {variations.map(v => {
                                     const variantName = v.article.toUpperCase().replace(product.article.toUpperCase(), '').replace(/[-_]/g, '').trim() || 'Estándar';
                                     return (
-                                        <div key={v.id} style={rowStyle(false)}>
+                                        <div key={v.id} style={rowStyle(true)}>
 
                                             {/* 🆕 Checkbox de Selección para Hijos (por si quieres moverlos a otro grupo) */}
                                             <div style={{ width: '40px', display: 'flex', justifyContent: 'flex-start' }}>
@@ -145,7 +147,7 @@ export function ProductList({
                                                 />
                                             </div>
 
-                                            <div style={{ flex: '2', paddingLeft: '20px', display: 'flex', flexDirection: 'column' }}>
+                                            <div style={{ flex: '1', display: 'flex', flexDirection: 'column' }}>
                                                 <span style={variationNameStyle}>{variantName}</span>
                                                 <span style={{ color: 'rgba(255,255,255,0.2)', fontSize: '0.65rem', marginLeft: '14px' }}>ID: {v.id}</span>
                                             </div>

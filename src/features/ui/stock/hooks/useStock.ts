@@ -10,6 +10,7 @@ export function useStock() {
     const [isEditingMode, setIsEditingMode] = useState(false);
     const [editingProduct, setEditingProduct] = useState<Partial<Product> | null>(null);
     const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]); // 🆕 Estado de selección
+    const [productFilter, setProductFilter] = useState<'all' | 'combos' | 'promotions' | 'grouped'>('all');
 
     useEffect(() => {
         loadProducts();
@@ -73,13 +74,36 @@ export function useStock() {
         })).filter(group => {
             // Lógica de búsqueda optimizada que revisa marca y artículo
             const term = searchTerm.toLowerCase();
-            return (
-                group.article.toLowerCase().includes(term) ||
-                group.branch.toLowerCase().includes(term) ||
-                group.variations.some(v => v.article.toLowerCase().includes(term))
-            );
+            if (productFilter === 'combos')
+                return (
+                    (group.article.toLowerCase().includes(term) ||
+                        group.branch.toLowerCase().includes(term) ||
+                        group.variations.some(v => v.article.toLowerCase().includes(term))) &&
+                    group.isCombo
+                );
+            if (productFilter === 'all')
+                return (
+                    group.article.toLowerCase().includes(term) ||
+                    group.branch.toLowerCase().includes(term) ||
+                    group.variations.some(v => v.article.toLowerCase().includes(term))
+                )
+            if (productFilter === 'promotions')
+                return (
+                    (group.article.toLowerCase().includes(term) ||
+                        group.branch.toLowerCase().includes(term) ||
+                        group.variations.some(v => v.article.toLowerCase().includes(term))) &&
+                    (group.volumePrices?.length != 0)
+                )
+            if (productFilter === 'grouped')
+                return (
+                    (group.article.toLowerCase().includes(term) ||
+                        group.branch.toLowerCase().includes(term) ||
+                        group.variations.some(v => v.article.toLowerCase().includes(term))) &&
+                    (group.parentId != null || group.isParent)
+                )
+
         });
-    }, [products, searchTerm]);
+    }, [products, searchTerm, productFilter]);
 
 
     const handleDelete = async (id: string) => {
@@ -232,6 +256,7 @@ export function useStock() {
         groupedProducts,
         selectedProductIds,
         totalInvestment,
+        productFilter,
 
         // Modificadores de estado directos (para los subcomponentes)
         setSearchTerm,
@@ -250,6 +275,7 @@ export function useStock() {
         openCreateModal,
         closeModal,
         toggleSelectProduct,
-        handleBulkGroupAssignment, // 🆕 Nueva acción enviada a la vista
+        handleBulkGroupAssignment, // 🆕 Nueva acción enviada a la vista,
+        setProductFilter
     };
 }

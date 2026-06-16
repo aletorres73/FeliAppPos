@@ -20,9 +20,18 @@ export type Product = {
   stockLinked: boolean;    // Si es true, descuenta stock del parentId (ej: venta por docena)
   conversionFactor: number | null; // Cuántas unidades del padre representa este hijo (ej: 12 para docena)
   volumePrices?: VolumePrice[]; // Opcional para soportar los que no tienen escala
+
+  isCombo?: boolean;
+  comboComponenets?: ComboItems[]
 }
 
 export type VolumePrice = {
   fromQuantity: number;
   specialPrice: number;
+}
+
+export type ComboItems ={
+  productId: string;
+  quantity: number;
+  priceCombo: number
 }

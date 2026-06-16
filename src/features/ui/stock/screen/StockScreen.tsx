@@ -7,6 +7,7 @@ import { StockModal } from '../components/StockModal';
 import { SearchContainer } from '../components/SearchContainer';
 import { ProductList } from '../components/ProductList';
 import { formatCurrency } from '../../../domain/utils/formats';
+import { FilterChips } from '../components/FilterChips';
 
 export default function StockScreen() {
     const {
@@ -19,6 +20,8 @@ export default function StockScreen() {
         groupedProducts,
         selectedProductIds,
         totalInvestment,
+        productFilter,
+        setProductFilter,
         toggleSelectProduct,
         handleBulkGroupAssignment,
         setSearchTerm,
@@ -55,6 +58,11 @@ export default function StockScreen() {
         console.log(`Producto ${editingProduct?.id} asignado al grupo ${parentId}`);
     };
 
+    const handleNewFilter = (newFilter: string) => {
+        if (newFilter === 'all' || newFilter === 'combos' || newFilter === 'promotions'|| newFilter === 'grouped')
+            setProductFilter(newFilter)
+    }
+
     return (
         <div style={stockContainer}>
             <header style={headerStyle}>
@@ -67,25 +75,16 @@ export default function StockScreen() {
                 </button>
             </header>
 
-
-            <div style={
-                {
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                }}>
-
-                <SearchContainer searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
-                {/* ─── 🆕 TARJETA DE INVERSIÓN TOTAL EN PANTALLA ─── */}
-                <div style={investmentCardStyle}>
-                    <span style={investmentLabelStyle}>
-                        Inversión estimada
-                    </span>
-                    <span style={investmentValueStyle}>
-                        {formatCurrency(totalInvestment)}
-                    </span>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <SearchContainer searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
+                    <FilterChips current={productFilter} onChange={handleNewFilter} />
                 </div>
 
+                <div style={investmentCardStyle}>
+                    <span style={investmentLabelStyle}>Inversión estimada</span>
+                    <span style={investmentValueStyle}>{formatCurrency(totalInvestment)}</span>
+                </div>
             </div>
 
             <ProductList
@@ -124,7 +123,7 @@ const investmentCardStyle: React.CSSProperties = {
     backgroundColor: '#1C2028',
     border: '1px solid rgba(255, 255, 255, 0.08)',
     borderRadius: '6px',
-    padding: '1em',
+    padding: '0.5em',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',

@@ -81,7 +81,9 @@ export const mapToProduct = (data: any): Product => {
     parentId: data.parentId || null,
     stockLinked: data.stockLinked || false,
     conversionFactor: data.conversionFactor || null,
-    volumePrices: data.volumePrices || []
+    volumePrices: data.volumePrices || [],
+    isCombo: data.isCombo || false,
+    comboComponenets: data.comboComponents || [],
   };
 }
 
@@ -212,6 +214,7 @@ export const bulkActionRepository = {
         costo: updates.cost ?? childData.costo,
         activo: updates.active ?? childData.activo,
         ganancia: updates.gains ?? childData.ganancia,
+        volumePrices: updates.volumePrices ?? childData.volumePrices,
         updatedAt: Date.now()
       });
     });
