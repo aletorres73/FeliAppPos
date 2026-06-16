@@ -1,9 +1,10 @@
 // --- Estilos Minimalistas y Justificados ---
 export const stockContainer: React.CSSProperties = {
-  padding: '5em', backgroundColor: '#0F1115', minHeight: '100vh', color: 'white', textAlign: 'left'
+  padding: '1em', backgroundColor: '#0F1115', minHeight: '100vh', color: 'white', textAlign: 'left'
 };
 
 export const headerStyle: React.CSSProperties = {
+  marginLeft:'60px',
   display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '40px'
 };
 
@@ -80,16 +81,27 @@ export const deleteAction: React.CSSProperties = {
 };
 
 export const productBadge = (active: boolean): React.CSSProperties => ({
-  fontSize: '0.6rem', padding: '4px 8px', borderRadius: '4px',
+  fontSize: '0.5rem', padding: '2px 4px', borderRadius: '4px',
   backgroundColor: active ? 'rgba(84,196,240,0.1)' : 'rgba(255,255,255,0.05)',
-  color: active ? '#54C4F0' : 'rgba(255,255,255,0.3)', fontWeight: 800, border: active ? '1px solid #54C4F0' : '1px solid transparent'
+  color: active ? '#54C4F0' : 'rgba(255,255,255,0.3)',
+  fontWeight: 700,
+  border: active ? '1px solid #54C4F0' : '1px solid transparent'
 });
+
+export const productBadgePromotion = (active: boolean): React.CSSProperties => ({
+  fontSize: '0.5rem', padding: '2px 4px', borderRadius: '4px',
+  backgroundColor: active ? 'rgba(84,196,240,0.1)' : 'rgba(255,255,255,0.05)',
+  color: active ? '#f0b954' : 'rgba(255,255,255,0.3)',
+  fontWeight: 700,
+  border: active ? '1px solid #f0b954' : '1px solid transparent'
+});
+
 
 export const loadingCenter: React.CSSProperties = {
   height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'flex-start',
   paddingLeft: '40px', backgroundColor: '#0F1115', color: '#54C4F0', letterSpacing: '2px'
 };
-export const searchContainer: React.CSSProperties = { marginBottom: '40px', textAlign: 'left' };
+export const searchContainer: React.CSSProperties = { marginBottom: '40px', textAlign: 'left', width: '100%', minWidth: '300px' };
 export const cardHeader: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' };
 export const loadingLeft: React.CSSProperties = { height: '100vh', display: 'flex', alignItems: 'center', paddingLeft: '40px' };
 
@@ -105,129 +117,130 @@ export const fullScreenCenter: React.CSSProperties = {
 };
 
 export const listWrapperStyle: React.CSSProperties = {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '12px',
-    width: '100%',
-    boxSizing: 'border-box'
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '12px',
+  width: '100%',
+  boxSizing: 'border-box'
 };
 
-export const tableHeaderStyle: React.CSSProperties = {
-    display: 'flex',
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: '10px 20px',
-    color: 'rgba(255, 255, 255, 0.4)',
-    fontSize: '0.75rem',
-    fontWeight: '600',
-    letterSpacing: '0.5px',
-    textTransform: 'uppercase'
+const gridLayout = "30px 2fr 1fr 1fr 1fr 1fr 1fr 1.2fr";
+
+export const tableHeaderStyle = {
+  display: "grid",
+  gridTemplateColumns: gridLayout,
+  alignItems: "center",
+  padding: "10px",
+  borderBottom: "1px solid #333",
+  fontWeight: "bold"
 };
 
-export const cardContainerStyle: React.CSSProperties = {
-    display: 'flex',
-    flexDirection: 'column',
-    backgroundColor: '#14171C',
-    border: '1px solid rgba(255,255,255,0.04)',
-    borderRadius: '8px',
-    width: '100%',
-    overflow: 'hidden'
-};
-
-// Generador de estilos de fila para sincronizar anchos exactos
 export const rowStyle = (isParent: boolean): React.CSSProperties => ({
-    display: 'flex',
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: isParent ? '14px 20px' : '10px 20px',
-    backgroundColor: isParent ? 'transparent' : 'rgba(255, 255, 255, 0.015)',
-    borderBottom: isParent && !isParent ? '1px solid rgba(255,255,255,0.02)' : 'none',
-    transition: 'background-color 0.2s',
+  flexDirection: 'row',
+  alignItems: 'center',
+  backgroundColor: isParent ? 'transparent' : 'rgba(255, 255, 255, 0.015)',
+  transition: 'background-color 0.2s',
+  display: "grid",
+  gridTemplateColumns: gridLayout,
+  padding: "8px 10px",
+  minHeight: "50px",
+  borderBottom: "1px solid #222"
 });
 
+export const cardContainerStyle: React.CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  backgroundColor: '#14171C',
+  border: '1px solid rgba(255,255,255,0.04)',
+  borderRadius: '8px',
+  width: '100%',
+  overflow: 'hidden'
+};
+
+
 export const variationsListStyle: React.CSSProperties = {
-    display: 'flex',
-    flexDirection: 'column',
-    borderTop: '1px solid rgba(255,255,255,0.03)',
-    backgroundColor: '#111418'
+  display: 'flex',
+  flexDirection: 'column',
+  borderTop: '1px solid rgba(255,255,255,0.03)',
+  backgroundColor: '#111418'
 };
 
 export const cellValueStyle: React.CSSProperties = {
-    fontSize: '0.95rem',
-    color: '#FFF',
-    fontWeight: '500'
+  fontSize: '0.95rem',
+  color: '#FFF',
+  fontWeight: '500'
 };
 
 export const subCellValueStyle: React.CSSProperties = {
-    fontSize: '0.85rem',
-    color: 'rgba(255,255,255,0.6)'
+  fontSize: '0.85rem',
+  color: 'rgba(255,255,255,0.6)'
 };
 
 export const variationNameStyle: React.CSSProperties = {
-    color: 'rgba(255,255,255,0.8)',
-    fontSize: '0.85rem',
-    fontWeight: '500'
+  color: 'rgba(255,255,255,0.8)',
+  fontSize: '0.85rem',
+  fontWeight: '500'
 };
 
 export const miniActionButtonStyle: React.CSSProperties = {
-    background: 'none',
-    border: 'none',
-    cursor: 'pointer',
-    fontSize: '0.85rem',
-    padding: '4px 8px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.03)',
-    borderRadius: '4px'
+  background: 'none',
+  border: 'none',
+  cursor: 'pointer',
+  fontSize: '0.85rem',
+  padding: '4px 8px',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  backgroundColor: 'rgba(255,255,255,0.03)',
+  borderRadius: '4px'
 };
 
 export const destroyGroupButtonStyle: React.CSSProperties = {
-    backgroundColor: 'rgba(229, 62, 62, 0.15)',
-    color: '#FEB2B2',
-    border: '1px solid rgba(229, 62, 62, 0.2)',
-    padding: '6px 12px',
-    fontSize: '0.7rem',
-    borderRadius: '4px',
-    cursor: 'pointer',
-    fontWeight: '600',
-    transition: 'all 0.2s'
+  backgroundColor: 'rgba(229, 62, 62, 0.15)',
+  color: '#FEB2B2',
+  border: '1px solid rgba(229, 62, 62, 0.2)',
+  padding: '6px 12px',
+  fontSize: '0.7rem',
+  borderRadius: '4px',
+  cursor: 'pointer',
+  fontWeight: '600',
+  transition: 'all 0.2s'
 };
 
 export const disabledDeleteActionStyle: React.CSSProperties = {
-    backgroundColor: 'rgba(255, 255, 255, 0.02)',
-    color: 'rgba(255, 255, 255, 0.15)',
-    border: '1px solid transparent',
-    cursor: 'not-allowed',
-    opacity: 0.5
+  backgroundColor: 'rgba(255, 255, 255, 0.02)',
+  color: 'rgba(255, 255, 255, 0.15)',
+  border: '1px solid transparent',
+  cursor: 'not-allowed',
+  opacity: 0.5
 };
 
 export const bulkActionBarStyle: React.CSSProperties = {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#1C2028',
-    border: '1px dashed #54C4F0',
-    borderRadius: '6px',
-    padding: '12px 20px',
-    color: '#FFF',
-    fontSize: '0.9rem',
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  backgroundColor: '#1C2028',
+  border: '1px dashed #54C4F0',
+  borderRadius: '6px',
+  padding: '12px 20px',
+  color: '#FFF',
+  fontSize: '0.9rem',
 };
 
 export const bulkSelectStyle: React.CSSProperties = {
-    backgroundColor: '#14171C',
-    color: '#FFF',
-    border: '1px solid rgba(255,255,255,0.15)',
-    padding: '6px 10px',
-    borderRadius: '4px',
-    fontSize: '0.85rem',
-    cursor: 'pointer',
-    outline: 'none'
+  backgroundColor: '#14171C',
+  color: '#FFF',
+  border: '1px solid rgba(255,255,255,0.15)',
+  padding: '6px 10px',
+  borderRadius: '4px',
+  fontSize: '0.85rem',
+  cursor: 'pointer',
+  outline: 'none'
 };
 
 export const checkboxStyle: React.CSSProperties = {
-    width: '16px',
-    height: '16px',
-    cursor: 'pointer',
-    accentColor: '#54C4F0' // Da un color celeste al check en navegadores modernos
+  width: '16px',
+  height: '16px',
+  cursor: 'pointer',
+  accentColor: '#54C4F0' // Da un color celeste al check en navegadores modernos
 };
