@@ -1,8 +1,10 @@
 import { useState, useRef, useEffect } from "react";
 import { formatCurrency } from "../../../domain/utils/formats";
 import { type PaymentType, type PaymentMethod } from "../../../domain/types/orderTypes";
+import {type Customer } from "../../../domain/types/customersTypes";
 
 interface Props {
+  customerSelected: Customer,
   total: number;
   onConfirm: (
     status: "PAID" | "PENDING",
@@ -16,19 +18,32 @@ interface Props {
 }
 
 export function CheckoutModal({
+  customerSelected,
   total,
   onConfirm,
   onClose,
   comments,
   onCommentsChange,
-  isLoading
-}: Props) {
+  isLoading }: Props) {
+
   const [cashAmount, setCashAmount] = useState<string>(total.toString());
   const [transferAmount, setTransferAmount] = useState<string>("0");
   const [activeMode, setActiveMode] = useState<"CASH" | "TRANSFER" | "MIXED">("CASH");
 
   const cashInputRef = useRef<HTMLInputElement>(null);
   const transferInputRef = useRef<HTMLInputElement>(null);
+  const numCash = parseFloat(cashAmount) || 0;
+  const numTransfer = parseFloat(transferAmount) || 0;
+
+  const paymentType: PaymentMethod[] = [];
+  if (numCash > 0) paymentType.push({ type: "CASH" as PaymentType, amount: numCash });
+  if (numTransfer > 0) paymentType.push({ type: "TRANSFER" as PaymentType, amount: numTransfer });
+
+  const totalPayed = numCash + numTransfer;
+  const remanente = total - totalPayed;
+  const vuelto = numCash > (total - numTransfer) ? numCash - (total - numTransfer) : 0;
+
+  const customerName = customerSelected.name + ' ' + customerSelected.lastname
 
   // Lógica de reseteo al cambiar de modo
   useEffect(() => {
@@ -70,19 +85,13 @@ export function CheckoutModal({
     }
   };
 
-  const numCash = parseFloat(cashAmount) || 0;
-  const numTransfer = parseFloat(transferAmount) || 0;
-
-  const paymentType: PaymentMethod[] = [];
-  if(numCash > 0 ) paymentType.push({ type: "CASH" as PaymentType, amount: numCash });
-  if(numTransfer > 0) paymentType.push({ type: "TRANSFER" as PaymentType, amount: numTransfer });
-
-  const totalPayed = numCash + numTransfer;
-  const remanente = total - totalPayed;
-  const vuelto = numCash > (total - numTransfer) ? numCash - (total - numTransfer) : 0;
-
   const handleFinalConfirm = () => {
     if (isLoading) return;
+    if (customerSelected.id == null) {
+      alert('No se puede asignar deuda a consumidor final, seleccionar existente o crear uno nuevo.')
+      return
+    }
+
     const status = totalPayed >= total ? "PAID" : "PENDING";
     onConfirm(status, totalPayed, paymentType.length > 0 ? paymentType : null);
   };
@@ -126,6 +135,8 @@ export function CheckoutModal({
         <h2 style={{ margin: "0 0 20px 0", color: "white", fontSize: '1.4rem' }}>
           {isLoading ? "Procesando..." : "Finalizar Venta"}
         </h2>
+
+        <label style={{...modalStyles.label, color: "white" }}>Cliente seleccionado: {customerName}</label>
 
         <label style={modalStyles.label}>Forma de Pago:</label>
         <div style={modalStyles.tabs}>
@@ -229,7 +240,7 @@ export function CheckoutModal({
           >
             {isLoading ? "Guardando..." :
               remanente === total ? "Pendiente [Enter]" :
-              remanente > 0 ? "Pago Parcial [Enter]" : "Finalizar Venta [Enter]"}
+                remanente > 0 ? "Pago Parcial [Enter]" : "Finalizar Venta [Enter]"}
           </button>
         </div>
       </div>

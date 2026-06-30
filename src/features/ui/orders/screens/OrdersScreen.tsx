@@ -114,7 +114,7 @@ export default function OrderScreen() {
   };
 
   // 🆕 Confirmar el número del multiplicador (Enter en el input de F1)
-  const handleConfirmMultiplier = (e: React.FormEvent) => {
+  const handleConfirmMultiplier = (e: React.SubmitEvent) => {
     e.preventDefault();
     const parsed = parseFloat(multiplierInput);
     if (!isNaN(parsed) && parsed > 0) {
@@ -291,6 +291,7 @@ export default function OrderScreen() {
 
       {showCheckout && (
         <CheckoutModal
+          customerSelected={selectedCustomer}
           total={totalFinal}
           comments={draft.comments || ""}
           isLoading={isLoading}
@@ -323,27 +324,6 @@ export default function OrderScreen() {
   );
 }
 
-// --- Header simplificado ---
-// interface HeaderProps {
-//   isLoading: boolean;
-// }
-
-// const Header = ({ isLoading }: HeaderProps) => (
-//   <header style={styles.header}>
-//     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%" }}>
-//       <div>
-//         <h1 style={styles.title}>Nuevo Pedido</h1>
-//         <p style={styles.subtitle}>Escanea productos o búscalos manualmente</p>
-//       </div>
-
-//       {isLoading && (
-//         <div style={styles.loader}>
-//           <span className="pulse-animation">●</span> Buscando...
-//         </div>
-//       )}
-//     </div>
-//   </header>
-// );
 
 // --- Funciones de Mapeo actualizadas ---
 const mapProductToOrderItem = (p: Product, qty: number = 1): OrderItem => ({
