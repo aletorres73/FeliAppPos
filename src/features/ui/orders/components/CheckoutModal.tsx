@@ -87,7 +87,7 @@ export function CheckoutModal({
 
   const handleFinalConfirm = () => {
     if (isLoading) return;
-    if (customerSelected.id == null) {
+    if (customerSelected.id == null && totalPayed == 0) {
       alert('No se puede asignar deuda a consumidor final, seleccionar existente o crear uno nuevo.')
       return
     }

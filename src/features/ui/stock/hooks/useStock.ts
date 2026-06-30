@@ -229,7 +229,7 @@ export function useStock() {
             // 1. Sumar la inversión del producto principal (Padre o Independiente)
             const parentCost = parent.cost || 0;
             const parentInvestment = parent.saleWeight
-                ? parentCost * (parent.weight || 0)
+                ? parentCost * 10 * (parent.weight || 0)
                 : parentCost * (parent.stock || 0);
 
             // 2. Sumar la inversión de cada una de sus variaciones (hijos) si existen
