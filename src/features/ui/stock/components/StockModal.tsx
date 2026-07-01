@@ -5,8 +5,8 @@ import { labelStyle, searchInputStyle } from '../styles/StockScreenStyles';
 
 interface StockModalProps {
     isEditingMode: boolean;
-    product: Partial<Product>; 
-    allProducts: Product[]; 
+    product: Partial<Product>;
+    allProducts: Product[];
     setEditingProduct: (product: Partial<Product> | null) => void;
     handleSave: (e: React.SubmitEvent<HTMLFormElement>) => void;
     handleCostChange: (cost: number) => void;
@@ -16,6 +16,10 @@ interface StockModalProps {
     setIsModalOpen: (open: boolean) => void;
     onClose?: () => void;
 }
+
+// utils/priceCalculator.ts
+const calculatePrice = (cost: number, margin: number) => (cost * (1 + margin / 100));
+const calculateMargin = (cost: number, price: number) => (cost > 0 ? ((price - cost) / cost) * 100 : 0);
 
 export function StockModal(
     {
@@ -35,7 +39,7 @@ export function StockModal(
     // --- 🆕 Funciones Locales para Manejar Escalas de Precios ---
     const addVolumePriceRule = () => {
         const currentRules = product.volumePrices || [];
-        const newRule: VolumePrice = { fromQuantity: 0, specialPrice: 0 };
+        const newRule: VolumePrice = { fromQuantity: '0', specialPrice: '0', gains: '0' };
         setEditingProduct({
             ...product,
             volumePrices: [...currentRules, newRule]
@@ -43,15 +47,23 @@ export function StockModal(
     };
 
     const updateVolumePriceRule = (index: number, field: keyof VolumePrice, value: number) => {
-        const currentRules = product.volumePrices ? [...product.volumePrices] : [];
-        currentRules[index] = {
-            ...currentRules[index],
-            [field]: value
-        };
-        setEditingProduct({
-            ...product,
-            volumePrices: currentRules
-        });
+        if (!product.volumePrices) return;
+
+        const newRules = [...product.volumePrices];
+        const baseCost = product.cost || 0;
+
+        // Clonamos la regla a modificar
+        const updatedRule = { ...newRules[index], [field]: value };
+
+        // Lógica reactiva: si cambia el margen, recalcula el precio. Si cambia el precio, recalcula el margen.
+        if (field === 'gains') {
+            updatedRule.specialPrice = calculatePrice(baseCost, value).toFixed(2);
+        } else if (field === 'specialPrice') {
+            updatedRule.gains = calculateMargin(baseCost, value).toFixed(2);
+        }
+
+        newRules[index] = updatedRule;
+        setEditingProduct({ ...product, volumePrices: newRules });
     };
 
     const removeVolumePriceRule = (index: number) => {
@@ -155,7 +167,7 @@ export function StockModal(
                             />
                         </div>
                         <div style={{ ...modalStyles.formGroup, flex: 1 }}>
-                            <label style={modalStyles.label}>GANANCIA (%)</label>
+                            <label style={modalStyles.label}>MARGEN (%)</label>
                             <input
                                 type="number"
                                 style={modalStyles.input}
@@ -184,8 +196,8 @@ export function StockModal(
                     <div style={modalStyles.volumeSectionContainer}>
                         <div style={modalStyles.volumeHeaderRow}>
                             <label style={modalStyles.label}>PRECIOS ESPECIALES POR CANTIDAD / VOLUMEN</label>
-                            <button 
-                                type="button" 
+                            <button
+                                type="button"
                                 style={modalStyles.addRuleButton}
                                 onClick={addVolumePriceRule}
                             >
@@ -198,7 +210,7 @@ export function StockModal(
                                 {product.volumePrices.map((rule, index) => (
                                     <div key={index} style={modalStyles.row}>
                                         <div style={{ ...modalStyles.formGroup, flex: 1 }}>
-                                            <label style={{ ...modalStyles.label, fontSize: '0.55rem' }}>A PARTIR DE ({product.saleWeight ? 'KG' : 'UNID'})</label>
+                                            <label style={{ ...modalStyles.label, fontSize: '0.55rem' }}>A PARTIR DE ({product.saleWeight ? 'KG' : 'UDS'})</label>
                                             <input
                                                 type="number"
                                                 style={modalStyles.input}
@@ -208,6 +220,18 @@ export function StockModal(
                                                 placeholder={product.saleWeight ? "Ej: 2" : "Ej: 12"}
                                                 value={rule.fromQuantity || ''}
                                                 onChange={e => updateVolumePriceRule(index, 'fromQuantity', Number(e.target.value))}
+                                            />
+                                        </div>
+                                        <div style={{ ...modalStyles.formGroup, flex: 1 }}>
+                                            <label style={modalStyles.label}>MARGEN (%)</label>
+                                            <input
+                                                type="number"
+                                                style={modalStyles.input}
+                                                min="0"
+                                                step="any"
+                                                placeholder="0"
+                                                value={rule.gains || ''}
+                                                onChange={e => updateVolumePriceRule(index, 'gains', Number(e.target.value))}
                                             />
                                         </div>
                                         <div style={{ ...modalStyles.formGroup, flex: 1 }}>

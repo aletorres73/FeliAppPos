@@ -26,8 +26,9 @@ export type Product = {
 }
 
 export type VolumePrice = {
-  fromQuantity: number;
-  specialPrice: number;
+  fromQuantity: string;
+  specialPrice: string;
+  gains: string;
 }
 
 export type ComboItems ={
