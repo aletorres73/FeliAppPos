@@ -91,7 +91,7 @@ export function ProductList({
                         <div style={rowStyle(true)}>
 
                             {/* 🆕 Checkbox de Selección */}
-                            <div style={{ width: '40px', display: 'flex', justifyContent: 'flex-start' }}>
+                            <div style={{ width: '10px', display: 'flex', justifyContent: 'flex-start', alignSelf: 'flex-start', marginTop: '3px' }}>
                                 <input
                                     type="checkbox"
                                     style={checkboxStyle}
@@ -103,10 +103,10 @@ export function ProductList({
                             {/* Columna 1: Info Principal */}
                             <div style={{ flex: '2', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <span style={{ ...articleName, fontSize: '1.05rem' }}>{product.article}</span>
                                     {hasVariations && <span style={productBadge(product.active)}>GRUPO</span>}
                                     {hasVolumePrice && <span style={productBadgePromotion(product.active)}>PROMOCION</span>}
                                 </div>
+                                <span style={{ ...articleName, fontSize: '1.05rem' }}>{product.article}</span>
                                 <span style={branchLabel}>
                                     {product.branch || 'Sin Marca'}
                                     <span style={{ color: 'rgba(255,255,255,0.15)', marginLeft: '8px', fontSize: '0.7rem' }}>ID: {product.id}</span>

@@ -85,7 +85,8 @@ export const productBadge = (active: boolean): React.CSSProperties => ({
   backgroundColor: active ? 'rgba(84,196,240,0.1)' : 'rgba(255,255,255,0.05)',
   color: active ? '#54C4F0' : 'rgba(255,255,255,0.3)',
   fontWeight: 700,
-  border: active ? '1px solid #54C4F0' : '1px solid transparent'
+  border: active ? '1px solid #54C4F0' : '1px solid transparent',
+  marginBottom: '8px'
 });
 
 export const productBadgePromotion = (active: boolean): React.CSSProperties => ({
@@ -93,7 +94,8 @@ export const productBadgePromotion = (active: boolean): React.CSSProperties => (
   backgroundColor: active ? 'rgba(84,196,240,0.1)' : 'rgba(255,255,255,0.05)',
   color: active ? '#f0b954' : 'rgba(255,255,255,0.3)',
   fontWeight: 700,
-  border: active ? '1px solid #f0b954' : '1px solid transparent'
+  border: active ? '1px solid #f0b954' : '1px solid transparent',
+  marginBottom: '8px'
 });
 
 
