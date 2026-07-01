@@ -32,10 +32,10 @@ export function useOrder() {
     }
 
     // Filtramos las reglas que el usuario cumple con la cantidad/peso actual
-    const applicableRules = product.volumePrices.filter(rule => quantity >= rule.fromQuantity);
+    const applicableRules = product.volumePrices.filter(rule => quantity >= parseFloat(rule.fromQuantity));
 
     if (applicableRules.length === 0) {
-      return product.price; // No llegó al mínimo de ninguna escala
+      return product.price; // No llegó al mínimo de ninguna escala 
     }
 
     // Buscamos la regla con el mayor umbral alcanzado (por si definiste múltiples escalas)
@@ -43,7 +43,7 @@ export function useOrder() {
       rule.fromQuantity > max.fromQuantity ? rule : max
       , applicableRules[0]);
 
-    return bestRule.specialPrice;
+    return parseFloat(bestRule.specialPrice);
   };
 
   // --- LÓGICA DE CÁLCULO CENTRALIZADA ---
