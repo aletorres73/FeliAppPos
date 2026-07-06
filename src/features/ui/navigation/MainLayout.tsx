@@ -98,7 +98,7 @@ const styles: Record<string, React.CSSProperties> = {
     fontFamily: "'Inter', sans-serif",
   },
   sidebar: {
-    width: "260px",
+    width: "215px",
     backgroundColor: "#161920",
     borderRight: "1px solid rgba(255,255,255,0.05)",
     padding: "24px 16px",
