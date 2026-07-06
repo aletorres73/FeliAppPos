@@ -59,6 +59,7 @@ export function ManualItemModal({ code, product, onConfirm, onClose }: Props) {
           <label style={styles.label}>
             Artículo
             <input
+              autoFocus
               style={styles.input}
               value={name}
               disabled={!isNewProduct}
@@ -69,13 +70,24 @@ export function ManualItemModal({ code, product, onConfirm, onClose }: Props) {
 
           <label style={styles.label}>
             Precio {saleType === 'WEIGHT' ? 'por 100g' : 'por Unidad'}
-            <input
-              type="number"
-              style={styles.input}
-              disabled={!isNewProduct}
-              placeholder={"0"}
-              onChange={(e) => setPrice(Number(e.target.value))}
-            />
+            {isNewProduct && (
+              <input
+                type="number"
+                style={styles.input}
+                disabled={!isNewProduct}
+                placeholder={"0"}
+                onChange={(e) => setPrice(Number(e.target.value))}
+              />)
+            }
+            {!(isNewProduct) && (
+              <input
+                type="number"
+                style={styles.input}
+                disabled={!isNewProduct}
+                placeholder={"0"}
+                value={product?.price}
+                onChange={(e) => setPrice(Number(e.target.value))}
+              />)}
           </label>
 
           <label style={styles.label}>
@@ -83,7 +95,7 @@ export function ManualItemModal({ code, product, onConfirm, onClose }: Props) {
             <input
               type="number"
               step={saleType === 'WEIGHT' ? "0.001" : "1"}
-              autoFocus
+              autoFocus= {!isNewProduct}
               style={{ ...styles.input, border: '1px solid #54C4F0', fontSize: '1.5rem' }}
               placeholder={saleType === 'WEIGHT' ? "0.000" : "0"}
               onChange={(e) => setQty(Number(e.target.value))}
