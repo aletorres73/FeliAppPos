@@ -47,7 +47,7 @@ const searchInputStyle: React.CSSProperties = {
     transition: 'border-color 0.2s',
 };
 
-type SortCriteria = 'units' | 'revenue';
+type SortCriteria = 'units' | 'revenue' | 'profitability';
 
 export default function SalesDashboard() {
     const {
@@ -56,8 +56,8 @@ export default function SalesDashboard() {
     } = useSalesReports();
 
     const navigate = useNavigate();
-    
-    const [sortBy, setSortBy] = useState<SortCriteria>('units');
+
+    const [sortBy, setSortBy] = useState<SortCriteria>('profitability');
     // Estado para capturar la búsqueda del usuario
     const [searchTerm, setSearchTerm] = useState<string>('');
 
@@ -77,25 +77,23 @@ export default function SalesDashboard() {
     const filteredAndOrderedProducts = useMemo(() => {
         if (!stats?.products) return [];
 
-        // 1. Filtrar por término de búsqueda (coincidencia en Artículo o Marca)
         const filtered = stats.products.filter(product => {
             const articleMatch = product.article?.toLowerCase().includes(searchTerm.toLowerCase());
             const brandMatch = product.branch?.toLowerCase().includes(searchTerm.toLowerCase());
             return articleMatch || brandMatch;
         });
 
-        // 2. Ordenar la lista resultante
         return filtered.sort((a, b) => {
-            if (sortBy === 'revenue') {
-                return b.total - a.total; 
-            }
-            return b.quantity - a.quantity; 
+            if (sortBy === 'revenue') return b.total - a.total;
+            if (sortBy === 'profitability') return b.total - a.total; // Rentabilidad = Mayor Ingreso Total
+            return b.quantity - a.quantity;
         });
     }, [stats?.products, sortBy, searchTerm]);
 
+
     return (
         <div style={{ padding: '40px 20px', backgroundColor: '#0F1115', minHeight: '100vh', color: 'white' }}>
-            <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
+            <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
 
                 {/* Header Superior */}
                 <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
@@ -157,22 +155,22 @@ export default function SalesDashboard() {
 
                         {/* Contenedor Principal de la Tabla */}
                         <div style={{ ...cardStyle, marginTop: '24px', padding: '24px', overflowX: 'auto' }}>
-                            
+
                             {/* Header de la Tabla + Buscador */}
-                            <div style={{ 
-                                display: 'flex', 
-                                justifyContent: 'space-between', 
-                                alignItems: 'center', 
+                            <div style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
                                 flexWrap: 'wrap',
                                 gap: '16px',
-                                marginBottom: '20px' 
+                                marginBottom: '20px'
                             }}>
                                 <div>
                                     <h3 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 550 }}>📦 Rendimiento por Producto</h3>
                                 </div>
-                                
+
                                 {/* Input de Búsqueda */}
-                                <input 
+                                <input
                                     type="text"
                                     placeholder="🔍 Buscar producto o marca..."
                                     value={searchTerm}
@@ -190,17 +188,17 @@ export default function SalesDashboard() {
                                         <th style={{ ...tableHeaderStyle, width: '50px', cursor: 'default' }}>#</th>
                                         <th style={tableHeaderStyle}>Artículo</th>
                                         <th style={tableHeaderStyle}>Marca</th>
-                                        <th 
+                                        <th
                                             style={{ ...tableHeaderStyle, color: sortBy === 'units' ? '#54C4F0' : '#8A9099' }}
                                             onClick={() => setSortBy('units')}
                                         >
                                             Volumen Vendido {sortBy === 'units' ? '▼' : '↕'}
                                         </th>
-                                        <th 
-                                            style={{ ...tableHeaderStyle, color: sortBy === 'revenue' ? '#54C4F0' : '#8A9099' }}
-                                            onClick={() => setSortBy('revenue')}
+                                        <th
+                                            style={{ ...tableHeaderStyle, color: (sortBy === 'revenue' || sortBy === 'profitability') ? '#54C4F0' : '#8A9099' }}
+                                            onClick={() => setSortBy('profitability')}
                                         >
-                                            Facturación {sortBy === 'revenue' ? '▼' : '↕'}
+                                            Ingresos Totales {sortBy === 'profitability' ? '▼' : '↕'}
                                         </th>
                                     </tr>
                                 </thead>
@@ -211,12 +209,28 @@ export default function SalesDashboard() {
                                         const formattedQuantity = isWeight ? product.quantity.toFixed(3) : product.quantity.toFixed(0);
 
                                         return (
-                                            <tr key={`prod-${idx}`} style={tableRowStyle}>
-                                                {/* Número del Ranking */}
-                                                <td style={{ ...tableCellStyle, color: '#54C4F0', fontWeight: 600, width: '50px' }}>
+                                            <tr key={`prod-${idx}`} style={{
+                                                ...tableRowStyle,
+                                                backgroundColor: product.isPareto ? 'rgba(84, 196, 240, 0.05)' : 'transparent'
+                                            }}>
+                                                <td style={{ ...tableCellStyle, fontWeight: 600 }}>
                                                     {idx + 1}
+                                                    {product.isPareto && <span style={{ marginLeft: '8px' }}>⭐</span>}
                                                 </td>
-                                                <td style={{ ...tableCellStyle, fontWeight: 500 }}>{product.article}</td>
+
+                                                <td style={{ ...tableCellStyle, fontWeight: 500 }}>
+                                                    {product.article}
+                                                    {product.isPareto && (
+                                                        <span style={{
+                                                            marginLeft: '8px',
+                                                            fontSize: '0.7rem',
+                                                            padding: '2px 6px',
+                                                            borderRadius: '10px',
+                                                            backgroundColor: '#54C4F0',
+                                                            color: '#0F1115'
+                                                        }}>TOP VENTAS</span>
+                                                    )}
+                                                </td>
                                                 <td style={{ ...tableCellStyle, color: '#A0AEC0', fontSize: '0.85rem' }}>
                                                     {product.branch || 'Sin marca'}
                                                 </td>

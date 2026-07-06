@@ -57,20 +57,6 @@ export const useSalesReports = () => {
         fetchSales(range, referenceDate);
     }, [range, referenceDate, fetchSales]);
 
-    const handleNext = () => {
-        if (range === 'today') setReferenceDate(prev => addDays(prev, 1));
-        if (range === 'week') setReferenceDate(prev => addWeeks(prev, 1));
-        if (range === 'month') setReferenceDate(prev => addMonths(prev, 1));
-    };
-
-    const handlePrev = () => {
-        if (range === 'today') setReferenceDate(prev => subDays(prev, 1));
-        if (range === 'week') setReferenceDate(prev => subWeeks(prev, 1));
-        if (range === 'month') setReferenceDate(prev => subMonths(prev, 1));
-    };
-
-    const resetToToday = () => setReferenceDate(new Date());
-
     const stats = useMemo(() => {
         if (orders.length === 0) return null;
         let periodTotal = 0;
@@ -90,9 +76,13 @@ export const useSalesReports = () => {
             }
 
             order.items.forEach((item) => {
-                // Mantenemos tu productMap exactamente igual
                 if (!productMap[item.productId]) {
-                    productMap[item.productId] = { branch: item.branch, article: item.article, quantity: 0, total: 0 };
+                    productMap[item.productId] = {
+                        branch: item.branch,
+                        article: item.article,
+                        quantity: 0,
+                        total: 0
+                    };
                 }
                 productMap[item.productId].quantity += item.quantity;
                 productMap[item.productId].total += item.subtotal;
@@ -101,17 +91,41 @@ export const useSalesReports = () => {
 
         periodTotal += periodCash + periodTransfer + pendingCollect;
 
-        // Retornamos todos los productos procesados sin recortar
+        let totalRevenue = 0;
         const allProducts = Object.values(productMap);
+
+        // 1. Calcular el ingreso total general
+        allProducts.forEach(p => totalRevenue += p.total);
+
+        // 2. Ordenar de mayor a menor para aplicar Pareto
+        const sortedProducts = [...allProducts].sort((a, b) => b.total - a.total);
+
+        // 3. Identificar los productos que suman el 80%
+        let runningTotal = 0;
+        const productsWithPareto = sortedProducts.map(p => {
+            runningTotal += p.total;
+            return {
+                ...p,
+                isPareto: (runningTotal / totalRevenue) <= 0.80 // true si es parte del 80% superior
+            };
+        });
 
         return {
             periodTotal, periodCash, periodTransfer, pendingCollect,
-            products: allProducts
+            products: productsWithPareto
         };
     }, [orders]);
 
     return {
         stats, isLoading, range, setRange,
-        referenceDate, handleNext, handlePrev, resetToToday
+        referenceDate, handleNext: () => {
+            if (range === 'today') setReferenceDate(d => addDays(d, 1));
+            if (range === 'week') setReferenceDate(d => addWeeks(d, 1));
+            if (range === 'month') setReferenceDate(d => addMonths(d, 1));
+        }, handlePrev: () => {
+            if (range === 'today') setReferenceDate(d => subDays(d, 1));
+            if (range === 'week') setReferenceDate(d => subWeeks(d, 1));
+            if (range === 'month') setReferenceDate(d => subMonths(d, 1));
+        }, resetToToday: () => setReferenceDate(new Date())
     };
 };
