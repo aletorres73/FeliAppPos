@@ -80,9 +80,8 @@ export const useSalesReports = () => {
         const productMap: Record<string, any> = {};
 
         orders.forEach((order) => {
-            periodTotal += order.total;
             pendingCollect += (order.total - (order.payed || 0));
-            
+
             if (Array.isArray(order.paymentMethod)) {
                 order.paymentMethod.forEach(method => {
                     if (method.type === "CASH") periodCash += method.amount;
@@ -99,6 +98,8 @@ export const useSalesReports = () => {
                 productMap[item.productId].total += item.subtotal;
             });
         });
+
+        periodTotal += periodCash + periodTransfer + pendingCollect;
 
         // Retornamos todos los productos procesados sin recortar
         const allProducts = Object.values(productMap);
