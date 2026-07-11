@@ -1,9 +1,9 @@
-import { 
-  collection, 
-  query, 
-  where, 
-  getDocs, 
-  orderBy, 
+import {
+  collection,
+  query,
+  where,
+  getDocs,
+  orderBy,
 } from "firebase/firestore";
 import { db } from "../services/FirebaseService"; // Ajusta según tu ruta
 import { type OrderModel, OrderStatus, type PaymentMethod, type PaymentType } from "../../domain/types/orderTypes";
@@ -17,7 +17,7 @@ export const salesRepository = {
   getOrdersByDateRange: async (startDate: number, endDate: number): Promise<OrderModel[]> => {
     try {
       const ordersRef = collection(db, "orders");
-      
+
       // Consulta filtrando por estado CONFIRMED y el rango de fechas
       // Importante: Esto requiere un índice compuesto en Firestore
       const q = query(
@@ -29,13 +29,13 @@ export const salesRepository = {
       );
 
       const querySnapshot = await getDocs(q);
-      
+
       return querySnapshot.docs.map(doc => ({
         ...doc.data(),
         docId: doc.id,
         paymentMethod: normalizePaymentMethod(doc.data().paymentMethod, doc.data().payed)
       })) as OrderModel[];
-      
+
     } catch (error) {
       console.error("Error fetching sales data:", error);
       throw error;
@@ -50,9 +50,38 @@ export const salesRepository = {
     const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
     const lastDay = now.getTime(); // Hasta el momento actual
     console.log("Fetching orders from", new Date(firstDay), "to", new Date(lastDay));
-    
+
     return salesRepository.getOrdersByDateRange(firstDay, lastDay);
+  },
+
+
+  getOrdersByCustomerId: async (customerId: string): Promise<OrderModel[]> => {
+    /**
+     * Obtiene todas las órdenes de un cliente específico.
+     * @param customerId id de cliente seleccionado
+     * @returns Lista de órdenes del cliente
+     */
+
+    try {
+      const ordersRef = collection(db, "orders");
+      const q = query(
+        ordersRef,
+        where("client", "==", customerId),
+        orderBy("createdAt", "desc")
+      );
+      const querySnapshot = await getDocs(q);
+      return querySnapshot.docs.map(doc => ({
+        ...doc.data(),
+        docId: doc.id,
+        // Reutilizamos la normalización existente para consistencia de datos
+        paymentMethod: normalizePaymentMethod(doc.data().paymentMethod, doc.data().payed)
+      })) as OrderModel[];
+    } catch (e) {
+      console.error("Error al obtener órdenes del cliente:", e);
+      return [];
+    }
   }
+
 };
 
 /**
@@ -60,21 +89,21 @@ export const salesRepository = {
  * y el nuevo formato (array de objetos).
  */
 const normalizePaymentMethod = (legacyOrNew: any, payed: number): PaymentMethod[] => {
-    // Caso 1: Ya es el formato nuevo (Array)
-    if (Array.isArray(legacyOrNew)) {
-        return legacyOrNew;
-    }
+  // Caso 1: Ya es el formato nuevo (Array)
+  if (Array.isArray(legacyOrNew)) {
+    return legacyOrNew;
+  }
 
-    // Caso 2: Es formato legacy (String: "CASH" o "TRANSFER")
-    if (typeof legacyOrNew === 'string') {
-        return [{
-            type: legacyOrNew as PaymentType,
-            // En el formato viejo no teníamos el desglose, 
-            // asumimos que el pago total fue por este medio.
-            amount: payed
-        }];
-    }
+  // Caso 2: Es formato legacy (String: "CASH" o "TRANSFER")
+  if (typeof legacyOrNew === 'string') {
+    return [{
+      type: legacyOrNew as PaymentType,
+      // En el formato viejo no teníamos el desglose, 
+      // asumimos que el pago total fue por este medio.
+      amount: payed
+    }];
+  }
 
-    // Caso 3: Es null o indefinido
-    return [];
+  // Caso 3: Es null o indefinido
+  return [];
 };

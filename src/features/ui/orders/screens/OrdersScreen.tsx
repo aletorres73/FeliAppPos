@@ -3,12 +3,12 @@ import { useOrder } from "../hooks/useOrder";
 
 // Componentes UI de la orden
 import { ScannerInput } from "../../../ui/orders/components/ScannerImput";
-import { CustomerSelector } from "../../../ui/orders/components/CustomerSelector";
+import { CustomerSelector } from "../../customers/components/CustomerSelector";
 import { OrderList } from "../../../ui/orders/components/OrderList";
 import { ManualItemModal } from "../../../ui/orders/components/ManualItemModal";
-import { CustomerSelectorModal } from "../../../ui/orders/components/CustomerSelectorModal";
+import { CustomerSelectorModal } from "../../customers/components/CustomerSelectorModal";
 import { Footer } from "../../../ui/orders/components/Footer";
-import { CustomerCreateModal } from "../../../ui/orders/components/CustomerCreateModal";
+import { CustomerCreateModal } from "../../customers/components/CustomerCreateModal";
 import { CheckoutModal } from "../../../ui/orders/components/CheckoutModal";
 
 // Repositorios y Tipos
