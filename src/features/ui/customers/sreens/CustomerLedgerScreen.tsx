@@ -1,17 +1,32 @@
-import React from 'react';
 import { useCustomerLedger } from '../hooks/useCustomerLedger';
 import { CustomerSelectorModal } from '../../customers/components/CustomerSelectorModal';
 import { formatCurrency } from '../../../domain/utils/formats';
 import { cardStyle, kpiLabel, accentText, fullScreenCenter } from '../../dashboard/styles/Dashboard';
 import { OrderPayStatus } from '../../../domain/types/orderTypes';
+import { type OrderModel } from "../../../domain/types/orderTypes";
+import { useState } from "react";
+import { customerRepository } from "../../../data/repositories/CustomerRepository";
+import { OrderDetailModal } from '../components/OrderDetailModel';
 
 export default function CustomerLedgerScreen() {
   const { selectedCustomer, customerOrders, isLoading, selectCustomer } = useCustomerLedger();
-  const [showSelector, setShowSelector] = React.useState(!selectedCustomer);
+  const [showSelector, setShowSelector] = useState(!selectedCustomer);
+  const [selectedOrder, setSelectedOrder] = useState<OrderModel | null>(null);
 
   if (isLoading && !selectedCustomer) {
     return <div style={fullScreenCenter}><span>CARGANDO CLIENTE...</span></div>;
   }
+
+  const handlePaymentAction = async (amount: number) => {
+    if (!selectedCustomer?.id || !selectedOrder?.docId) return;
+    try {
+      await customerRepository.registerOrderPayment(selectedCustomer.id, selectedOrder.docId, amount);
+      // Refrescamos los datos llamando a la función de carga del hook
+      await selectCustomer(selectedCustomer);
+    } catch (e) {
+      alert("Error al procesar el pago");
+    }
+  };
 
   return (
     <div style={{ padding: '24px', backgroundColor: '#0F1115', minHeight: '100vh', color: 'white', display: 'flex', flexDirection: 'column', gap: '24px' }}>
@@ -106,6 +121,22 @@ export default function CustomerLedgerScreen() {
                           <td style={{ padding: '12px', textAlign: 'right', fontWeight: 600 }}>
                             {formatCurrency(orderBalance)}
                           </td>
+                          <td style={{ padding: '12px', textAlign: 'right' }}>
+                            <button
+                              onClick={() => setSelectedOrder(order)}
+                              style={{
+                                background: 'transparent',
+                                border: `1px solid ${order.payStatus === 'PAID' ? 'rgba(255,255,255,0.1)' : '#FF4B4B'}`,
+                                color: 'white',
+                                padding: '4px 12px',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                fontSize: '0.7rem'
+                              }}
+                            >
+                              {order.payStatus === 'PAID' ? 'VER' : 'ABONAR'}
+                            </button>
+                          </td>
                         </tr>
                       );
                     })}
@@ -113,6 +144,14 @@ export default function CustomerLedgerScreen() {
                 </table>
               )}
             </div>
+            {/* Al final del componente */}
+            {selectedOrder && (
+              <OrderDetailModal
+                order={selectedOrder}
+                onClose={() => setSelectedOrder(null)}
+                onPayment={handlePaymentAction}
+              />
+            )}
           </div>
         </>
       ) : (
