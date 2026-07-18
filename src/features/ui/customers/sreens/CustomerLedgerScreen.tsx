@@ -2,7 +2,7 @@ import { useCustomerLedger } from '../hooks/useCustomerLedger';
 import { CustomerSelectorModal } from '../../customers/components/CustomerSelectorModal';
 import { formatCurrency } from '../../../domain/utils/formats';
 import { cardStyle, kpiLabel, accentText, fullScreenCenter } from '../../dashboard/styles/Dashboard';
-import { OrderPayStatus } from '../../../domain/types/orderTypes';
+import { OrderPayStatus, type PaymentMethod } from '../../../domain/types/orderTypes';
 import { type OrderModel } from "../../../domain/types/orderTypes";
 import { useState } from "react";
 import { customerRepository } from "../../../data/repositories/CustomerRepository";
@@ -12,18 +12,33 @@ export default function CustomerLedgerScreen() {
   const { selectedCustomer, customerOrders, isLoading, selectCustomer } = useCustomerLedger();
   const [showSelector, setShowSelector] = useState(!selectedCustomer);
   const [selectedOrder, setSelectedOrder] = useState<OrderModel | null>(null);
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
   if (isLoading && !selectedCustomer) {
     return <div style={fullScreenCenter}><span>CARGANDO CLIENTE...</span></div>;
   }
 
-  const handlePaymentAction = async (amount: number) => {
+  const handlePaymentAction = async (
+    status: OrderPayStatus,
+    totalPayed: number,
+    paymentMethod: PaymentMethod[]) => {
     if (!selectedCustomer?.id || !selectedOrder?.docId) return;
     try {
-      await customerRepository.registerOrderPayment(selectedCustomer.id, selectedOrder.docId, amount);
+      setIsProcessingPayment(true);
+      const result = await customerRepository.registerOrderPayment(
+        selectedCustomer.id,
+        selectedOrder.docId,
+        totalPayed,
+        status,
+        paymentMethod
+      );
+      setIsProcessingPayment(false);
+      if (result) setSelectedOrder(null); // Cerramos el modal si el pago fue exitoso
+      
       // Refrescamos los datos llamando a la función de carga del hook
       await selectCustomer(selectedCustomer);
     } catch (e) {
+      setIsProcessingPayment(false);
       alert("Error al procesar el pago");
     }
   };
@@ -149,7 +164,8 @@ export default function CustomerLedgerScreen() {
               <OrderDetailModal
                 order={selectedOrder}
                 onClose={() => setSelectedOrder(null)}
-                onPayment={handlePaymentAction}
+                onConfirm={handlePaymentAction}
+                isProcessing={isProcessingPayment}
               />
             )}
           </div>

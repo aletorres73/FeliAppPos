@@ -11,8 +11,9 @@ import {
 import { db } from "../services/FirebaseService"
 import type { Customer } from "../../domain/types/customersTypes";
 import { AnonymousCustomer } from "../../domain/types/customersTypes";
+import type { OrderPayStatus, PaymentMethod } from "../../domain/types/orderTypes";
 
-export class CustomerRepository {
+class CustomerRepository {
   private readonly CUSTOMER_COLLECTION = "customers";
   private readonly COUNTERS = "counters";
 
@@ -129,42 +130,54 @@ export class CustomerRepository {
   }
 
 
-  async registerOrderPayment(customerId: string, orderId: string, amount: number) {
-    return runTransaction(db, async (transaction) => {
-      const customerRef = doc(db, "customers", customerId);
-      const orderRef = doc(db, "orders", orderId);
-      const transRef = doc(collection(db, "customers_transactions"));
+  async registerOrderPayment(
+    customerId: string,
+    orderId: string,
+    amount: number,
+    status: OrderPayStatus,
+    paymentMethod: PaymentMethod[]
+  ): Promise<boolean> {
+    try {
+      await runTransaction(db, async (transaction) => {
+        const customerRef = doc(db, "customers", customerId);
+        const orderRef = doc(db, "orders", orderId);
+        const transRef = doc(collection(db, "customers_transactions"));
 
-      const customerDoc = await transaction.get(customerRef);
-      const orderDoc = await transaction.get(orderRef);
+        const customerDoc = await transaction.get(customerRef);
+        const orderDoc = await transaction.get(orderRef);
 
-      if (!customerDoc.exists() || !orderDoc.exists()) throw "Documento no encontrado";
+        if (!customerDoc.exists() || !orderDoc.exists()) throw "Documento no encontrado";
 
-      const currentPayed = orderDoc.data().payed || 0;
-      const total = orderDoc.data().total;
-      const newPayed = currentPayed + amount;
-      const newBalance = customerDoc.data().currentBalance - amount;
+        const currentPayed = orderDoc.data().payed || 0;
+        const newCurrentValue = currentPayed + amount;
+        const newBalance = customerDoc.data().currentBalance - amount;
 
-      // 1. Actualizar la Orden
-      transaction.update(orderRef, {
-        payed: newPayed,
-        payStatus: newPayed >= total ? "PAID" : "PENDING"
+        // 1. Actualizar la Orden
+        transaction.update(orderRef, {
+          payed: newCurrentValue,
+          payStatus: status,
+          paymentMethod: paymentMethod
+        });
+
+        // 2. Actualizar el Saldo del Cliente
+        transaction.update(customerRef, { currentBalance: newBalance });
+
+        // 3. Crear el registro en el historial (Audit Trail)
+        transaction.set(transRef, {
+          clientId: customerId,
+          orderId: orderId,
+          amount: amount,
+          type: "PAY",
+          createdAt: Date.now(),
+          note: `Abono a orden #${orderDoc.data().id}`,
+          balanceAfter: newBalance
+        });
       });
-
-      // 2. Actualizar el Saldo del Cliente
-      transaction.update(customerRef, { currentBalance: newBalance });
-
-      // 3. Crear el registro en el historial (Audit Trail)
-      transaction.set(transRef, {
-        clientId: customerId,
-        orderId: orderId,
-        amount: amount,
-        type: "PAY",
-        createdAt: Date.now(),
-        note: `Abono a orden #${orderDoc.data().id}`,
-        balanceAfter: newBalance
-      });
-    });
+      return true;
+    } catch (e) {
+      console.error("Error al registrar el pago de la orden:", e);
+      return false;
+    }
   }
 }
 

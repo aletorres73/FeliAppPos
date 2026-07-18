@@ -248,7 +248,7 @@ export function CheckoutModal({
   );
 }
 
-const getTabStyle = (mode: string, activeMode: string) => ({
+export const getTabStyle = (mode: string, activeMode: string) => ({
   ...modalStyles.tab,
   backgroundColor: activeMode === mode ? "#54C4F0" : "transparent",
   color: activeMode === mode ? "#0F1115" : "white",

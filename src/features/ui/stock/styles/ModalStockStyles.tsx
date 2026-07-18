@@ -94,5 +94,15 @@ export const modalStyles: Record<string, React.CSSProperties> = {
         fontStyle: 'italic',
         textAlign: 'center',
         padding: '10px 0'
-    }
+    },
+    inputSmall: { width: "100%", padding: "10px", backgroundColor: "#0F1115", border: "1px solid #54C4F0", borderRadius: "8px", color: "white", fontSize: "1.1rem", outline: "none", boxSizing: "border-box" as const },
+    tabs: { display: "flex", gap: "8px", marginBottom: 20 },
+    labelCheckout: { display: "block", color: "rgba(255,255,255,0.5)", fontSize: "0.75rem", marginBottom: 6, fontWeight: 600, textTransform: "uppercase" as const },
+    actionsCheckout: { display: "flex", gap: "12px" },
+    btnCancel: { flex: 1, padding: "12px", background: "transparent", color: "white", border: "none", cursor: "pointer" },
+    btnConfirm: { flex: 2, padding: "12px", color: "#0F1115", fontWeight: "bold", border: "none", borderRadius: "8px", cursor: "pointer" }
+
+
+
+
 };
