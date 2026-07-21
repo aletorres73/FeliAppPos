@@ -1,7 +1,7 @@
 import { useState } from "react"; // 1. Importamos useState
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import feliLogo from "../../../../src/assets/logo-feli.webp";
-import { CashFlowButton, SaleDashboardButton, StockButton } from "./navigationButtons";
+import { CashFlowButton, CustomerLedgerButton, SaleDashboardButton, StockButton } from "./navigationButtons";
 
 export default function MainLayout() {
   const navigate = useNavigate();
@@ -65,6 +65,11 @@ export default function MainLayout() {
             <StockButton onClick={() => navigate('/stock')} />
           </div>
         </nav>
+
+        <div style={styles.sectionHeader}>GESTOR DE CLIENTES</div>
+        <div style={styles.groupedButtons}>
+          <CustomerLedgerButton onClick={() => navigate('/customers')} />
+        </div>
       </aside>
 
       {/* CONTENEDOR DINÁMICO DE LAS PANTALLAS */}

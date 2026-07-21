@@ -104,8 +104,9 @@ export default function CustomerLedgerScreen() {
                   </thead>
                   <tbody>
                     {customerOrders.map(order => {
-                      const orderBalance = order.total - (order.paymentMethod?.reduce((sum, pm) => sum + pm.amount, 0) || 0);
-                      const paidAmount = order.paymentMethod?.reduce((sum, pm) => sum + pm.amount, 0) || 0;
+                      const orderBalance = order.total - order.payed;
+                      // const paidAmount = order.paymentMethod?.reduce((sum, pm) => sum + pm.amount, 0) || 0;
+                      const paidAmount = order.payed;
                       const payStatus = orderBalance === 0 ? OrderPayStatus.PAID : OrderPayStatus.PENDING;
                       return (
                         <tr key={order.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', textAlign: 'left' }}>

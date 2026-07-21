@@ -108,20 +108,28 @@ export function OrderDetailModal({ order, onClose, onConfirm, isProcessing }: Pr
         </div>
 
         <div style={{ padding: '16px', backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: '12px', marginBottom: '20px' }}>
-         {order.discount > 0 && (
+          {order.discount > 0 && (
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <span style={kpiLabel}>DESCUENTO</span>
               <span style={{ fontWeight: 700 }}>{formatCurrency(order.discount)}</span>
             </div>
           )}
+
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
             <span style={kpiLabel}>TOTAL ORDEN</span>
             <span style={{ fontWeight: 700 }}>{formatCurrency(order.total)}</span>
           </div>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <span style={kpiLabel}>PAGADO</span>
+            <span style={{ fontWeight: 700 }}>{formatCurrency(order.payed)}</span>
+          </div>
+
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px' }}>
             <span style={kpiLabel}>SALDO PENDIENTE</span>
             <span style={{ color: '#FF4B4B', fontWeight: 700 }}>{formatCurrency(remaining)}</span>
           </div>
+
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px' }}>
             <span style={kpiLabel}>COMENTARIOS</span>
             <span style={{ fontWeight: 600 }}>{order.comments || 'Ninguno'}</span>
