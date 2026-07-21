@@ -9,7 +9,7 @@ import { customerRepository } from "../../../data/repositories/CustomerRepositor
 import { OrderDetailModal } from '../components/OrderDetailModel';
 
 export default function CustomerLedgerScreen() {
-  const { selectedCustomer, customerOrders, isLoading, selectCustomer } = useCustomerLedger();
+  const { selectedCustomer, customerOrders, isLoading, selectCustomer, updateCustomer } = useCustomerLedger();
   const [showSelector, setShowSelector] = useState(!selectedCustomer);
   const [selectedOrder, setSelectedOrder] = useState<OrderModel | null>(null);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
@@ -35,8 +35,8 @@ export default function CustomerLedgerScreen() {
       setIsProcessingPayment(false);
       if (result) setSelectedOrder(null); // Cerramos el modal si el pago fue exitoso
       
-      // Refrescamos los datos llamando a la función de carga del hook
-      await selectCustomer(selectedCustomer);
+      // Refrescamos los datos del cliente llamando a la función de carga del hook
+      await updateCustomer(selectedCustomer);
     } catch (e) {
       setIsProcessingPayment(false);
       alert("Error al procesar el pago");

@@ -108,6 +108,12 @@ export function OrderDetailModal({ order, onClose, onConfirm, isProcessing }: Pr
         </div>
 
         <div style={{ padding: '16px', backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: '12px', marginBottom: '20px' }}>
+         {order.discount > 0 && (
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={kpiLabel}>DESCUENTO</span>
+              <span style={{ fontWeight: 700 }}>{formatCurrency(order.discount)}</span>
+            </div>
+          )}
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
             <span style={kpiLabel}>TOTAL ORDEN</span>
             <span style={{ fontWeight: 700 }}>{formatCurrency(order.total)}</span>
@@ -116,29 +122,37 @@ export function OrderDetailModal({ order, onClose, onConfirm, isProcessing }: Pr
             <span style={kpiLabel}>SALDO PENDIENTE</span>
             <span style={{ color: '#FF4B4B', fontWeight: 700 }}>{formatCurrency(remaining)}</span>
           </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px' }}>
+            <span style={kpiLabel}>COMENTARIOS</span>
+            <span style={{ fontWeight: 600 }}>{order.comments || 'Ninguno'}</span>
+          </div>
         </div>
 
-        <PaymentModeSelector
-          cash={newCash}
-          transfer={newTransfer}
-          setCash={setNewCash}
-          setTransfer={setNewTransfer}
-        />
+        {order.payStatus == "PENDING" && (
+          <>
+            <PaymentModeSelector
+              cash={newCash}
+              transfer={newTransfer}
+              setCash={setNewCash}
+              setTransfer={setNewTransfer}
+            />
 
-        <div style={modalStyles.actions}>
-          <button onClick={onClose} style={modalStyles.btnCancel}>
-            Cancelar [Esc]
-          </button>
-          <button
-            onClick={handleFinalConfirm}
-            style={{
-              ...modalStyles.btnConfirm,
-              backgroundColor: remaining > 0 ? "#FFAB40" : "#54C4F0"
-            }}
-          >
-            {isProcessing ? "Procesando..." : remaining > 0 ? `Pagar parcial [Enter]` : "Finalizar Venta [Enter]"}
-          </button>
-        </div>
+            <div style={modalStyles.actions}>
+              <button onClick={onClose} style={modalStyles.btnCancel}>
+                Cancelar [Esc]
+              </button>
+              <button
+                onClick={handleFinalConfirm}
+                style={{
+                  ...modalStyles.btnConfirm,
+                  backgroundColor: remaining > 0 ? "#FFAB40" : "#54C4F0"
+                }}
+              >
+                {isProcessing ? "Procesando..." : remaining > 0 ? `Pagar parcial [Enter]` : "Finalizar Venta [Enter]"}
+              </button>
+            </div>
+          </>
+        )}
 
       </div>
     </div>

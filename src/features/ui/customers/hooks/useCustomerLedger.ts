@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { salesRepository } from '../../../data/repositories/SalesRepository';
 import { type OrderModel } from '../../../domain/types/orderTypes';
 import { type Customer } from '../../../domain/types/customersTypes';
+import { customerRepository } from '../../../data/repositories/CustomerRepository';
 
 export const useCustomerLedger = () => {
     /**
@@ -29,5 +30,16 @@ export const useCustomerLedger = () => {
         setOrders([]);
     };
 
-    return { selectedCustomer, customerOrders, isLoading, selectCustomer, clearSelection };
+    const updateCustomer = async (customer: Customer) => {
+        try {
+            const updatedCustomer = await customerRepository.getById(customer.id!);
+            if (updatedCustomer) selectCustomer(updatedCustomer);
+        } catch (error) {
+            console.error("Error actualizando cliente:", error);
+            return null;
+        }
+    };
+
+    return { selectedCustomer, customerOrders, isLoading, selectCustomer, clearSelection, updateCustomer };
 };
+
