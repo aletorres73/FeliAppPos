@@ -7,16 +7,38 @@ import { type OrderModel } from "../../../domain/types/orderTypes";
 import { useState } from "react";
 import { customerRepository } from "../../../data/repositories/CustomerRepository";
 import { OrderDetailModal } from '../components/OrderDetailModel';
+import type { Customer } from '../../../domain/types/customersTypes';
+import { CustomerEditModal } from '../components/CustomerEditModal';
 
 export default function CustomerLedgerScreen() {
   const { selectedCustomer, customerOrders, isLoading, selectCustomer, updateCustomer } = useCustomerLedger();
   const [showSelector, setShowSelector] = useState(!selectedCustomer);
   const [selectedOrder, setSelectedOrder] = useState<OrderModel | null>(null);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [isEditingCustomer, setIsEditingCustomer] = useState(false);
+  const [isSavingCustomer, setIsSavingCustomer] = useState(false);
 
   if (isLoading && !selectedCustomer) {
     return <div style={fullScreenCenter}><span>CARGANDO CLIENTE...</span></div>;
   }
+
+  const handleUpdateCustomer = async (updatedData: Customer) => {
+    if (!updatedData.id) return;
+    try {
+      setIsSavingCustomer(true);
+      // Llamas a tu repositorio para actualizar en base de datos
+      await customerRepository.updateCustomer(updatedData);
+
+      // Actualizamos el estado global/hook del cliente seleccionado
+      await updateCustomer(updatedData);
+
+      setIsEditingCustomer(false);
+    } catch (error) {
+      alert("Error al actualizar el cliente");
+    } finally {
+      setIsSavingCustomer(false);
+    }
+  };
 
   const handlePaymentAction = async (
     status: OrderPayStatus,
@@ -34,7 +56,7 @@ export default function CustomerLedgerScreen() {
       );
       setIsProcessingPayment(false);
       if (result) setSelectedOrder(null); // Cerramos el modal si el pago fue exitoso
-      
+
       // Refrescamos los datos del cliente llamando a la función de carga del hook
       await updateCustomer(selectedCustomer);
     } catch (e) {
@@ -64,11 +86,25 @@ export default function CustomerLedgerScreen() {
         <>
           {/* 2. Panel Superior: Datos del Cliente (Ancho completo y fijo) */}
           <div style={{ ...cardStyle, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: '20px 32px' }}>
-            <div>
-              <span style={kpiLabel}>CLIENTE</span>
-              <span style={{ fontSize: '1.5rem', fontWeight: 600, display: 'block' }}>
-                {selectedCustomer.name} {selectedCustomer.lastname}
-              </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '48px' }}>
+              <div>
+                <span style={kpiLabel}>CLIENTE</span>
+                <span style={{ fontSize: '1.5rem', fontWeight: 600, display: 'block' }}>
+                  {selectedCustomer.name} {selectedCustomer.lastname}
+                </span>
+              </div>
+              <button
+                onClick={() => setIsEditingCustomer(true)}
+                style={{
+                  background: 'transparent',
+                  border: '1px solid rgba(255,255,255,0.2)',
+                  color: 'white',
+                  padding: '6px 12px',
+                  borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem'
+                }}
+              >
+                EDITAR
+              </button>
             </div>
 
             <div style={{ textAlign: 'right' }}>
@@ -184,6 +220,15 @@ export default function CustomerLedgerScreen() {
             selectCustomer(c);
             setShowSelector(false);
           }}
+        />
+      )}
+
+      {isEditingCustomer && selectedCustomer && (
+        <CustomerEditModal
+          customer={selectedCustomer}
+          onClose={() => setIsEditingCustomer(false)}
+          onSave={handleUpdateCustomer}
+          isProcessing={isSavingCustomer}
         />
       )}
     </div>
