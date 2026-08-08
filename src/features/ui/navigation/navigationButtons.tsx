@@ -1,4 +1,9 @@
-import { ChartBarIcon, WalletIcon } from "@heroicons/react/24/solid";
+import {
+    ChartBarIcon,
+    WalletIcon,
+    UserGroupIcon,
+    BuildingStorefrontIcon
+} from "@heroicons/react/24/solid";
 
 interface Props {
     onClick: () => void;
@@ -40,8 +45,22 @@ export function StockButton({ onClick }: Props) {
             onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#252a33'}
             onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#1A1D23'}
         >
-            <span style={{ fontSize: '18px', fontWeight: 700 }}>📦</span>
+            <BuildingStorefrontIcon style={iconStyle} />
             Stock
+        </button>
+    )
+}
+
+export function CustomerLedgerButton({ onClick }: Props) {
+    return (
+        <button
+            onClick={onClick}
+            style={buttonStyles}
+            onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#252a33'}
+            onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#1A1D23'}
+        >
+            <UserGroupIcon style={iconStyle} />
+            Clientes
         </button>
     )
 }

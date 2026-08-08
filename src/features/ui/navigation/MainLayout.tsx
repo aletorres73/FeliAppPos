@@ -1,7 +1,9 @@
 import { useState } from "react"; // 1. Importamos useState
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import feliLogo from "../../../../src/assets/logo-feli.webp";
-import { CashFlowButton, SaleDashboardButton, StockButton } from "./navigationButtons";
+import { CashFlowButton, CustomerLedgerButton, SaleDashboardButton, StockButton } from "./navigationButtons";
+import { ShoppingCartIcon} from "@heroicons/react/24/solid";
+import { iconStyle } from "./navigationButtons";
 
 export default function MainLayout() {
   const navigate = useNavigate();
@@ -49,7 +51,8 @@ export default function MainLayout() {
               ...(isActive('/') ? styles.sidebarButtonActive : {})
             }}
           >
-            🛒 Nueva Venta
+            <ShoppingCartIcon style={iconStyle} />
+             Nueva Venta
           </button>
 
           <hr style={styles.divider} />
@@ -65,6 +68,11 @@ export default function MainLayout() {
             <StockButton onClick={() => navigate('/stock')} />
           </div>
         </nav>
+
+        <div style={styles.sectionHeader}>GESTOR DE CLIENTES</div>
+        <div style={styles.groupedButtons}>
+          <CustomerLedgerButton onClick={() => navigate('/customers')} />
+        </div>
       </aside>
 
       {/* CONTENEDOR DINÁMICO DE LAS PANTALLAS */}
@@ -155,21 +163,26 @@ const styles: Record<string, React.CSSProperties> = {
   },
   sidebarButton: {
     width: "100%",
-    padding: "12px 16px",
+    padding: "10px 16px",
     borderRadius: "8px",
     border: "none",
     background: "transparent",
     color: "rgba(255,255,255,0.6)",
     textAlign: "left",
-    fontSize: "0.95rem",
+    fontSize: "0.90rem",
     fontWeight: 500,
     cursor: "pointer",
     transition: "all 0.2s ease",
+    alignItems: "center",
+    gap: "5px",
+    display: "flex",
   },
   sidebarButtonActive: {
     background: "rgba(84, 196, 240, 0.1)",
     color: "#54C4F0",
     fontWeight: 600,
+    alignItems: "center",
+    gap: "5px"
   },
   divider: {
     border: "none",
