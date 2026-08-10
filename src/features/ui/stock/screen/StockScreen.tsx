@@ -59,7 +59,7 @@ export default function StockScreen() {
     };
 
     const handleNewFilter = (newFilter: string) => {
-        if (newFilter === 'all' || newFilter === 'combos' || newFilter === 'promotions'|| newFilter === 'grouped')
+        if (newFilter === 'all' || newFilter === 'combos' || newFilter === 'promotions'|| newFilter === 'grouped' || newFilter === 'expiration') 
             setProductFilter(newFilter)
     }
 

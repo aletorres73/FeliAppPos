@@ -2,6 +2,7 @@ import React from 'react';
 import { useExpenseForm } from '../hooks/useExpenseForm';
 import { cardStyle, kpiLabel, /* backButtonStyle */ } from '../../dashboard/styles/Dashboard';
 import type { PaymentType } from '../../../domain/types/orderTypes';
+import { formatDateForInput } from '../../../domain/utils/formats';
 
 const CATEGORIES: { value: string, label: string }[] = [
     { value: 'SUPPLIER', label: '📦 Proveedor' },
@@ -19,14 +20,6 @@ interface Props {
 export default function ExpenseForm({ onComplete, onClose }: Props) {
     const { formData, setFormData, saveExpense, isLoading } = useExpenseForm(onComplete);
 
-    // HELPER: Convertir Timestamp a "YYYY-MM-DD" para el input nativo
-    const formatDateForInput = (timestamp: number) => {
-        const d = new Date(timestamp);
-        const year = d.getFullYear();
-        const month = String(d.getMonth() + 1).padStart(2, '0');
-        const day = String(d.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
-    };
 
     const handleSave = async () => {
         if (!formData.amount || formData.amount <= 0) {

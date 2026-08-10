@@ -17,6 +17,7 @@ import { customerRepository } from "../../../data/repositories/CustomerRepositor
 import type { OrderItem, OrderPayStatus, PaymentMethod } from "../../../domain/types/orderTypes";
 import type { Product } from "../../../domain/types/productTypes";
 import { AnonymousCustomer } from "../../../domain/types/customersTypes";
+import { useKeyboardShortcuts } from "../../../domain/utils/keyboardShorcuts";
 
 export default function OrderScreen() {
   const {
@@ -48,35 +49,22 @@ export default function OrderScreen() {
   const [multiplierInput, setMultiplierInput] = useState("");
 
   const totalFinal = draft.total;
-
+  
+  const isAnyModalOpen = showCheckout || showCustomerModal || showCreateCustomerModal || !!manualCode;
   // --- Atajos de teclado Globales (F9 para Cobro, F1 para Multiplicador) ---
-  useEffect(() => {
-    const handleGlobalKeyDown = (e: KeyboardEvent) => {
-      const isAnyModalOpen = showCheckout || showCustomerModal || showCreateCustomerModal || !!manualCode;
-
-      // F9 - Checkout
-      if (e.key === "F9" && draft.items.length > 0 && !isAnyModalOpen && !isChangingMultiplier) {
-        e.preventDefault();
-        setShowCheckout(true);
-      }
-
-      // 🆕 F1 - Activar modo Multiplicador
-      if (e.key === "F1" && !isAnyModalOpen) {
-        e.preventDefault();
-        setMultiplierInput(""); // Limpiamos para escribir de cero
-        setIsChangingMultiplier(true);
-      }
-
-      // 🆕 Escape - Cancelar el multiplicador si se estaba editando
-      if (e.key === "Escape" && isChangingMultiplier) {
-        e.preventDefault();
-        setIsChangingMultiplier(false);
-      }
-    };
-
-    window.addEventListener("keydown", handleGlobalKeyDown);
-    return () => window.removeEventListener("keydown", handleGlobalKeyDown);
-  }, [draft.items.length, showCheckout, showCustomerModal, showCreateCustomerModal, manualCode, isChangingMultiplier]);
+    useKeyboardShortcuts({
+      "F9": () => {
+        if (draft.items.length > 0 && !showCheckout && !isAnyModalOpen && !isChangingMultiplier) {
+          setShowCheckout(true);
+        }
+      },
+      "F1": () => {
+        if (!showCheckout && !isAnyModalOpen) {
+          setMultiplierInput("");
+          setIsChangingMultiplier(true);
+        }
+      },   
+  });
 
   // --- Auto-focus Inteligente del Scanner o del Multiplicador ---
   useEffect(() => {

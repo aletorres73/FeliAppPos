@@ -72,12 +72,12 @@ export const primaryButtonStyle: React.CSSProperties = {
 
 export const editAction: React.CSSProperties = {
   background: 'none', border: 'none', color: '#54C4F0', cursor: 'pointer',
-  fontWeight: 700, fontSize: '0.7rem', letterSpacing: '1px', padding: 0
+  fontWeight: 700, fontSize: '0.6rem', letterSpacing: '1px', padding: 0
 };
 
 export const deleteAction: React.CSSProperties = {
   background: 'none', border: 'none', color: '#FF5252', cursor: 'pointer',
-  fontWeight: 700, fontSize: '0.7rem', letterSpacing: '1px', padding: 0, opacity: 0.8
+  fontWeight: 700, fontSize: '0.6rem', letterSpacing: '1px', padding: 0, opacity: 0.8
 };
 
 export const productBadge = (active: boolean): React.CSSProperties => ({
@@ -202,7 +202,7 @@ export const destroyGroupButtonStyle: React.CSSProperties = {
   color: '#FEB2B2',
   border: '1px solid rgba(229, 62, 62, 0.2)',
   padding: '6px 12px',
-  fontSize: '0.7rem',
+  fontSize: '0.6rem',
   borderRadius: '4px',
   cursor: 'pointer',
   fontWeight: '600',

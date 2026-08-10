@@ -1,7 +1,10 @@
 //stockmodal
+import type React from 'react';
 import { modalStyles } from '../styles/ModalStockStyles';
 import { type Product, type VolumePrice } from '../../../domain/types/productTypes'; // 🆕 Asegurá tener exportado VolumePrice de tus types
 import { labelStyle, searchInputStyle } from '../styles/StockScreenStyles';
+import { formatDateForInput } from '../../../domain/utils/formats';
+import { useKeyboardShortcuts } from '../../../domain/utils/keyboardShorcuts';
 
 interface StockModalProps {
     isEditingMode: boolean;
@@ -20,6 +23,8 @@ interface StockModalProps {
 // utils/priceCalculator.ts
 const calculatePrice = (cost: number, margin: number) => (cost * (1 + margin / 100));
 const calculateMargin = (cost: number, price: number) => (cost > 0 ? ((price - cost) / cost) * 100 : 0);
+
+
 
 export function StockModal(
     {
@@ -45,6 +50,21 @@ export function StockModal(
             volumePrices: [...currentRules, newRule]
         });
     };
+
+    useKeyboardShortcuts({
+        'Escape': () => {
+            if (onClose) onClose();
+        },
+        'Enter': () => {
+            // Solo guardamos si el foco no está en un textarea (para evitar conflictos con comentarios)
+            if (!(document.activeElement instanceof HTMLTextAreaElement)) {
+                handleSave({
+                    preventDefault: () => { },
+                    target: document.querySelector('form')
+                } as unknown as React.FormEvent<HTMLFormElement> as React.SubmitEvent<HTMLFormElement>);;
+            }
+        }
+    });
 
     const updateVolumePriceRule = (index: number, field: keyof VolumePrice, value: number) => {
         if (!product.volumePrices) return;
@@ -292,6 +312,19 @@ export function StockModal(
                                 />
                             </>
                         )}
+                    </div>
+
+                    <div style={modalStyles.formGroup}>
+                        <label style={modalStyles.label}>FECHA DE VENCIMIENTO</label>
+                        <input
+                            type="date"
+                            style={modalStyles.input}
+                            value={formatDateForInput(product.expirationDate || Date.now())}
+                            onChange={e => setEditingProduct({
+                                ...product,
+                                expirationDate: e.target.value ? new Date(e.target.value + 'T00:00:00').getTime() : null
+                            })}
+                        />
                     </div>
 
                     <div style={modalStyles.checkboxRow}>

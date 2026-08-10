@@ -13,6 +13,7 @@ export type Product = {
   createdAt: number;
   updatedAt: number | null;
   weightSold: number;
+  expirationDate?: number | null;
 
   // --- Campos para Lógica Masiva y Jerárquica ---
   isParent: boolean;      // Define si es el producto "plantilla" del grupo
@@ -36,3 +37,12 @@ export type ComboItems ={
   quantity: number;
   priceCombo: number
 }
+
+export const getExpirationState = (expirationDate?: number | null) => {
+    if (!expirationDate) return null;
+
+    const remainingMs = expirationDate - Date.now();
+    if (remainingMs <= 0) return 'expired';
+    if (remainingMs < 1000 * 60 * 60 * 24 * 15) return 'expiringSoon';
+    return null;
+};
