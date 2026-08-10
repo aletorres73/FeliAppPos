@@ -10,7 +10,7 @@ export function useStock() {
     const [isEditingMode, setIsEditingMode] = useState(false);
     const [editingProduct, setEditingProduct] = useState<Partial<Product> | null>(null);
     const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]); // 🆕 Estado de selección
-    const [productFilter, setProductFilter] = useState<'all' | 'combos' | 'promotions' | 'grouped'>('all');
+    const [productFilter, setProductFilter] = useState<'all' | 'combos' | 'promotions' | 'grouped' | 'expiration'>('all');
 
     useEffect(() => {
         loadProducts();
@@ -67,13 +67,14 @@ export function useStock() {
         // 2. Filtramos los productos que son variaciones (hijos)
         const children = products.filter(p => p.parentId);
 
-        // 3. Mapeamos cada padre para que contenga su lista de variaciones
-        return parents.map(parent => ({
+        // 3. Mapeamos y filtramos, guardando el resultado en una variable
+        let filteredGroups = parents.map(parent => ({
             ...parent,
             variations: children.filter(child => child.parentId === parent.id)
         })).filter(group => {
             // Lógica de búsqueda optimizada que revisa marca y artículo
             const term = searchTerm.toLowerCase();
+            
             if (productFilter === 'combos')
                 return (
                     (group.article.toLowerCase().includes(term) ||
@@ -86,23 +87,44 @@ export function useStock() {
                     group.article.toLowerCase().includes(term) ||
                     group.branch.toLowerCase().includes(term) ||
                     group.variations.some(v => v.article.toLowerCase().includes(term))
-                )
+                );
             if (productFilter === 'promotions')
                 return (
                     (group.article.toLowerCase().includes(term) ||
                         group.branch.toLowerCase().includes(term) ||
                         group.variations.some(v => v.article.toLowerCase().includes(term))) &&
                     (group.volumePrices?.length != 0)
-                )
+                );
             if (productFilter === 'grouped')
                 return (
                     (group.article.toLowerCase().includes(term) ||
                         group.branch.toLowerCase().includes(term) ||
                         group.variations.some(v => v.article.toLowerCase().includes(term))) &&
                     (group.parentId != null || group.isParent)
-                )
-
+                );
+            if (productFilter === 'expiration')
+                return (
+                    (group.article.toLowerCase().includes(term) ||
+                        group.branch.toLowerCase().includes(term) ||
+                        group.variations.some(v => v.article.toLowerCase().includes(term))) &&
+                    (group.expirationDate != null)
+                );
         });
+
+        // 4. 🆕 Aplicamos el ordenamiento solo si el filtro es 'expiration'
+        if (productFilter === 'expiration') {
+            filteredGroups.sort((a, b) => {
+                // Como nos aseguramos de que no sean null en el filtro, 
+                // podemos castearlos a número (timestamp) con seguridad.
+                const dateA = a.expirationDate as number;
+                const dateB = b.expirationDate as number;
+                
+                return dateA - dateB; // Ascendente: Fechas más cercanas primero
+            });
+        }
+
+        return filteredGroups;
+
     }, [products, searchTerm, productFilter]);
 
 
@@ -208,7 +230,10 @@ export function useStock() {
                     parentId: editingProduct.parentId || null,
                     stockLinked: editingProduct.stockLinked || false,
                     conversionFactor: editingProduct.conversionFactor || null,
-                    volumePrices: editingProduct.volumePrices || []
+                    volumePrices: editingProduct.volumePrices || [],
+                    expirationDate: editingProduct.expirationDate || null,
+                    // isCombo: editingProduct.isCombo || false,
+                    // comboComponenets: editingProduct.comboComponenets || []
 
                 };
                 await addProduct(newProduct);

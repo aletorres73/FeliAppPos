@@ -1,4 +1,5 @@
-import { type Product } from "../../../domain/types/productTypes";
+import type React from 'react';
+import { getExpirationState, type Product } from "../../../domain/types/productTypes";
 import { formatCurrency } from "../../../domain/utils/formats";
 import {
     articleName, branchLabel, productBadge, soldValueStyle, editAction, deleteAction, variationNameStyle,
@@ -26,6 +27,35 @@ interface ProductListProps {
     toggleSelectProduct: (id: string) => void;
     handleBulkGroupAssignment: (parentId: string) => void;
 }
+
+const getExpirationBadgeStyle = (state: 'expired' | 'expiringSoon' | null): React.CSSProperties => {
+    if (state === 'expired') {
+        return {
+            fontSize: '0.7rem', padding: '2px 4px', borderRadius: '4px',
+            backgroundColor: '#D64545', color: '#FFF4F4', fontWeight: 700,
+            border: '1px solid rgba(214,69,69,0.4)', marginBottom: '8px'
+        };
+    }
+
+    if (state === 'expiringSoon') {
+        return {
+            fontSize: '0.7rem', padding: '2px 4px', borderRadius: '4px',
+            backgroundColor: '#FFAB40', color: '#4A2300', fontWeight: 700,
+            border: '1px solid rgba(255,171,64,0.4)', marginBottom: '8px'
+        };
+    }
+
+    return {};
+};
+
+const formatExpirationDate = (expirationDate?: number | null) => {
+    if (!expirationDate) return '';
+    return new Date(expirationDate).toLocaleDateString('es-AR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+    });
+};
 
 export function ProductList({
     filteredProducts, setIsEditingMode, setEditingProduct, setIsModalOpen, handleDelete, handleDestroyGroup,
@@ -83,6 +113,7 @@ export function ProductList({
                 const totalGroupSold = variations.reduce((acc, v) => acc + (v.quantitySold || 0), 0) + (product.quantitySold || 0);
                 const totalGroupWeightSold = variations.reduce((acc, v) => acc + (v.weightSold || 0), 0) + (product.weightSold || 0);
                 const hasVolumePrice = (product.volumePrices || []).length > 0;
+                const productExpirationState = getExpirationState(product.expirationDate);
 
                 return (
                     <div key={product.id} style={cardContainerStyle}>
@@ -105,6 +136,11 @@ export function ProductList({
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                     {hasVariations && <span style={productBadge(product.active)}>GRUPO</span>}
                                     {hasVolumePrice && <span style={productBadgePromotion(product.active)}>PROMOCION</span>}
+                                    {productExpirationState && (
+                                        <span style={getExpirationBadgeStyle(productExpirationState)}>
+                                            {productExpirationState === 'expired' ? 'VENCIDO' : 'VENCE PRONTO'} · {formatExpirationDate(product.expirationDate)}
+                                        </span>
+                                    )}
                                 </div>
                                 <span style={{ ...articleName, fontSize: '1.05rem' }}>{product.article}</span>
                                 <span style={branchLabel}>
@@ -120,20 +156,25 @@ export function ProductList({
                             <div style={{ flex: '1' }}><span style={{ ...soldValueStyle, fontSize: '0.9rem', margin: 0 }}>{product.saleWeight ? `${totalGroupWeightSold.toFixed(3)} kg` : `${totalGroupSold} un.`}</span></div>
 
                             {/* Acciones Padre */}
-                            <div style={{ flex: '1.2', display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
+                            <div style={{ flex: '0.8', display: 'flex', flexDirection: 'column', gap: '6px', justifyContent: 'center' }}>
                                 {hasVariations && (
-                                    <button style={destroyGroupButtonStyle} onClick={() => handleDestroyGroup(product.id)}>DISOLVER</button>
+                                    <button style={{ ...destroyGroupButtonStyle, width: '100%' }} onClick={() => handleDestroyGroup(product.id)}>DISOLVER</button>
                                 )}
-                                <button style={{ ...editAction, padding: '6px 12px', fontSize: '0.7rem', borderRadius: '4px' }} onClick={() => { setIsEditingMode(true); setEditingProduct(product); setIsModalOpen(true); }}>{hasVariations ? 'CONFIG' : 'EDITAR'}</button>
-                                <button style={{ ...deleteAction, padding: '6px 12px', fontSize: '0.7rem', borderRadius: '4px', ...(hasVariations ? disabledDeleteActionStyle : {}) }} disabled={hasVariations} onClick={() => handleDelete(product.id, true)}>ELIMINAR</button>
+                                <button style={{ ...editAction, padding: '6px 12px', fontSize: '0.6rem', borderRadius: '4px', width: '100%' }} onClick={() => { setIsEditingMode(true); setEditingProduct(product); setIsModalOpen(true); }}>{hasVariations ? 'CONFIG' : 'EDITAR'}</button>
+                                <button style={{ ...deleteAction, padding: '6px 12px', fontSize: '0.6rem', borderRadius: '4px', width: '100%', ...(hasVariations ? disabledDeleteActionStyle : {}) }} disabled={hasVariations} onClick={() => handleDelete(product.id, true)}>ELIMINAR</button>
                             </div>
                         </div>
 
                         {/* FILAS HIJOS (VARIACIONES) */}
                         {hasVariations && (
                             <div style={variationsListStyle}>
-                                {variations.map(v => {
+                                {[...variations].sort((a, b) => {
+                                    if (!a.expirationDate) return 1;
+                                    if (!b.expirationDate) return -1;
+                                    return a.expirationDate - b.expirationDate;
+                                }).map(v => {
                                     const variantName = v.article.toUpperCase().replace(product.article.toUpperCase(), '').replace(/[-_]/g, '').trim() || 'Estándar';
+                                    const variationExpirationState = getExpirationState(v.expirationDate);
                                     return (
                                         <div key={v.id} style={rowStyle(true)}>
 
@@ -148,8 +189,16 @@ export function ProductList({
                                             </div>
 
                                             <div style={{ flex: '1', display: 'flex', flexDirection: 'column' }}>
+                                                {variationExpirationState && (
+                                                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                                        <span style={getExpirationBadgeStyle(variationExpirationState)}>
+                                                            {variationExpirationState === 'expired' ? 'VENCIDO' : 'VENCE PRONTO'} · {formatExpirationDate(v.expirationDate)}
+                                                        </span>
+                                                    </div>
+                                                )}
                                                 <span style={variationNameStyle}>{variantName}</span>
                                                 <span style={{ color: 'rgba(255,255,255,0.2)', fontSize: '0.65rem', marginLeft: '14px' }}>ID: {v.id}</span>
+
                                             </div>
 
                                             {/* ... (Las columnas del hijo y sus botones quedan EXACTAMENTE IGUALES) ... */}

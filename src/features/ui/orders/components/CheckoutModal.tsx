@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { formatCurrency } from "../../../domain/utils/formats";
 import { type PaymentType, type PaymentMethod } from "../../../domain/types/orderTypes";
 import {type Customer } from "../../../domain/types/customersTypes";
+import { useKeyboardShortcuts } from "../../../domain/utils/keyboardShorcuts";
 
 interface Props {
   customerSelected: Customer,
@@ -96,38 +97,13 @@ export function CheckoutModal({
     onConfirm(status, totalPayed, paymentType.length > 0 ? paymentType : null);
   };
 
-  // Atajos de teclado del Modal
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLTextAreaElement) return;
-
-      switch (e.key) {
-        case "F1":
-          e.preventDefault();
-          setActiveMode("CASH");
-          break;
-        case "F2":
-          e.preventDefault();
-          setActiveMode("TRANSFER");
-          break;
-        case "F3":
-          e.preventDefault();
-          setActiveMode("MIXED");
-          break;
-        case "Enter":
-          e.preventDefault();
-          handleFinalConfirm();
-          break;
-        case "Escape":
-          e.preventDefault();
-          onClose();
-          break;
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [activeMode, numCash, numTransfer, isLoading]);
+  useKeyboardShortcuts({
+    "F1": () => setActiveMode("CASH"),
+    "F2": () => setActiveMode("TRANSFER"),
+    "F3": () => setActiveMode("MIXED"),
+    "Enter": handleFinalConfirm,
+    "Escape": onClose
+  });
 
   return (
     <div style={modalStyles.overlay} role="dialog">
