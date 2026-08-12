@@ -141,6 +141,23 @@ export function ProductList({
                                             {productExpirationState === 'expired' ? 'VENCIDO' : 'VENCE PRONTO'} · {formatExpirationDate(product.expirationDate)}
                                         </span>
                                     )}
+                                    {(() => {
+                                        const lastActivity = product.lastSoldAt ?? product.createdAt;
+                                        const isLowRotation = ((Date.now() - lastActivity) > 20 * 24 * 60 * 60 * 1000) &&
+                                            (product.saleWeight ? (product.weight || 0) > 0 : (product.stock || 0) > 0);
+                                        return isLowRotation  ? (
+                                            <span style={{
+                                                fontSize: '0.5rem', padding: '2px 4px', borderRadius: '4px',
+                                                backgroundColor: 'rgba(255, 171, 64, 0.12)',
+                                                color: '#FFAB40', fontWeight: 700,
+                                                border: '1px solid rgba(255, 171, 64, 0.25)',
+                                                marginBottom: '8px',
+                                            }}
+                                            >
+                                                BAJA ROTACIÓN
+                                            </span>
+                                        ) : null;
+                                    })()}
                                 </div>
                                 <span style={{ ...articleName, fontSize: '1.05rem' }}>{product.article}</span>
                                 <span style={branchLabel}>

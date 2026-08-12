@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { formatCurrency } from "../../../domain/utils/formats";
 import { type PaymentType, type PaymentMethod } from "../../../domain/types/orderTypes";
-import {type Customer } from "../../../domain/types/customersTypes";
+import { type Customer } from "../../../domain/types/customersTypes";
 import { useKeyboardShortcuts } from "../../../domain/utils/keyboardShorcuts";
 
 interface Props {
@@ -33,16 +33,30 @@ export function CheckoutModal({
 
   const cashInputRef = useRef<HTMLInputElement>(null);
   const transferInputRef = useRef<HTMLInputElement>(null);
+  
   const numCash = parseFloat(cashAmount) || 0;
   const numTransfer = parseFloat(transferAmount) || 0;
 
-  const paymentType: PaymentMethod[] = [];
-  if (numCash > 0) paymentType.push({ type: "CASH" as PaymentType, amount: numCash });
-  if (numTransfer > 0) paymentType.push({ type: "TRANSFER" as PaymentType, amount: numTransfer });
-
-  const totalPayed = numCash + numTransfer;
-  const remanente = total - totalPayed;
+  // 1. Calcula el vuelto PRIMERO (ya tenías esta lógica, solo súbela un poco)
   const vuelto = numCash > (total - numTransfer) ? numCash - (total - numTransfer) : 0;
+
+  // 2. Calcula cuánto efectivo REALMENTE se aplica a la venta (Efectivo entregado menos el vuelto)
+  const cashAplicado = numCash - vuelto;
+
+  // 3. Arma el array de pagos usando el cashAplicado
+  const paymentType: PaymentMethod[] = [];
+
+  if (cashAplicado > 0) {
+    paymentType.push({ type: "CASH" as PaymentType, amount: cashAplicado });
+  }
+  if (numTransfer > 0) {
+    paymentType.push({ type: "TRANSFER" as PaymentType, amount: numTransfer });
+  }
+
+  // 4. Calcula el total pagado (aplicado a la venta) y el remanente
+  // Usamos cashAplicado en lugar de numCash para que totalPayed nunca supere al 'total'
+  const totalPayed = cashAplicado + numTransfer;
+  const remanente = total - totalPayed;
 
   const customerName = customerSelected.name + ' ' + customerSelected.lastname
 
@@ -112,7 +126,7 @@ export function CheckoutModal({
           {isLoading ? "Procesando..." : "Finalizar Venta"}
         </h2>
 
-        <label style={{...modalStyles.label, color: "white" }}>Cliente seleccionado: {customerName}</label>
+        <label style={{ ...modalStyles.label, color: "white" }}>Cliente seleccionado: {customerName}</label>
 
         <label style={modalStyles.label}>Forma de Pago:</label>
         <div style={modalStyles.tabs}>

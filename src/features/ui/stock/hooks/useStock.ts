@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { getProducts, deleteProduct, addProduct, updateProduct, bulkActionRepository } from '../../../data/repositories/ProductRepository';
-import { type Product } from '../../../domain/types/productTypes';
+import { type Product, getSlowMovers } from '../../../domain/types/productTypes';
 
 export function useStock() {
     const [products, setProducts] = useState<Product[]>([]);
@@ -10,7 +10,7 @@ export function useStock() {
     const [isEditingMode, setIsEditingMode] = useState(false);
     const [editingProduct, setEditingProduct] = useState<Partial<Product> | null>(null);
     const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]); // 🆕 Estado de selección
-    const [productFilter, setProductFilter] = useState<'all' | 'combos' | 'promotions' | 'grouped' | 'expiration'>('all');
+    const [productFilter, setProductFilter] = useState<'all' | 'combos' | 'promotions' | 'grouped' | 'expiration' | 'slowMovers'>('all');
 
     useEffect(() => {
         loadProducts();
@@ -109,6 +109,13 @@ export function useStock() {
                         group.variations.some(v => v.article.toLowerCase().includes(term))) &&
                     (group.expirationDate != null)
                 );
+            if (productFilter === 'slowMovers' && group.id == "PRUEBA") {
+                const hasStock = group.saleWeight ? (group.weight || 0) > 0 : (group.stock || 0) > 0;
+                const lastActivity = group.lastSoldAt ? group.lastSoldAt : group.createdAt;
+                const isStagnant = (Date.now() - lastActivity) > getSlowMovers(); 
+                return hasStock && isStagnant &&
+                    (group.article.toLowerCase().includes(term) || group.branch.toLowerCase().includes(term));
+            }
         });
 
         // 4. 🆕 Aplicamos el ordenamiento solo si el filtro es 'expiration'

@@ -9,6 +9,8 @@ import {
 
 import type { Product } from "../../domain/types/productTypes";
 
+
+
 export const getProductById = async (docId: string): Promise<Product | null> => {
   try {
     const docRef = doc(db, "products", docId);
@@ -78,6 +80,7 @@ export const mapToProduct = (data: any): Product => {
     updatedAt: data.updatedAt,
     weightSold: data.pesoVendido,
     expirationDate: data.vencimiento || null,
+    lastSoldAt: data.ultimaVentaAt || null,
     isParent: data.isParent || false,
     parentId: data.parentId || null,
     stockLinked: data.stockLinked || false,
@@ -105,6 +108,7 @@ export const mapToFirestoreProduct = (product: Product): any => {
     updatedAt: product.updatedAt,
     pesoVendido: product.weightSold,
     vencimiento: product.expirationDate || null,
+    ultimaVentaAt: product.lastSoldAt || null,
     isParent: product.isParent || false,
     parentId: product.parentId || null,
     stockLinked: product.stockLinked || false,
@@ -168,6 +172,7 @@ export const updateProduct = async (docId: string, updatedData: Partial<Product>
     if (updatedData.stockLinked !== undefined) firestoreUpdates.stockLinked = updatedData.stockLinked;
     if (updatedData.conversionFactor !== undefined) firestoreUpdates.conversionFactor = updatedData.conversionFactor;
     if (updatedData.expirationDate !== undefined) firestoreUpdates.vencimiento = updatedData.expirationDate;
+    if (updatedData.lastSoldAt !== undefined) firestoreUpdates.ultimaVentaAt = updatedData.lastSoldAt;
     if (updatedData.volumePrices !== undefined) firestoreUpdates.volumePrices = updatedData.volumePrices;
 
     firestoreUpdates.updatedAt = Date.now();
