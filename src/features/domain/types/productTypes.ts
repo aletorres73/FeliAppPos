@@ -14,6 +14,7 @@ export type Product = {
   updatedAt: number | null;
   weightSold: number;
   expirationDate?: number | null;
+  lastSoldAt?: number | null;
 
   // --- Campos para Lógica Masiva y Jerárquica ---
   isParent: boolean;      // Define si es el producto "plantilla" del grupo
@@ -46,3 +47,6 @@ export const getExpirationState = (expirationDate?: number | null) => {
     if (remainingMs < 1000 * 60 * 60 * 24 * 15) return 'expiringSoon';
     return null;
 };
+
+const THRESHOLD = 20 * 24 * 60 * 60 * 1000;
+export const getSlowMovers = (): number => THRESHOLD;

@@ -7,7 +7,7 @@ interface FilterChipProps {
 
 export const FilterChips = ({ current, onChange }: FilterChipProps) => (
     <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-        {['all','expiration','grouped', 'promotions', 'combos'].map((filter) => (
+        {['all','expiration','grouped', 'promotions', 'combos', 'slowMovers'].map((filter) => (
             <button
                 key={filter}
                 onClick={() => onChange(filter)}
@@ -35,6 +35,8 @@ function filterName(filter: string): string {
             return 'Grupos'
         case 'expiration':
             return 'Vencimientos'
+        case 'slowMovers':
+            return 'Baja Rotación';
         default:
             return filter
     }
