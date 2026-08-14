@@ -61,78 +61,79 @@ export function useStock() {
     };
 
     const groupedProducts = useMemo(() => {
-        // 1. Separamos los productos que son "Padres" o "Independientes"
-        const parents = products.filter(p => p.isParent || !p.parentId);
+    // 1. Separamos Padres e Hijos
+    const parents = products.filter(p => p.isParent || !p.parentId);
+    const children = products.filter(p => p.parentId);
+    const term = searchTerm.toLowerCase();
 
-        // 2. Filtramos los productos que son variaciones (hijos)
-        const children = products.filter(p => p.parentId);
+    // 2. Mapeamos y pre-filtramos a los hijos según el filtro activo
+    let filteredGroups = parents.map(parent => {
+        let variations = children.filter(child => child.parentId === parent.id);
 
-        // 3. Mapeamos y filtramos, guardando el resultado en una variable
-        let filteredGroups = parents.map(parent => ({
-            ...parent,
-            variations: children.filter(child => child.parentId === parent.id)
-        })).filter(group => {
-            // Lógica de búsqueda optimizada que revisa marca y artículo
-            const term = searchTerm.toLowerCase();
-            
-            if (productFilter === 'combos')
-                return (
-                    (group.article.toLowerCase().includes(term) ||
-                        group.branch.toLowerCase().includes(term) ||
-                        group.variations.some(v => v.article.toLowerCase().includes(term))) &&
-                    group.isCombo
-                );
-            if (productFilter === 'all')
-                return (
-                    group.article.toLowerCase().includes(term) ||
-                    group.branch.toLowerCase().includes(term) ||
-                    group.variations.some(v => v.article.toLowerCase().includes(term))
-                );
-            if (productFilter === 'promotions')
-                return (
-                    (group.article.toLowerCase().includes(term) ||
-                        group.branch.toLowerCase().includes(term) ||
-                        group.variations.some(v => v.article.toLowerCase().includes(term))) &&
-                    (group.volumePrices?.length != 0)
-                );
-            if (productFilter === 'grouped')
-                return (
-                    (group.article.toLowerCase().includes(term) ||
-                        group.branch.toLowerCase().includes(term) ||
-                        group.variations.some(v => v.article.toLowerCase().includes(term))) &&
-                    (group.parentId != null || group.isParent)
-                );
-            if (productFilter === 'expiration')
-                return (
-                    (group.article.toLowerCase().includes(term) ||
-                        group.branch.toLowerCase().includes(term) ||
-                        group.variations.some(v => v.article.toLowerCase().includes(term))) &&
-                    (group.expirationDate != null)
-                );
-            if (productFilter === 'slowMovers') {
-                const hasStock = group.saleWeight ? (group.weight || 0) > 0 : (group.stock || 0) > 0;
-                const lastActivity = group.lastSoldAt ? group.lastSoldAt : group.createdAt;
-                const isStagnant = (Date.now() - lastActivity) > getSlowMovers(); 
-                return hasStock && isStagnant &&
-                    (group.article.toLowerCase().includes(term) || group.branch.toLowerCase().includes(term));
-            }
-        });
-
-        // 4. 🆕 Aplicamos el ordenamiento solo si el filtro es 'expiration'
         if (productFilter === 'expiration') {
-            filteredGroups.sort((a, b) => {
-                // Como nos aseguramos de que no sean null en el filtro, 
-                // podemos castearlos a número (timestamp) con seguridad.
-                const dateA = a.expirationDate as number;
-                const dateB = b.expirationDate as number;
-                
-                return dateA - dateB; // Ascendente: Fechas más cercanas primero
+            // Dejamos solo los hijos que tienen stock y están por vencer
+            variations = variations.filter(v => (v.stock > 0 || v.weight > 0) && v.expirationDate != null);
+        } else if (productFilter === 'slowMovers') {
+            // Dejamos solo los hijos que tienen baja rotación
+            variations = variations.filter(v => {
+                const hasStock = v.saleWeight ? (v.weight || 0) > 0 : (v.stock || 0) > 0;
+                const lastActivity = v.lastSoldAt ? v.lastSoldAt : v.createdAt;
+                return hasStock && ((Date.now() - lastActivity) > getSlowMovers());
             });
         }
 
-        return filteredGroups;
+        return { ...parent, variations };
+    }).filter(group => {
+        // 3. Evaluamos la búsqueda de texto (Aplica si coincide el padre o algún hijo sobreviviente)
+        const parentSearchMatch = group.article.toLowerCase().includes(term) || group.branch.toLowerCase().includes(term);
+        const childSearchMatch = group.variations.some(v => v.article.toLowerCase().includes(term));
+        const searchMatch = parentSearchMatch || childSearchMatch;
 
-    }, [products, searchTerm, productFilter]);
+        if (!searchMatch) return false; // Si no coincide la búsqueda, lo descartamos de inmediato
+
+        // 4. Lógica por filtro para decidir si el bloque se renderiza
+        if (productFilter === 'all') return true;
+        if (productFilter === 'combos') return group.isCombo;
+        if (productFilter === 'promotions') return group.volumePrices?.length !== 0;
+        if (productFilter === 'grouped') return group.parentId != null || group.isParent;
+
+        if (productFilter === 'expiration') {
+            const parentHasStock = (group.stock > 0 || group.weight > 0);
+            const parentMatchesExp = parentHasStock && group.expirationDate != null;
+            
+            // Se muestra si el padre vence O si al menos un hijo vence
+            return parentMatchesExp || group.variations.length > 0;
+        }
+
+        if (productFilter === 'slowMovers') {
+            const parentHasStock = group.saleWeight ? (group.weight || 0) > 0 : (group.stock || 0) > 0;
+            const parentLastActivity = group.lastSoldAt ? group.lastSoldAt : group.createdAt;
+            const parentIsStagnant = (Date.now() - parentLastActivity) > getSlowMovers();
+            const parentMatchesSlow = parentHasStock && parentIsStagnant;
+
+            // Se muestra si el padre tiene baja rotación O si al menos un hijo la tiene
+            return parentMatchesSlow || group.variations.length > 0;
+        }
+
+        return false;
+    });
+
+    // 5. Ordenamiento corregido (Busca la fecha más cercana entre el padre y todos sus hijos)
+    if (productFilter === 'expiration') {
+        filteredGroups.sort((a, b) => {
+            const getMinDate = (item: Product & { variations: Product[] }) => {
+                const dates = [item.expirationDate, ...item.variations.map(v => v.expirationDate)]
+                    .filter(d => d != null) as number[];
+                return dates.length > 0 ? Math.min(...dates) : Infinity;
+            };
+
+            return getMinDate(a) - getMinDate(b); // Ascendente: Fechas más cercanas primero
+        });
+    }
+
+    return filteredGroups;
+
+}, [products, searchTerm, productFilter]);
 
 
     const handleDelete = async (id: string) => {
