@@ -9,7 +9,7 @@ export function useStock() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEditingMode, setIsEditingMode] = useState(false);
     const [editingProduct, setEditingProduct] = useState<Partial<Product> | null>(null);
-    const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]); // 🆕 Estado de selección
+    const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
     const [productFilter, setProductFilter] = useState<'all' | 'combos' | 'promotions' | 'grouped' | 'expiration' | 'slowMovers'>('all');
 
     useEffect(() => {
@@ -22,14 +22,13 @@ export function useStock() {
         );
     };
 
-    // 🆕 Acción masiva
     const handleBulkGroupAssignment = async (parentId: string) => {
         if (selectedProductIds.length === 0) return;
         setIsLoading(true);
         try {
             await bulkActionRepository.assignProductsToGroup(parentId, selectedProductIds);
-            setSelectedProductIds([]); // Limpiamos los checkboxes
-            await loadProducts();      // Recargamos el inventario
+            setSelectedProductIds([]); 
+            await loadProducts();      
         } catch (error) {
             console.error("Error en asignación masiva:", error);
             setIsLoading(false);
@@ -53,88 +52,101 @@ export function useStock() {
         try {
             await bulkActionRepository.destroyGroup(parentId);
             console.log("Grupo disuelto correctamente.");
-            await loadProducts(); // Recarga la lista actualizada desde Firebase
+            await loadProducts(); 
         } catch (error) {
             console.error("Error al destruir el grupo:", error);
             setIsLoading(false);
         }
     };
 
+    // ⚡ OPTIMIZACIÓN: Función ayudante fuera de la carga de renderizado
+    const checkHasStock = (p: Product) => p.saleWeight ? (p.weight || 0) > 0 : (p.stock || 0) > 0;
+
     const groupedProducts = useMemo(() => {
-    // 1. Separamos Padres e Hijos
-    const parents = products.filter(p => p.isParent || !p.parentId);
-    const children = products.filter(p => p.parentId);
-    const term = searchTerm.toLowerCase();
+        const parents = products.filter(p => p.isParent || !p.parentId);
+        const children = products.filter(p => p.parentId);
+        const term = searchTerm.toLowerCase();
+        
+        // ⚡ OPTIMIZACIÓN: Calculamos esto UNA VEZ, no 1000 veces en el bucle
+        const now = Date.now();
+        const slowMoversThreshold = getSlowMovers();
 
-    // 2. Mapeamos y pre-filtramos a los hijos según el filtro activo
-    let filteredGroups = parents.map(parent => {
-        let variations = children.filter(child => child.parentId === parent.id);
+        let filteredGroups = parents.map(parent => {
+            let variations = children.filter(child => child.parentId === parent.id);
 
+            if (productFilter === 'expiration') {
+                variations = variations.filter(v => (v.stock > 0 || v.weight > 0) && v.expirationDate != null);
+            } else if (productFilter === 'slowMovers') {
+                variations = variations.filter(v => {
+                    const lastActivity = v.lastSoldAt ? v.lastSoldAt : v.createdAt;
+                    return checkHasStock(v) && ((now - lastActivity) > slowMoversThreshold);
+                });
+            }
+
+            return { ...parent, variations };
+        }).filter(group => {
+            // 3. Evaluamos la búsqueda de texto
+            const parentSearchMatch = group.article.toLowerCase().includes(term) || group.branch.toLowerCase().includes(term);
+            const childSearchMatch = group.variations.some(v => v.article.toLowerCase().includes(term));
+            
+            // ⚡ OPTIMIZACIÓN: Si no hay match con la búsqueda, salimos de inmediato
+            if (!parentSearchMatch && !childSearchMatch) return false; 
+
+            // 4. Lógica por filtro
+            if (productFilter === 'all') return true;
+            if (productFilter === 'combos') return group.isCombo;
+            if (productFilter === 'promotions') return group.volumePrices?.length !== 0;
+            if (productFilter === 'grouped') return group.parentId != null || group.isParent;
+
+            if (productFilter === 'expiration') {
+                const parentHasStock = (group.stock > 0 || group.weight > 0);
+                const parentMatchesExp = parentHasStock && group.expirationDate != null;
+                return parentMatchesExp || group.variations.length > 0;
+            }
+
+            if (productFilter === 'slowMovers') {
+                const parentLastActivity = group.lastSoldAt ? group.lastSoldAt : group.createdAt;
+                const parentIsStagnant = (now - parentLastActivity) > slowMoversThreshold;
+                const parentMatchesSlow = checkHasStock(group as Product) && parentIsStagnant;
+                return parentMatchesSlow || group.variations.length > 0;
+            }
+
+            return false;
+        });
+
+        // 5. Ordenamientos dinámicos (🚨 CORREGIDO: Ahora están FUERA del .filter())
         if (productFilter === 'expiration') {
-            // Dejamos solo los hijos que tienen stock y están por vencer
-            variations = variations.filter(v => (v.stock > 0 || v.weight > 0) && v.expirationDate != null);
+            filteredGroups.sort((a, b) => {
+                const getMinDate = (item: Product & { variations: Product[] }) => {
+                    const dates = [item.expirationDate, ...item.variations.map(v => v.expirationDate)]
+                        .filter(d => d != null) as number[];
+                    return dates.length > 0 ? Math.min(...dates) : Infinity;
+                };
+                return getMinDate(a) - getMinDate(b);
+            });
         } else if (productFilter === 'slowMovers') {
-            // Dejamos solo los hijos que tienen baja rotación
-            variations = variations.filter(v => {
-                const hasStock = v.saleWeight ? (v.weight || 0) > 0 : (v.stock || 0) > 0;
-                const lastActivity = v.lastSoldAt ? v.lastSoldAt : v.createdAt;
-                return hasStock && ((Date.now() - lastActivity) > getSlowMovers());
+            filteredGroups.sort((a, b) => {
+                const getMostStagnantActivity = (item: Product & { variations: Product[] }) => {
+                    const activities: number[] = [];
+                    const parentActivity = item.lastSoldAt ? item.lastSoldAt : item.createdAt;
+                    
+                    if (checkHasStock(item as Product) && (now - parentActivity) > slowMoversThreshold) {
+                        activities.push(parentActivity);
+                    }
+
+                    item.variations.forEach(v => {
+                        activities.push(v.lastSoldAt ? v.lastSoldAt : v.createdAt);
+                    });
+
+                    return activities.length > 0 ? Math.min(...activities) : Infinity;
+                };
+                return getMostStagnantActivity(a) - getMostStagnantActivity(b);
             });
         }
 
-        return { ...parent, variations };
-    }).filter(group => {
-        // 3. Evaluamos la búsqueda de texto (Aplica si coincide el padre o algún hijo sobreviviente)
-        const parentSearchMatch = group.article.toLowerCase().includes(term) || group.branch.toLowerCase().includes(term);
-        const childSearchMatch = group.variations.some(v => v.article.toLowerCase().includes(term));
-        const searchMatch = parentSearchMatch || childSearchMatch;
+        return filteredGroups;
 
-        if (!searchMatch) return false; // Si no coincide la búsqueda, lo descartamos de inmediato
-
-        // 4. Lógica por filtro para decidir si el bloque se renderiza
-        if (productFilter === 'all') return true;
-        if (productFilter === 'combos') return group.isCombo;
-        if (productFilter === 'promotions') return group.volumePrices?.length !== 0;
-        if (productFilter === 'grouped') return group.parentId != null || group.isParent;
-
-        if (productFilter === 'expiration') {
-            const parentHasStock = (group.stock > 0 || group.weight > 0);
-            const parentMatchesExp = parentHasStock && group.expirationDate != null;
-            
-            // Se muestra si el padre vence O si al menos un hijo vence
-            return parentMatchesExp || group.variations.length > 0;
-        }
-
-        if (productFilter === 'slowMovers') {
-            const parentHasStock = group.saleWeight ? (group.weight || 0) > 0 : (group.stock || 0) > 0;
-            const parentLastActivity = group.lastSoldAt ? group.lastSoldAt : group.createdAt;
-            const parentIsStagnant = (Date.now() - parentLastActivity) > getSlowMovers();
-            const parentMatchesSlow = parentHasStock && parentIsStagnant;
-
-            // Se muestra si el padre tiene baja rotación O si al menos un hijo la tiene
-            return parentMatchesSlow || group.variations.length > 0;
-        }
-
-        return false;
-    });
-
-    // 5. Ordenamiento corregido (Busca la fecha más cercana entre el padre y todos sus hijos)
-    if (productFilter === 'expiration') {
-        filteredGroups.sort((a, b) => {
-            const getMinDate = (item: Product & { variations: Product[] }) => {
-                const dates = [item.expirationDate, ...item.variations.map(v => v.expirationDate)]
-                    .filter(d => d != null) as number[];
-                return dates.length > 0 ? Math.min(...dates) : Infinity;
-            };
-
-            return getMinDate(a) - getMinDate(b); // Ascendente: Fechas más cercanas primero
-        });
-    }
-
-    return filteredGroups;
-
-}, [products, searchTerm, productFilter]);
-
+    }, [products, searchTerm, productFilter]);
 
     const handleDelete = async (id: string) => {
         if (window.confirm("¿Estás seguro de eliminar este producto?")) {
@@ -143,7 +155,6 @@ export function useStock() {
         }
     };
 
-    // --- Lógica de Cálculos Bidireccionales ---
     const handleCostChange = (costVal: number) => {
         const gains = editingProduct?.gains || 0;
         const calculatedPrice = costVal * (1 + gains / 100);
@@ -181,7 +192,6 @@ export function useStock() {
         } : null);
     };
 
-    // --- Abrir Modal para Nuevo Producto ---
     const openCreateModal = () => {
         setIsEditingMode(false);
         setEditingProduct({
@@ -191,13 +201,11 @@ export function useStock() {
         setIsModalOpen(true);
     };
 
-    // --- Cerrar Modal ---
     const closeModal = () => {
         setIsModalOpen(false);
         setEditingProduct(null);
     };
 
-    // ---useStock.ts (Formato optimizado para handleSave) ---
     const handleSave = async (e: React.SubmitEvent<HTMLFormElement>) => {
         e.preventDefault();
         setIsLoading(true);
@@ -210,15 +218,12 @@ export function useStock() {
 
         try {
             if (isEditingMode) {
-                // SI ES UN PADRE: Usamos la actualización en lote (Batch)
                 if (editingProduct.isParent) {
                     await bulkActionRepository.updateParentAndChildren(editingProduct.id, editingProduct);
                 } else {
-                    // SI ES UN HIJO O INDEPENDIENTE: Actualización normal
                     await updateProduct(editingProduct.id, editingProduct);
                 }
             } else {
-                // ... (Tu lógica actual de crear nuevo producto se mantiene igual)
                 const newProduct: Product = {
                     id: editingProduct.id.trim(),
                     article: editingProduct.article,
@@ -240,9 +245,6 @@ export function useStock() {
                     conversionFactor: editingProduct.conversionFactor || null,
                     volumePrices: editingProduct.volumePrices || [],
                     expirationDate: editingProduct.expirationDate || null,
-                    // isCombo: editingProduct.isCombo || false,
-                    // comboComponenets: editingProduct.comboComponenets || []
-
                 };
                 await addProduct(newProduct);
             }
@@ -256,16 +258,13 @@ export function useStock() {
         }
     };
 
-    // 🆕 Cálculo de la inversión total en tiempo real de lo que está en pantalla
     const totalInvestment = useMemo(() => {
         return groupedProducts.reduce((total, parent) => {
-            // 1. Sumar la inversión del producto principal (Padre o Independiente)
             const parentCost = parent.cost || 0;
             const parentInvestment = parent.saleWeight
                 ? parentCost * 10 * (parent.weight || 0)
                 : parentCost * (parent.stock || 0);
 
-            // 2. Sumar la inversión de cada una de sus variaciones (hijos) si existen
             const childrenInvestment = (parent.variations || []).reduce((subTotal, child) => {
                 const childCost = child.cost || 0;
                 const childValue = child.saleWeight
@@ -279,36 +278,11 @@ export function useStock() {
     }, [groupedProducts]);
 
     return {
-        // Estados
-        products,
-        isLoading,
-        searchTerm,
-        isModalOpen,
-        isEditingMode,
-        editingProduct,
-        groupedProducts,
-        selectedProductIds,
-        totalInvestment,
-        productFilter,
-
-        // Modificadores de estado directos (para los subcomponentes)
-        setSearchTerm,
-        setIsEditingMode,
-        setEditingProduct,
-        setIsModalOpen,
-        setSelectedProductIds,
-
-        // Acciones y Handlers
-        handleDelete,
-        handleSave,
-        handleCostChange,
-        handleGainsChange,
-        handlePriceChange,
-        handleDestroyGroup,
-        openCreateModal,
-        closeModal,
-        toggleSelectProduct,
-        handleBulkGroupAssignment, // 🆕 Nueva acción enviada a la vista,
-        setProductFilter
+        products, isLoading, searchTerm, isModalOpen, isEditingMode,
+        editingProduct, groupedProducts, selectedProductIds, totalInvestment, productFilter,
+        setSearchTerm, setIsEditingMode, setEditingProduct, setIsModalOpen, setSelectedProductIds,
+        handleDelete, handleSave, handleCostChange, handleGainsChange, handlePriceChange,
+        handleDestroyGroup, openCreateModal, closeModal, toggleSelectProduct,
+        handleBulkGroupAssignment, setProductFilter
     };
 }
