@@ -2,6 +2,11 @@ import { useState, useEffect, useMemo } from 'react';
 import { getProducts, deleteProduct, addProduct, updateProduct, bulkActionRepository } from '../../../data/repositories/ProductRepository';
 import { type Product, getSlowMovers } from '../../../domain/types/productTypes';
 
+// Definimos la interfaz GroupedProduct aquí para que el sort tenga tipado estricto
+export interface GroupedProduct extends Product {
+    variations: Product[];
+}
+
 export function useStock() {
     const [products, setProducts] = useState<Product[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -27,8 +32,8 @@ export function useStock() {
         setIsLoading(true);
         try {
             await bulkActionRepository.assignProductsToGroup(parentId, selectedProductIds);
-            setSelectedProductIds([]); 
-            await loadProducts();      
+            setSelectedProductIds([]);
+            await loadProducts();
         } catch (error) {
             console.error("Error en asignación masiva:", error);
             setIsLoading(false);
@@ -52,22 +57,22 @@ export function useStock() {
         try {
             await bulkActionRepository.destroyGroup(parentId);
             console.log("Grupo disuelto correctamente.");
-            await loadProducts(); 
+            await loadProducts();
         } catch (error) {
             console.error("Error al destruir el grupo:", error);
             setIsLoading(false);
         }
     };
 
-    // ⚡ OPTIMIZACIÓN: Función ayudante fuera de la carga de renderizado
+    // Función ayudante para calcular stock unificada
     const checkHasStock = (p: Product) => p.saleWeight ? (p.weight || 0) > 0 : (p.stock || 0) > 0;
 
     const groupedProducts = useMemo(() => {
         const parents = products.filter(p => p.isParent || !p.parentId);
         const children = products.filter(p => p.parentId);
         const term = searchTerm.toLowerCase();
-        
-        // ⚡ OPTIMIZACIÓN: Calculamos esto UNA VEZ, no 1000 veces en el bucle
+
+        // Optimización: Variables de tiempo calculadas una sola vez
         const now = Date.now();
         const slowMoversThreshold = getSlowMovers();
 
@@ -78,21 +83,25 @@ export function useStock() {
                 variations = variations.filter(v => (v.stock > 0 || v.weight > 0) && v.expirationDate != null);
             } else if (productFilter === 'slowMovers') {
                 variations = variations.filter(v => {
-                    const lastActivity = v.lastSoldAt ? v.lastSoldAt : v.createdAt;
-                    return checkHasStock(v) && ((now - lastActivity) > slowMoversThreshold);
+                    const lastActivity = (v.lastSoldAt && v.lastSoldAt > 0)
+                        ? v.lastSoldAt
+                        : (v.createdAt && v.createdAt > 0)
+                            ? v.createdAt : 0;
+                    const isStagnant = lastActivity === 0 || (now - lastActivity) > slowMoversThreshold;
+                    return checkHasStock(v) && isStagnant;
                 });
             }
 
-            return { ...parent, variations };
+            return { ...parent, variations } as GroupedProduct;
         }).filter(group => {
-            // 3. Evaluamos la búsqueda de texto
+            // Evaluamos la búsqueda de texto
             const parentSearchMatch = group.article.toLowerCase().includes(term) || group.branch.toLowerCase().includes(term);
             const childSearchMatch = group.variations.some(v => v.article.toLowerCase().includes(term));
-            
-            // ⚡ OPTIMIZACIÓN: Si no hay match con la búsqueda, salimos de inmediato
-            if (!parentSearchMatch && !childSearchMatch) return false; 
 
-            // 4. Lógica por filtro
+            // Corte rápido si no hay coincidencia
+            if (!parentSearchMatch && !childSearchMatch) return false;
+
+            // Lógica por filtro
             if (productFilter === 'all') return true;
             if (productFilter === 'combos') return group.isCombo;
             if (productFilter === 'promotions') return group.volumePrices?.length !== 0;
@@ -105,8 +114,11 @@ export function useStock() {
             }
 
             if (productFilter === 'slowMovers') {
-                const parentLastActivity = group.lastSoldAt ? group.lastSoldAt : group.createdAt;
-                const parentIsStagnant = (now - parentLastActivity) > slowMoversThreshold;
+                const parentLastActivity = (group.lastSoldAt && group.lastSoldAt > 0)
+                    ? group.lastSoldAt
+                    : (group.createdAt && group.createdAt > 0)
+                        ? group.createdAt : 0;
+                const parentIsStagnant = parentLastActivity === 0 || (now - parentLastActivity) > slowMoversThreshold;
                 const parentMatchesSlow = checkHasStock(group as Product) && parentIsStagnant;
                 return parentMatchesSlow || group.variations.length > 0;
             }
@@ -114,10 +126,10 @@ export function useStock() {
             return false;
         });
 
-        // 5. Ordenamientos dinámicos (🚨 CORREGIDO: Ahora están FUERA del .filter())
+        // Ordenamientos dinámicos
         if (productFilter === 'expiration') {
             filteredGroups.sort((a, b) => {
-                const getMinDate = (item: Product & { variations: Product[] }) => {
+                const getMinDate = (item: GroupedProduct) => {
                     const dates = [item.expirationDate, ...item.variations.map(v => v.expirationDate)]
                         .filter(d => d != null) as number[];
                     return dates.length > 0 ? Math.min(...dates) : Infinity;
@@ -126,20 +138,28 @@ export function useStock() {
             });
         } else if (productFilter === 'slowMovers') {
             filteredGroups.sort((a, b) => {
-                const getMostStagnantActivity = (item: Product & { variations: Product[] }) => {
+                const getMostStagnantActivity = (item: GroupedProduct) => {
                     const activities: number[] = [];
-                    const parentActivity = item.lastSoldAt ? item.lastSoldAt : item.createdAt;
-                    
-                    if (checkHasStock(item as Product) && (now - parentActivity) > slowMoversThreshold) {
+                    const parentActivity = (item.lastSoldAt && item.lastSoldAt > 0)
+                        ? item.lastSoldAt
+                        : (item.createdAt && item.createdAt > 0)
+                            ? item.createdAt : 0;
+
+                    if (checkHasStock(item as Product) && (parentActivity === 0 || (now - parentActivity) > slowMoversThreshold)) {
                         activities.push(parentActivity);
                     }
 
                     item.variations.forEach(v => {
-                        activities.push(v.lastSoldAt ? v.lastSoldAt : v.createdAt);
+                        const vActivity = (v.lastSoldAt && v.lastSoldAt > 0)
+                            ? v.lastSoldAt
+                            : (v.createdAt && v.createdAt > 0)
+                                ? v.createdAt : 0;
+                        activities.push(vActivity);
                     });
 
                     return activities.length > 0 ? Math.min(...activities) : Infinity;
                 };
+                // De menor a mayor timestamp (el más antiguo primero)
                 return getMostStagnantActivity(a) - getMostStagnantActivity(b);
             });
         }

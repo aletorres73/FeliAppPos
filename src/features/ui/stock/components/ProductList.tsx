@@ -1,6 +1,8 @@
 import type React from 'react';
-import { getExpirationState, type Product } from "../../../domain/types/productTypes";
+// IMPORTANTE: Importamos getSlowMovers
+import { getExpirationState, type Product, getSlowMovers } from "../../../domain/types/productTypes";
 import { formatCurrency } from "../../../domain/utils/formats";
+import { type GroupedProduct } from '../hooks/useStock'; // Importamos la interfaz del hook
 import {
     articleName, branchLabel, productBadge, soldValueStyle, editAction, deleteAction, variationNameStyle,
     miniActionButtonStyle, destroyGroupButtonStyle, disabledDeleteActionStyle, bulkActionBarStyle,
@@ -9,11 +11,6 @@ import {
     productBadgePromotion
 } from '../styles/StockScreenStyles';
 
-interface GroupedProduct extends Product {
-    variations?: Product[];
-}
-
-// 1. Agregamos las nuevas props a la interfaz
 interface ProductListProps {
     filteredProducts: GroupedProduct[];
     setIsEditingMode: (isEditing: boolean) => void;
@@ -22,7 +19,7 @@ interface ProductListProps {
     handleDelete: (id: string, isParent?: boolean) => void;
     handleDestroyGroup: (parentId: string) => void;
 
-    // 🆕 Props para selección masiva
+    // Props para selección masiva
     selectedProductIds: string[];
     toggleSelectProduct: (id: string) => void;
     handleBulkGroupAssignment: (parentId: string) => void;
@@ -59,16 +56,16 @@ const formatExpirationDate = (expirationDate?: number | null) => {
 
 export function ProductList({
     filteredProducts, setIsEditingMode, setEditingProduct, setIsModalOpen, handleDelete, handleDestroyGroup,
-    selectedProductIds, toggleSelectProduct, handleBulkGroupAssignment // 🆕
+    selectedProductIds, toggleSelectProduct, handleBulkGroupAssignment
 }: ProductListProps) {
 
-    // Filtramos cuáles de los productos en pantalla podrían ser elegidos como "Padre"
     const posiblesPadres = filteredProducts.filter(p => !p.parentId);
+    const slowMoversThreshold = getSlowMovers(); // Lo calculamos una vez para usar en renderizado
 
     return (
         <div style={listWrapperStyle}>
 
-            {/* ─── 🆕 BARRA DE ACCIÓN MASIVA (Aparece solo si hay seleccionados) ─── */}
+            {/* ─── BARRA DE ACCIÓN MASIVA ─── */}
             {selectedProductIds.length > 0 && (
                 <div style={bulkActionBarStyle}>
                     <span>🛒 <b>{selectedProductIds.length}</b> productos seleccionados</span>
@@ -83,7 +80,7 @@ export function ProductList({
                                     if (window.confirm(`¿Quieres meter los ${selectedProductIds.length} productos seleccionados dentro de este grupo?`)) {
                                         handleBulkGroupAssignment(parentId);
                                     }
-                                    e.target.value = ""; // Resetea el select
+                                    e.target.value = "";
                                 }
                             }}
                         >
@@ -121,7 +118,6 @@ export function ProductList({
                         {/* FILA PADRE O INDEPENDIENTE */}
                         <div style={rowStyle(true)}>
 
-                            {/* 🆕 Checkbox de Selección */}
                             <div style={{ width: '10px', display: 'flex', justifyContent: 'flex-start', alignSelf: 'flex-start', marginTop: '3px' }}>
                                 <input
                                     type="checkbox"
@@ -131,9 +127,8 @@ export function ProductList({
                                 />
                             </div>
 
-                            {/* Columna 1: Info Principal */}
                             <div style={{ flex: '2', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                                     {hasVariations && <span style={productBadge(product.active)}>GRUPO</span>}
                                     {hasVolumePrice && <span style={productBadgePromotion(product.active)}>PROMOCION</span>}
                                     {productExpirationState && (
@@ -142,10 +137,12 @@ export function ProductList({
                                         </span>
                                     )}
                                     {(() => {
-                                        const lastActivity = product.lastSoldAt ?? product.createdAt;
-                                        const isLowRotation = ((Date.now() - lastActivity) > 20 * 24 * 60 * 60 * 1000) &&
-                                            (product.saleWeight ? (product.weight || 0) > 0 : (product.stock || 0) > 0);
-                                        return isLowRotation  ? (
+                                        const lastActivity = (product.lastSoldAt && product.lastSoldAt > 0)
+                                            ? product.lastSoldAt
+                                            : (product.createdAt && product.createdAt > 0)
+                                                ? product.createdAt : 0;
+                                        const isStagnant = lastActivity === 0 || (Date.now() - lastActivity) > slowMoversThreshold;
+                                        return isStagnant ? (
                                             <span style={{
                                                 fontSize: '0.5rem', padding: '2px 4px', borderRadius: '4px',
                                                 backgroundColor: 'rgba(255, 171, 64, 0.12)',
@@ -172,7 +169,6 @@ export function ProductList({
                             <div style={{ flex: '1' }}><span style={{ ...cellValueStyle, color: (product.stock <= 5 && !product.saleWeight) ? '#FFAB40' : '#FFF' }}>{product.saleWeight ? `${(product.weight || 0).toFixed(3)} kg` : `${product.stock || 0} un.`}</span></div>
                             <div style={{ flex: '1' }}><span style={{ ...soldValueStyle, fontSize: '0.9rem', margin: 0 }}>{product.saleWeight ? `${totalGroupWeightSold.toFixed(3)} kg` : `${totalGroupSold} un.`}</span></div>
 
-                            {/* Acciones Padre */}
                             <div style={{ flex: '0.8', display: 'flex', flexDirection: 'column', gap: '6px', justifyContent: 'center' }}>
                                 {hasVariations && (
                                     <button style={{ ...destroyGroupButtonStyle, width: '100%' }} onClick={() => handleDestroyGroup(product.id)}>DISOLVER</button>
@@ -192,10 +188,19 @@ export function ProductList({
                                 }).map(v => {
                                     const variantName = v.article.toUpperCase().replace(product.article.toUpperCase(), '').replace(/[-_]/g, '').trim() || 'Estándar';
                                     const variationExpirationState = getExpirationState(v.expirationDate);
+
+                                    // Cálculo de baja rotación para el HIJO
+                                    const variantLastActivity = (v.lastSoldAt && v.lastSoldAt > 0)
+                                        ? v.lastSoldAt
+                                        : (v.createdAt && v.createdAt > 0)
+                                            ? v.createdAt : 0;
+                                    const isVariantStagnant = variantLastActivity === 0 || (Date.now() - variantLastActivity) > slowMoversThreshold;
+                                    // const isVariantLowRotation = isVariantStagnant &&
+                                    //     (v.saleWeight ? (v.weight || 0) > 0 : (v.stock || 0) > 0);
+
                                     return (
                                         <div key={v.id} style={rowStyle(true)}>
 
-                                            {/* 🆕 Checkbox de Selección para Hijos (por si quieres moverlos a otro grupo) */}
                                             <div style={{ width: '40px', display: 'flex', justifyContent: 'flex-start' }}>
                                                 <input
                                                     type="checkbox"
@@ -206,19 +211,33 @@ export function ProductList({
                                             </div>
 
                                             <div style={{ flex: '1', display: 'flex', flexDirection: 'column' }}>
-                                                {variationExpirationState && (
-                                                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                                {/* Flex contenedor para las etiquetas del hijo */}
+                                                <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                                                    {variationExpirationState && (
                                                         <span style={getExpirationBadgeStyle(variationExpirationState)}>
                                                             {variationExpirationState === 'expired' ? 'VENCIDO' : 'VENCE PRONTO'} · {formatExpirationDate(v.expirationDate)}
                                                         </span>
-                                                    </div>
-                                                )}
-                                                <span style={variationNameStyle}>{variantName}</span>
-                                                <span style={{ color: 'rgba(255,255,255,0.2)', fontSize: '0.65rem', marginLeft: '14px' }}>ID: {v.id}</span>
+                                                    )}
 
+                                                    {isVariantStagnant && (
+                                                        <span style={{
+                                                            fontSize: '0.45rem', padding: '2px 4px', borderRadius: '4px',
+                                                            backgroundColor: 'rgba(255, 171, 64, 0.12)',
+                                                            color: '#FFAB40', fontWeight: 700,
+                                                            border: '1px solid rgba(255, 171, 64, 0.25)',
+                                                            marginBottom: '8px', whiteSpace: 'nowrap'
+                                                        }}>
+                                                            BAJA ROTACIÓN
+                                                        </span>
+                                                    )}
+                                                </div>
+
+                                                <div>
+                                                    <span style={variationNameStyle}>{variantName}</span>
+                                                    <span style={{ color: 'rgba(255,255,255,0.2)', fontSize: '0.65rem', marginLeft: '14px' }}>ID: {v.id}</span>
+                                                </div>
                                             </div>
 
-                                            {/* ... (Las columnas del hijo y sus botones quedan EXACTAMENTE IGUALES) ... */}
                                             <div style={{ flex: '1' }}><span style={subCellValueStyle}>{formatCurrency(v.cost || 0)}</span></div>
                                             <div style={{ flex: '1' }}><span style={{ ...subCellValueStyle, color: 'rgba(71, 214, 167, 0.7)' }}>{v.gains ? `${v.gains}%` : '0%'}</span></div>
                                             <div style={{ flex: '1' }}><span style={{ ...subCellValueStyle, color: '#54C4F0' }}>{formatCurrency(v.price || 0)}</span></div>

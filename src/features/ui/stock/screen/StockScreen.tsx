@@ -1,4 +1,4 @@
-import { useStock } from '../hooks/useStock'; // Ajusta la ruta según tu estructura
+import { useStock } from '../hooks/useStock'; 
 import {
     stockContainer, headerStyle, mainTitleStyle,
     primaryButtonStyle, subtitleStyle, fullScreenCenter,
@@ -8,6 +8,7 @@ import { SearchContainer } from '../components/SearchContainer';
 import { ProductList } from '../components/ProductList';
 import { formatCurrency } from '../../../domain/utils/formats';
 import { FilterChips } from '../components/FilterChips';
+import type React from 'react';
 
 export default function StockScreen() {
     const {
@@ -143,7 +144,7 @@ const investmentLabelStyle: React.CSSProperties = {
 
 const investmentValueStyle: React.CSSProperties = {
     fontSize: '1.25rem',
-    color: '#47D6A7', // Color verde para denotar dinero/activo
+    color: '#47D6A7', 
     fontWeight: '700',
-    fontFamily: 'monospace' // Para que los números no bailen al cambiar el filtro
+    fontFamily: 'monospace' 
 };
