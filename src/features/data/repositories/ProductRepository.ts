@@ -81,6 +81,8 @@ export const mapToProduct = (data: any): Product => {
     weightSold: data.pesoVendido,
     expirationDate: data.vencimiento || null,
     lastSoldAt: data.ultimaVentaAt || null,
+    unitsPerBulk: data.unitsPerBulk || null,
+    lastSupplierId: data.lastSupplierId || null,
     isParent: data.isParent || false,
     parentId: data.parentId || null,
     stockLinked: data.stockLinked || false,
@@ -109,6 +111,8 @@ export const mapToFirestoreProduct = (product: Product): any => {
     pesoVendido: product.weightSold,
     vencimiento: product.expirationDate || null,
     ultimaVentaAt: product.lastSoldAt || null,
+    unitsPerBulk: product.unitsPerBulk || null,
+    lastSupplierId: product.lastSupplierId || null,
     isParent: product.isParent || false,
     parentId: product.parentId || null,
     stockLinked: product.stockLinked || false,
@@ -173,6 +177,8 @@ export const updateProduct = async (docId: string, updatedData: Partial<Product>
     if (updatedData.conversionFactor !== undefined) firestoreUpdates.conversionFactor = updatedData.conversionFactor;
     if (updatedData.expirationDate !== undefined) firestoreUpdates.vencimiento = updatedData.expirationDate;
     if (updatedData.lastSoldAt !== undefined) firestoreUpdates.ultimaVentaAt = updatedData.lastSoldAt;
+    if (updatedData.unitsPerBulk !== undefined) firestoreUpdates.unitsPerBulk = updatedData.unitsPerBulk;
+    if (updatedData.lastSupplierId !== undefined) firestoreUpdates.lastSupplierId = updatedData.lastSupplierId;
     if (updatedData.volumePrices !== undefined) firestoreUpdates.volumePrices = updatedData.volumePrices;
 
     firestoreUpdates.updatedAt = Date.now();
