@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { getProducts, deleteProduct, addProduct, updateProduct, bulkActionRepository } from '../../../data/repositories/ProductRepository';
+import { getProducts, deleteProduct, addProduct, updateProduct, bulkActionRepository, resolvePriceReview, type PriceReviewDecision } from '../../../data/repositories/ProductRepository';
 import { type Product, getSlowMovers } from '../../../domain/types/productTypes';
 
 // Definimos la interfaz GroupedProduct aquí para que el sort tenga tipado estricto
@@ -15,7 +15,7 @@ export function useStock() {
     const [isEditingMode, setIsEditingMode] = useState(false);
     const [editingProduct, setEditingProduct] = useState<Partial<Product> | null>(null);
     const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
-    const [productFilter, setProductFilter] = useState<'all' | 'combos' | 'promotions' | 'grouped' | 'expiration' | 'slowMovers'>('all');
+    const [productFilter, setProductFilter] = useState<'all' | 'combos' | 'promotions' | 'grouped' | 'expiration' | 'slowMovers' | 'priceReview'>('all');
 
     useEffect(() => {
         loadProducts();
@@ -90,6 +90,8 @@ export function useStock() {
                     const isStagnant = lastActivity === 0 || (now - lastActivity) > slowMoversThreshold;
                     return checkHasStock(v) && isStagnant;
                 });
+            } else if (productFilter === 'priceReview') {
+                variations = variations.filter(v => v.pricingReviewPending);
             }
 
             return { ...parent, variations } as GroupedProduct;
@@ -121,6 +123,10 @@ export function useStock() {
                 const parentIsStagnant = parentLastActivity === 0 || (now - parentLastActivity) > slowMoversThreshold;
                 const parentMatchesSlow = checkHasStock(group as Product) && parentIsStagnant;
                 return parentMatchesSlow || group.variations.length > 0;
+            }
+
+            if (productFilter === 'priceReview') {
+                return Boolean(group.pricingReviewPending) || group.variations.length > 0;
             }
 
             return false;
@@ -212,6 +218,16 @@ export function useStock() {
         } : null);
     };
 
+    const resolveProductPriceReview = async (productId: string, decision: PriceReviewDecision, customPrice?: number) => {
+        setIsLoading(true);
+        try {
+            await resolvePriceReview(productId, decision, customPrice);
+            await loadProducts();
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     const openCreateModal = () => {
         setIsEditingMode(false);
         setEditingProduct({
@@ -238,10 +254,12 @@ export function useStock() {
 
         try {
             if (isEditingMode) {
+                // Al guardar desde el modal se considera revisado el cambio de costo
+                const reviewedProduct = { ...editingProduct, pricingReviewPending: false };
                 if (editingProduct.isParent) {
-                    await bulkActionRepository.updateParentAndChildren(editingProduct.id, editingProduct);
+                    await bulkActionRepository.updateParentAndChildren(editingProduct.id, reviewedProduct);
                 } else {
-                    await updateProduct(editingProduct.id, editingProduct);
+                    await updateProduct(editingProduct.id, reviewedProduct);
                 }
             } else {
                 const newProduct: Product = {
@@ -302,7 +320,7 @@ export function useStock() {
         editingProduct, groupedProducts, selectedProductIds, totalInvestment, productFilter,
         setSearchTerm, setIsEditingMode, setEditingProduct, setIsModalOpen, setSelectedProductIds,
         handleDelete, handleSave, handleCostChange, handleGainsChange, handlePriceChange,
-        handleDestroyGroup, openCreateModal, closeModal, toggleSelectProduct,
+        handleDestroyGroup, openCreateModal, closeModal, toggleSelectProduct, resolveProductPriceReview,
         handleBulkGroupAssignment, setProductFilter
     };
 }

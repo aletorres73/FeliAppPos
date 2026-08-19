@@ -4,6 +4,7 @@ import {
     getDocs,
     increment,
     query,
+    runTransaction,
     where,
     writeBatch,
 } from 'firebase/firestore';
@@ -11,6 +12,7 @@ import { db } from '../services/FirebaseService';
 import type { Product } from '../../domain/types/productTypes';
 import type { Purchase } from '../../domain/types/purchaseTypes';
 import type { Supplier } from '../../domain/types/supplierTypes';
+import type { PaymentMethod } from '../../domain/types/orderTypes';
 
 export interface PurchaseConfirmation {
     purchase: Purchase;
@@ -54,6 +56,14 @@ export const purchaseRepository = {
                 lastSupplierId: purchase.supplierId, // Usamos el proveedor de la compra
             };
 
+            const costChanged = Number(originalProduct.cost || 0) !== Number(item.unitCost || 0);
+            if (costChanged) {
+                productUpdates.previousCost = originalProduct.cost || 0;
+                productUpdates.suggestedPrice = Number((item.unitCost * (1 + (originalProduct.gains || 0) / 100)).toFixed(2));
+                productUpdates.pricingReviewPending = true;
+                productUpdates.costUpdatedAt = Date.now();
+            }
+
             if (item.unitsPerBulk) {
                 productUpdates.unitsPerBulk = item.unitsPerBulk;
             }
@@ -80,5 +90,60 @@ export const purchaseRepository = {
         }
 
         await batch.commit();
+    },
+
+    async registerPayment(
+        purchaseId: string,
+        supplierId: string,
+        amount: number,
+        paymentMethod: PaymentMethod[]
+    ): Promise<void> {
+        const normalizedMethods = paymentMethod.filter((method) => method.amount > 0);
+        const paymentAmount = normalizedMethods.reduce((sum, method) => sum + method.amount, 0);
+        if (paymentAmount <= 0 || amount !== paymentAmount) {
+            throw new Error('El importe y los medios de pago no coinciden.');
+        }
+
+        await runTransaction(db, async (transaction) => {
+            const purchaseRef = doc(db, 'purchases', purchaseId);
+            const supplierRef = doc(db, 'suppliers', supplierId);
+            const expenseRef = doc(collection(db, 'expenses'));
+            const purchaseSnapshot = await transaction.get(purchaseRef);
+            const supplierSnapshot = await transaction.get(supplierRef);
+
+            if (!purchaseSnapshot.exists()) throw new Error('Compra no encontrada.');
+            if (!supplierSnapshot.exists()) throw new Error('Proveedor no encontrado.');
+
+            const purchase = purchaseSnapshot.data() as Purchase;
+            const currentDebt = Number(purchase.debt ?? purchase.total - purchase.payed);
+            if (purchase.supplierId !== supplierId) throw new Error('La compra no pertenece a este proveedor.');
+            if (purchase.payStatus === 'PAID' || currentDebt <= 0) throw new Error('La compra ya está pagada.');
+            if (paymentAmount > currentDebt) throw new Error('El pago supera el saldo de la compra.');
+
+            const currentSupplierBalance = Number(supplierSnapshot.data().currentBalance || 0);
+            if (paymentAmount > currentSupplierBalance) throw new Error('El pago supera el saldo del proveedor.');
+
+            const newPayed = Number(purchase.payed || 0) + paymentAmount;
+            const newDebt = Number((purchase.total - newPayed).toFixed(2));
+            const previousMethods = purchase.paymentMethod || [];
+
+            transaction.update(purchaseRef, {
+                payed: newPayed,
+                debt: newDebt,
+                payStatus: newDebt === 0 ? 'PAID' : 'PENDING',
+                paymentMethod: [...previousMethods, ...normalizedMethods],
+            });
+            transaction.update(supplierRef, {
+                currentBalance: Number((currentSupplierBalance - paymentAmount).toFixed(2)),
+            });
+            transaction.set(expenseRef, {
+                category: 'SUPPLIER',
+                amount: paymentAmount,
+                paymentMethod: normalizedMethods,
+                createdAt: Date.now(),
+                note: `Pago de compra ${purchaseId}`,
+                purchaseId,
+            });
+        });
     },
 };

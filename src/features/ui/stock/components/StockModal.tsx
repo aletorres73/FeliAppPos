@@ -3,7 +3,7 @@ import type React from 'react';
 import { modalStyles } from '../styles/ModalStockStyles';
 import { type Product, type VolumePrice } from '../../../domain/types/productTypes'; // 🆕 Asegurá tener exportado VolumePrice de tus types
 import { labelStyle, searchInputStyle } from '../styles/StockScreenStyles';
-import { formatDateForInput } from '../../../domain/utils/formats';
+import { formatCurrency, formatDateForInput } from '../../../domain/utils/formats';
 import { useKeyboardShortcuts } from '../../../domain/utils/keyboardShorcuts';
 
 interface StockModalProps {
@@ -102,6 +102,73 @@ export function StockModal(
                     {isEditingMode ? 'Editar Artículo' : 'Nuevo Artículo'}
                 </h3>
 
+                {/* 🆕 ETIQUETA DE CAMBIO DE COSTO PENDIENTE DE REVISIÓN */}
+                {product.pricingReviewPending && (
+                    <div style={{
+                        backgroundColor: 'rgba(255, 171, 64, 0.12)',
+                        border: '1px solid rgba(255, 171, 64, 0.45)',
+                        borderRadius: '8px',
+                        padding: '12px 14px',
+                        marginBottom: '16px',
+                        color: 'white'
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                            <span style={{ fontSize: '1.1rem' }}>⚠️</span>
+                            <strong style={{ color: '#FFAB40', fontSize: '0.85rem', letterSpacing: '0.5px' }}>
+                                COSTO ACTUALIZADO · REVISAR PRECIO
+                            </strong>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    const suggested = product.suggestedPrice ?? product.price ?? 0;
+                                    setEditingProduct({
+                                        ...product,
+                                        price: suggested,
+                                        gains: Number(calculateMargin(product.cost ?? 0, suggested).toFixed(2))
+                                    });
+                                }}
+                                style={{
+                                    marginLeft: 'auto',
+                                    background: '#54C4F0',
+                                    color: '#0F1115',
+                                    border: 'none',
+                                    borderRadius: '6px',
+                                    padding: '6px 10px',
+                                    fontSize: '0.7rem',
+                                    fontWeight: 700,
+                                    cursor: 'pointer',
+                                    whiteSpace: 'nowrap'
+                                }}
+                            >
+                                APLICAR SUGERIDO
+                            </button>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 16px', fontSize: '0.8rem' }}>
+                            <div>
+                                <small style={{ opacity: 0.55, display: 'block' }}>COSTO ANTERIOR</small>
+                                <strong style={{ color: '#FF9A9A' }}>{formatCurrency(product.previousCost ?? 0)}</strong>
+                            </div>
+                            <div>
+                                <small style={{ opacity: 0.55, display: 'block' }}>COSTO ACTUAL</small>
+                                <strong style={{ color: '#FFAB40' }}>{formatCurrency(product.cost ?? 0)}</strong>
+                            </div>
+                            <div>
+                                <small style={{ opacity: 0.55, display: 'block' }}>MARGEN</small>
+                                <strong>{product.gains ?? 0}%</strong>
+                            </div>
+                            <div>
+                                <small style={{ opacity: 0.55, display: 'block' }}>PRECIO SUGERIDO</small>
+                                <strong style={{ color: '#54C4F0' }}>{formatCurrency(product.suggestedPrice ?? 0)}</strong>
+                            </div>
+                        </div>
+                        {product.costUpdatedAt ? (
+                            <small style={{ opacity: 0.5, display: 'block', marginTop: '8px' }}>
+                                Cambio registrado el {formatDateForInput(product.costUpdatedAt)}
+                            </small>
+                        ) : null}
+                    </div>
+                )}
+
                 <div style={modalStyles.checkboxRow}>
                     <span style={modalStyles.checkboxLabel}>
                         Definir como producto base
@@ -182,7 +249,7 @@ export function StockModal(
                                 style={modalStyles.input}
                                 min="0"
                                 step="any"
-                                value={product.cost || ''}
+                                value={product.pricingReviewPending ? (product.previousCost ?? '') : (product.cost ?? '')}
                                 onChange={e => handleCostChange(Number(e.target.value))}
                             />
                         </div>

@@ -7,6 +7,7 @@ import type { Purchase, PurchaseDraftItem } from '../../../domain/types/purchase
 import type { PaymentMethod } from '../../../domain/types/orderTypes';
 import type { Supplier } from '../../../domain/types/supplierTypes';
 import { ScannerInput } from '../../orders/components/ScannerImput';
+import { PurchaseDetailModal } from '../components/PurchaseDetailModal';
 import { formatCurrency } from '../../../domain/utils/formats';
 
 const inputStyle: React.CSSProperties = { background: '#12151b', color: 'white', border: '1px solid rgba(255,255,255,.14)', borderRadius: 6, padding: '10px 12px' };
@@ -24,9 +25,10 @@ export default function PurchasesScreen() {
     const [showSupplierForm, setShowSupplierForm] = useState(false);
     const [supplierName, setSupplierName] = useState('');
     const [supplierContact, setSupplierContact] = useState('');
-    const [supplierPayment, setSupplierPayment] = useState('');
     const [history, setHistory] = useState<Purchase[]>([]);
     const [message, setMessage] = useState('');
+    const [selectedPurchase, setSelectedPurchase] = useState<Purchase | null>(null);
+    const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
     const selectedSupplier = suppliers.find((supplier) => supplier.id === selectedSupplierId);
     const suggestions = useMemo(() => {
@@ -94,12 +96,21 @@ export default function PurchasesScreen() {
         setSupplierName(''); setSupplierContact(''); setShowSupplierForm(false); await loadData();
     };
 
-    const paySupplierDebt = async () => {
-        if (!selectedSupplier || Number(supplierPayment) <= 0) return;
-        await supplierRepository.registerPayment(selectedSupplier.id, selectedSupplier.name, Number(supplierPayment));
-        setSupplierPayment('');
-        setMessage('Pago de proveedor registrado en flujo de caja.');
-        await loadData();
+    const handlePurchasePayment = async (amount: number, paymentMethods: PaymentMethod[]) => {
+        if (!selectedSupplier || !selectedPurchase) return;
+        try {
+            setIsProcessingPayment(true);
+            await purchaseRepository.registerPayment(selectedPurchase.docId, selectedSupplier.id, amount, paymentMethods);
+            const updatedHistory = await purchaseRepository.getBySupplier(selectedSupplier.id);
+            setHistory(updatedHistory);
+            setSelectedPurchase(null);
+            setMessage(`Pago aplicado a la compra ${selectedPurchase.docId}.`);
+            await loadData();
+        } catch (error) {
+            setMessage(error instanceof Error ? error.message : 'No se pudo registrar el pago.');
+        } finally {
+            setIsProcessingPayment(false);
+        }
     };
 
     const confirmPurchase = async () => {
@@ -175,25 +186,21 @@ export default function PurchasesScreen() {
                         <span>Deuda actual</span>
                         <strong style={{ color: '#FF9A9A' }}>{formatCurrency(selectedSupplier?.currentBalance || 0)}</strong>
                     </div>
-                    {selectedSupplier && selectedSupplier.currentBalance > 0 &&
-                        <div style={{ display: 'flex', gap: 8, marginBottom: 18 }}>
-                            <input style={{ ...inputStyle, minWidth: 0, flex: 1 }} type="number" min="0" max={selectedSupplier.currentBalance} step="0.01" placeholder="Importe a saldar" value={supplierPayment} onChange={(event) => setSupplierPayment(event.target.value)} />
-                            <button style={{ ...inputStyle, color: '#80E0B0', cursor: 'pointer' }} onClick={() => void paySupplierDebt()}>Saldar</button>
-                        </div>}
                     {history.slice(0, 6).map((purchase) =>
-                        <div key={purchase.docId} style={{ borderBottom: '1px solid rgba(255,255,255,.08)', padding: '9px 0' }}>
+                        <button type="button" key={purchase.docId} onClick={() => purchase.payStatus === 'PENDING' && setSelectedPurchase(purchase)} style={{ width: '100%', textAlign: 'left', color: 'white', background: 'transparent', border: 0, borderBottom: '1px solid rgba(255,255,255,.08)', padding: '9px 0', cursor: purchase.payStatus === 'PENDING' ? 'pointer' : 'default' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                                 <span>{new Date(purchase.createdAt).toLocaleDateString('es-AR')}
                                     <small style={{ display: 'block', opacity: .5 }}>{purchase.docId}</small>
                                 </span>
-                                <strong>{formatCurrency(purchase.total)}</strong>
+                                <span style={{ textAlign: 'right' }}><strong>{formatCurrency(purchase.total)}</strong><small style={{ display: 'block', color: purchase.payStatus === 'PENDING' ? '#FFAB40' : '#80E0B0' }}>{purchase.payStatus === 'PENDING' ? `Pendiente · ${formatCurrency(purchase.debt)}` : 'Pagada'}</small></span>
                             </div>
                             <small style={{ opacity: .55 }}>{purchase.items.map((item) => `${item.article}: ${formatCurrency(item.unitCost)}/u`).join(' · ')}</small>
-                        </div>)}
+                        </button>)}
                     {!history.length && <p style={{ opacity: .45 }}>Sin compras registradas.</p>}
                 </section>
             </aside>
         </div>
+        {selectedPurchase && <PurchaseDetailModal purchase={selectedPurchase} onClose={() => setSelectedPurchase(null)} onConfirm={handlePurchasePayment} isProcessing={isProcessingPayment} />}
         {showReview &&
             <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.7)', display: 'grid', placeItems: 'center', zIndex: 20 }}>
                 <div style={{ ...panelStyle, maxWidth: 520, width: 'calc(100% - 40px)' }}>

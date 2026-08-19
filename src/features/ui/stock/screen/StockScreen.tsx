@@ -9,8 +9,11 @@ import { ProductList } from '../components/ProductList';
 import { formatCurrency } from '../../../domain/utils/formats';
 import { FilterChips } from '../components/FilterChips';
 import type React from 'react';
+import { useState } from 'react';
+import { PriceReviewModal } from '../components/PriceReviewModal';
 
 export default function StockScreen() {
+    const [isPriceReviewOpen, setIsPriceReviewOpen] = useState(false);
     const {
         products,
         isLoading,
@@ -36,8 +39,11 @@ export default function StockScreen() {
         handlePriceChange,
         handleDestroyGroup,
         openCreateModal,
-        closeModal
+        closeModal,
+        resolveProductPriceReview
     } = useStock();
+
+    const pendingPriceReviews = products.filter((product) => product.pricingReviewPending);
 
     if (isLoading) return <div style={fullScreenCenter}><span>CARGANDO INVENTARIO...</span></div>;
 
@@ -60,7 +66,7 @@ export default function StockScreen() {
     };
 
     const handleNewFilter = (newFilter: string) => {
-        if (newFilter === 'all' || newFilter === 'combos' || newFilter === 'promotions' || newFilter === 'grouped' || newFilter === 'expiration' || newFilter === 'slowMovers')
+        if (newFilter === 'all' || newFilter === 'combos' || newFilter === 'promotions' || newFilter === 'grouped' || newFilter === 'expiration' || newFilter === 'slowMovers' || newFilter === 'priceReview')
             setProductFilter(newFilter)
     }
 
@@ -69,17 +75,24 @@ export default function StockScreen() {
             <header style={headerStyle}>
                 <div style={{ textAlign: 'left' }}>
                     <h2 style={mainTitleStyle}>Control de Inventario</h2>
-                    <p style={subtitleStyle}>{products.length} productos en el catálogo</p>
+                    <p style={subtitleStyle}>{products.length} productos en el catálogo {pendingPriceReviews.length > 0 && `· ${pendingPriceReviews.length} precios por revisar`}</p>
                 </div>
-                <button style={primaryButtonStyle} onClick={openCreateModal}>
-                    + NUEVO ARTÍCULO
-                </button>
+                <div style={{ display: 'flex', gap: 10 }}>
+                    {pendingPriceReviews.length > 0 && (
+                        <button style={{ ...primaryButtonStyle, backgroundColor: '#FFAB40', color: '#4A2300' }} onClick={() => setIsPriceReviewOpen(true)}>
+                            REVISAR PRECIOS ({pendingPriceReviews.length})
+                        </button>
+                    )}
+                    <button style={primaryButtonStyle} onClick={openCreateModal}>
+                        + NUEVO ARTÍCULO
+                    </button>
+                </div>
             </header>
 
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
                     <SearchContainer searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
-                    <FilterChips current={productFilter} onChange={handleNewFilter} />
+                    <FilterChips current={productFilter} onChange={handleNewFilter} priceReviewCount={pendingPriceReviews.length} />
                 </div>
 
                 <div style={investmentCardStyle}>
@@ -116,6 +129,12 @@ export default function StockScreen() {
                     onClose={closeModal}
                 />
             )}
+            <PriceReviewModal
+                products={pendingPriceReviews}
+                isOpen={isPriceReviewOpen}
+                onClose={() => setIsPriceReviewOpen(false)}
+                onResolve={resolveProductPriceReview}
+            />
         </div>
     );
 }
