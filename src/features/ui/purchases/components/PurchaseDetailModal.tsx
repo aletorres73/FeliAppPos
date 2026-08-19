@@ -10,14 +10,14 @@ interface PurchaseDetailModalProps {
   isProcessing: boolean;
 }
 
-const modalStyle: React.CSSProperties = {
+const overlayStyle: React.CSSProperties = {
   position: 'fixed', inset: 0, zIndex: 30, background: 'rgba(0,0,0,.72)',
   display: 'grid', placeItems: 'center', padding: 20,
 };
 
 const panelStyle: React.CSSProperties = {
   width: 'min(560px, 100%)', maxHeight: '90vh', overflowY: 'auto',
-  background: '#1A1D23', border: '1px solid rgba(255,255,255,.12)',
+  background: '#1A1D23', border: '1px solid rgba(255,255,255,.08)',
   borderRadius: 8, color: 'white', padding: 24,
 };
 
@@ -25,6 +25,27 @@ const inputStyle: React.CSSProperties = {
   background: '#12151b', color: 'white', border: '1px solid rgba(255,255,255,.14)',
   borderRadius: 6, padding: '10px 12px', boxSizing: 'border-box',
 };
+
+const sectionLabelStyle: React.CSSProperties = {
+  display: 'block', marginBottom: 8, opacity: .65, fontSize: '0.7rem',
+  letterSpacing: '1px', textTransform: 'uppercase', fontWeight: 600,
+};
+
+const cardHeaderStyle: React.CSSProperties = {
+  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+  marginBottom: 16, paddingBottom: 12, borderBottom: '1px solid rgba(255,255,255,.08)',
+};
+
+const primaryButtonStyle: React.CSSProperties = {
+  ...inputStyle, background: '#54C4F0', color: '#0F1115', fontWeight: 700,
+  cursor: 'pointer', border: 'none',
+};
+
+const ghostButtonStyle: React.CSSProperties = {
+  ...inputStyle, cursor: 'pointer', background: 'transparent',
+};
+
+const monoStyle: React.CSSProperties = { fontFamily: 'monospace' };
 
 export function PurchaseDetailModal({ purchase, onClose, onConfirm, isProcessing }: PurchaseDetailModalProps) {
   const [cash, setCash] = useState(0);
@@ -54,42 +75,73 @@ export function PurchaseDetailModal({ purchase, onClose, onConfirm, isProcessing
     await onConfirm(newPayment, paymentMethods);
   };
 
-  return <div style={modalStyle} role="dialog" aria-modal="true" aria-labelledby="purchase-detail-title">
+  return <div style={overlayStyle} role="dialog" aria-modal="true" aria-labelledby="purchase-detail-title">
     <div style={panelStyle}>
-      <header style={{ display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'flex-start' }}>
+      <header style={cardHeaderStyle}>
         <div>
-          <h2 id="purchase-detail-title" style={{ margin: 0 }}>Compra {purchase.docId}</h2>
-          <p style={{ opacity: .55, margin: '6px 0 0' }}>{new Date(purchase.createdAt).toLocaleDateString('es-AR')}</p>
+          <h2 id="purchase-detail-title" style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, letterSpacing: '-0.3px' }}>Compra {purchase.docId}</h2>
+          <p style={{ opacity: .55, margin: '4px 0 0', fontSize: '0.85rem' }}>{new Date(purchase.createdAt).toLocaleDateString('es-AR')}</p>
         </div>
-        <button type="button" onClick={onClose} style={{ ...inputStyle, cursor: 'pointer' }}>Cerrar</button>
+        <button type="button" onClick={onClose} style={ghostButtonStyle}>Cerrar</button>
       </header>
 
-      <div style={{ marginTop: 20 }}>
-        {purchase.items.map((item) => <div key={item.productId} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, borderBottom: '1px solid rgba(255,255,255,.08)', padding: '10px 0' }}>
-          <span>{item.article}<small style={{ display: 'block', opacity: .5 }}>{item.quantity} {item.saleWeight ? 'kg' : 'unidades'} · {formatCurrency(item.unitCost)}/u</small></span>
-          <strong>{formatCurrency(item.subtotal)}</strong>
-        </div>)}
-      </div>
+      <section>
+        <span style={sectionLabelStyle}>Artículos</span>
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          {purchase.items.map((item) => (
+            <div key={item.productId} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, borderBottom: '1px solid rgba(255,255,255,.08)', padding: '10px 0' }}>
+              <div>
+                <span style={{ fontSize: '0.9rem' }}>{item.article}</span>
+                <small style={{ display: 'block', opacity: .5, marginTop: 2, fontSize: '0.75rem' }}>
+                  {item.quantity} {item.saleWeight ? 'kg' : 'unidades'} · {formatCurrency(item.unitCost)}/u
+                </small>
+              </div>
+              <strong style={{ ...monoStyle, fontSize: '0.9rem' }}>{formatCurrency(item.subtotal)}</strong>
+            </div>
+          ))}
+        </div>
+      </section>
 
-      <div style={{ marginTop: 20, display: 'grid', gap: 8 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Total</span><strong>{formatCurrency(purchase.total)}</strong></div>
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Pagado</span><strong>{formatCurrency(purchase.payed)}</strong></div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', color: '#FFAB40' }}><span>Saldo pendiente</span><strong>{formatCurrency(purchase.debt)}</strong></div>
-      </div>
+      <section style={{ marginTop: 20 }}>
+        <span style={sectionLabelStyle}>Resumen</span>
+        <div style={{ display: 'grid', gap: 8 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+            <span style={{ opacity: .65 }}>Total</span>
+            <strong style={{ ...monoStyle, fontSize: '1.05rem' }}>{formatCurrency(purchase.total)}</strong>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+            <span style={{ opacity: .65 }}>Pagado</span>
+            <strong style={{ ...monoStyle, color: '#80E0B0' }}>{formatCurrency(purchase.payed)}</strong>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+            <span style={{ opacity: .65 }}>Saldo pendiente</span>
+            <strong style={{ ...monoStyle, color: '#FFAB40', fontSize: '1.05rem' }}>{formatCurrency(purchase.debt)}</strong>
+          </div>
+        </div>
+      </section>
 
-      <div style={{ marginTop: 20 }}>
-        <h3 style={{ margin: '0 0 10px' }}>Nuevo pago</h3>
-        {[['Efectivo', cash, setCash], ['Transferencia', transfer, setTransfer], ['Tarjeta', card, setCard], ['QR', qr, setQr]].map(([label, value, setter]) => <label key={label as string} style={{ display: 'grid', gap: 6, marginBottom: 10 }}>
-          <span style={{ opacity: .65 }}>{label as string}</span>
-          <input style={{ ...inputStyle, width: '100%' }} type="number" min="0" step="0.01" value={(value as number) || ''} onChange={(event) => (setter as (value: number) => void)(Number(event.target.value) || 0)} />
-        </label>)}
-        <div style={{ display: 'flex', justifyContent: 'space-between', color: '#80E0B0' }}><span>Nuevo pago</span><strong>{formatCurrency(newPayment)}</strong></div>
-      </div>
+      <section style={{ marginTop: 24 }}>
+        <span style={sectionLabelStyle}>Nuevo pago</span>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          {[['Efectivo', cash, setCash], ['Transferencia', transfer, setTransfer], ['Tarjeta', card, setCard], ['QR', qr, setQr]].map(([label, value, setter]) => (
+            <label key={label as string} style={{ display: 'grid', gap: 6 }}>
+              <span style={{ opacity: .65, fontSize: '0.75rem' }}>{label as string}</span>
+              <input style={{ ...inputStyle, width: '100%' }} type="number" min="0" step="0.01" value={(value as number) || ''} onChange={(event) => (setter as (value: number) => void)(Number(event.target.value) || 0)} />
+            </label>
+          ))}
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 16, paddingTop: 12, borderTop: '1px solid rgba(255,255,255,.08)' }}>
+          <span style={{ opacity: .65 }}>Nuevo pago</span>
+          <strong style={{ ...monoStyle, color: '#80E0B0', fontSize: '1.05rem' }}>{formatCurrency(newPayment)}</strong>
+        </div>
+      </section>
 
-      {error && <p style={{ color: '#FF9A9A', marginBottom: 0 }}>{error}</p>}
-      <footer style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 20 }}>
-        <button type="button" onClick={onClose} style={{ ...inputStyle, cursor: 'pointer' }}>Cancelar</button>
-        <button type="button" onClick={() => void handleConfirm()} disabled={isProcessing} style={{ ...inputStyle, cursor: 'pointer', background: '#54C4F0', color: '#0F1115', fontWeight: 700 }}>{isProcessing ? 'Procesando...' : 'Registrar pago'}</button>
+      {error && <p style={{ color: '#FF9A9A', margin: '14px 0 0', fontSize: '0.85rem' }}>{error}</p>}
+      <footer style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 24 }}>
+        <button type="button" onClick={onClose} style={ghostButtonStyle}>Cancelar</button>
+        <button type="button" onClick={() => void handleConfirm()} disabled={isProcessing} style={{ ...primaryButtonStyle, opacity: isProcessing ? .6 : 1, cursor: isProcessing ? 'not-allowed' : 'pointer' }}>
+          {isProcessing ? 'Procesando...' : 'Registrar pago'}
+        </button>
       </footer>
     </div>
   </div>;
