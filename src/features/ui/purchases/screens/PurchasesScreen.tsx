@@ -10,8 +10,14 @@ import { ScannerInput } from '../../orders/components/ScannerImput';
 import { PurchaseDetailModal } from '../components/PurchaseDetailModal';
 import { formatCurrency } from '../../../domain/utils/formats';
 
-const inputStyle: React.CSSProperties = { background: '#12151b', color: 'white', border: '1px solid rgba(255,255,255,.14)', borderRadius: 6, padding: '10px 12px' };
+const inputStyle: React.CSSProperties = { background: '#12151b', color: 'white', border: '1px solid rgba(255,255,255,.14)', borderRadius: 6, padding: '10px 12px', boxSizing: 'border-box' };
 const panelStyle: React.CSSProperties = { background: '#1A1D23', border: '1px solid rgba(255,255,255,.08)', borderRadius: 8, padding: 20 };
+const sectionLabelStyle: React.CSSProperties = { display: 'block', marginBottom: 8, opacity: .65, fontSize: '0.7rem', letterSpacing: '1px', textTransform: 'uppercase', fontWeight: 600 };
+const cardHeaderStyle: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, paddingBottom: 12, borderBottom: '1px solid rgba(255,255,255,.08)' };
+const primaryButtonStyle: React.CSSProperties = { ...inputStyle, background: '#54C4F0', color: '#0F1115', fontWeight: 700, cursor: 'pointer', border: 'none' };
+const ghostButtonStyle: React.CSSProperties = { ...inputStyle, cursor: 'pointer', background: 'transparent' };
+const dangerButtonStyle: React.CSSProperties = { ...inputStyle, color: '#FF7E7E', cursor: 'pointer', background: 'transparent' };
+const monoStyle: React.CSSProperties = { fontFamily: 'monospace' };
 
 export default function PurchasesScreen() {
     const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -134,69 +140,93 @@ export default function PurchasesScreen() {
     };
 
     return <div style={{ minHeight: '100vh', padding: '36px 28px', color: 'white', background: '#0F1115' }}>
-        <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-            <div><h1 style={{ margin: 0 }}>Compras y reposición</h1><p style={{ opacity: .55 }}>Ingreso de mercadería, proveedores y cuentas pendientes</p></div>
-            <button style={{ ...inputStyle, cursor: 'pointer', color: '#54C4F0' }} onClick={() => setShowSupplierForm((value) => !value)}>+ Proveedor</button>
+        <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28 }}>
+            <div>
+                <h1 style={{ margin: 0, fontSize: '1.6rem', fontWeight: 700, letterSpacing: '-0.5px' }}>Compras y reposición</h1>
+                <p style={{ opacity: .55, margin: '6px 0 0', fontSize: '0.9rem' }}>Ingreso de mercadería, proveedores y cuentas pendientes</p>
+            </div>
+            <button style={{ ...ghostButtonStyle, color: '#54C4F0' }} onClick={() => setShowSupplierForm((value) => !value)}>+ Proveedor</button>
         </header>
-        {message && <div style={{ ...panelStyle, color: '#80E0B0', marginBottom: 16 }}>{message}</div>}
-        {showSupplierForm && <form onSubmit={saveSupplier} style={{ ...panelStyle, display: 'flex', gap: 10, marginBottom: 16 }}><input style={inputStyle} placeholder="Nombre" value={supplierName} onChange={(event) => setSupplierName(event.target.value)} /><input style={inputStyle} placeholder="Contacto" value={supplierContact} onChange={(event) => setSupplierContact(event.target.value)} /><button style={{ ...inputStyle, cursor: 'pointer' }}>Guardar</button></form>}
+        {message && <div style={{ ...panelStyle, color: '#80E0B0', marginBottom: 16, borderLeft: '3px solid #80E0B0' }}>✓ {message}</div>}
+        {showSupplierForm && <form onSubmit={saveSupplier} style={{ ...panelStyle, display: 'flex', gap: 10, marginBottom: 16, alignItems: 'center' }}><input style={{ ...inputStyle, flex: 1 }} placeholder="Nombre" value={supplierName} onChange={(event) => setSupplierName(event.target.value)} /><input style={{ ...inputStyle, flex: 1 }} placeholder="Contacto" value={supplierContact} onChange={(event) => setSupplierContact(event.target.value)} /><button style={primaryButtonStyle}>Guardar</button></form>}
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.4fr) minmax(280px, .8fr)', gap: 20 }}>
             <section style={panelStyle}>
-                <label style={{ display: 'block', marginBottom: 8, opacity: .65 }}>PROVEEDOR</label>
+                <div style={cardHeaderStyle}>
+                    <span style={sectionLabelStyle}>Proveedor</span>
+                </div>
                 <select style={{ ...inputStyle, width: '100%', marginBottom: 20 }} value={selectedSupplierId} onChange={(event) => setSelectedSupplierId(event.target.value)}><option value="">Seleccionar proveedor</option>{suppliers.map((supplier) => <option key={supplier.id} value={supplier.id}>{supplier.name} · deuda {formatCurrency(supplier.currentBalance)}</option>)}</select>
                 <ScannerInput onScan={addProduct} externalValue={searchTerm} onChange={setSearchTerm} suggestions={suggestions} />
                 <div style={{ marginTop: 24 }}>
-                    {items.map((item) => <article key={item.productId} style={{ borderBottom: '1px solid rgba(255,255,255,.08)', padding: '14px 0' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}><strong>{item.article}</strong><strong>{formatCurrency(item.subtotal)}</strong></div>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 10, alignItems: 'center' }}>
-                            <button type="button" style={{ ...inputStyle, color: item.purchaseType === 'UNIT' ? '#54C4F0' : 'white', cursor: 'pointer' }} onClick={() => chooseBulk(item, false)}>Por unidad</button>
-                            <button type="button" style={{ ...inputStyle, color: item.purchaseType === 'BULK' ? '#54C4F0' : 'white', cursor: 'pointer' }} onClick={() => chooseBulk(item, true)}>Por bulto</button>
+                    {items.map((item) => <article key={item.productId} style={{ border: '1px solid rgba(255,255,255,.08)', borderRadius: 8, padding: '14px 16px', marginBottom: 12, background: '#16191F' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+                            <div>
+                                <strong style={{ fontSize: '0.95rem' }}>{item.article}</strong>
+                                <small style={{ display: 'block', opacity: .5, marginTop: 2 }}>{item.saleWeight ? `${item.quantity} kg` : `${item.quantity} unidades`} · costo anterior {formatCurrency(item.productCost)}</small>
+                            </div>
+                            <strong style={{ ...monoStyle, fontSize: '1rem' }}>{formatCurrency(item.subtotal)}</strong>
+                        </div>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 12, alignItems: 'center' }}>
+                            <button type="button" style={{ ...ghostButtonStyle, color: item.purchaseType === 'UNIT' ? '#54C4F0' : 'white', borderColor: item.purchaseType === 'UNIT' ? 'rgba(84,196,240,.5)' : 'rgba(255,255,255,.14)' }} onClick={() => chooseBulk(item, false)}>Por unidad</button>
+                            <button type="button" style={{ ...ghostButtonStyle, color: item.purchaseType === 'BULK' ? '#54C4F0' : 'white', borderColor: item.purchaseType === 'BULK' ? 'rgba(84,196,240,.5)' : 'rgba(255,255,255,.14)' }} onClick={() => chooseBulk(item, true)}>Por bulto</button>
                             {item.purchaseType === 'BULK' && <input style={{ ...inputStyle, width: 100 }} type="number" min="1" placeholder="Bultos" value={item.bulks} onChange={(event) => { const bulks = Number(event.target.value); const units = item.unitsPerBulk || 1; updateItem(item.productId, { bulks, quantity: bulks * units, bulkCost: item.bulkCost || 0, unitCost: item.bulkCost ? item.bulkCost / units : item.unitCost }); }} />}
                             {item.purchaseType === 'BULK' && <input style={{ ...inputStyle, width: 125 }} type="number" min="0" step="0.01" placeholder="Precio bulto" value={item.bulkCost ?? ''} onChange={(event) => { const bulkCost = Number(event.target.value); updateItem(item.productId, { bulkCost, unitCost: bulkCost / (item.unitsPerBulk || 1) }); }} />}
                             {item.purchaseType === 'UNIT' && <input style={{ ...inputStyle, width: 100 }} type="number" min="0" step={item.saleWeight ? '0.001' : '1'} placeholder={item.saleWeight ? 'Kg' : 'Cantidad'} value={item.quantity} onChange={(event) => updateItem(item.productId, { quantity: Number(event.target.value) })} />}
                             {item.purchaseType === 'UNIT' && <input style={{ ...inputStyle, width: 125 }} type="number" min="0" step="0.01" placeholder="Costo unitario" value={item.unitCost} onChange={(event) => updateItem(item.productId, { unitCost: Number(event.target.value) })} />}
-                            <span style={{ opacity: .55 }}>{item.saleWeight ? `${item.quantity} kg` : `${item.quantity} unidades`} · costo anterior {formatCurrency(item.productCost)}</span>
-                            <button type="button" onClick={() => setItems((current) => current.filter((candidate) => candidate.productId !== item.productId))} style={{ ...inputStyle, color: '#FF7E7E', cursor: 'pointer' }}>Quitar</button>
+                            <button type="button" onClick={() => setItems((current) => current.filter((candidate) => candidate.productId !== item.productId))} style={dangerButtonStyle}>Quitar</button>
                         </div>
                     </article>)}
                     {!items.length && <p style={{ opacity: .45, textAlign: 'center', padding: 35 }}>Escanea o busca un producto para comenzar.</p>}
                 </div>
             </section>
             <aside style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-                <section style={panelStyle}>
-                    <h2 style={{ marginTop: 0 }}>Resumen</h2>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 22 }}>
-                        <span>Total</span>
-                        <strong>{formatCurrency(total)}</strong>
+                <section style={{ ...panelStyle, borderColor: 'rgba(84,196,240,.25)' }}>
+                    <div style={cardHeaderStyle}>
+                        <span style={sectionLabelStyle}>Resumen</span>
                     </div>
-                    <label style={{ display: 'block', marginTop: 20, marginBottom: 6, opacity: .65 }}>PAGO REALIZADO</label>
-                    <input style={{ ...inputStyle, width: '100%', boxSizing: 'border-box' }} type="number" min="0" max={total} step="0.01" value={payment} onChange={(event) => setPayment(event.target.value)} />
-                    <select style={{ ...inputStyle, width: '100%', boxSizing: 'border-box', marginTop: 8 }} value={paymentType || 'CASH'} onChange={(event) => setPaymentType(event.target.value as PaymentMethod['type'])}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                        <span style={{ opacity: .65 }}>Total</span>
+                        <strong style={{ ...monoStyle, fontSize: 26, color: '#54C4F0' }}>{formatCurrency(total)}</strong>
+                    </div>
+                    <label style={{ ...sectionLabelStyle, marginTop: 20 }}>Pago realizado</label>
+                    <input style={{ ...inputStyle, width: '100%' }} type="number" min="0" max={total} step="0.01" value={payment} onChange={(event) => setPayment(event.target.value)} />
+                    <select style={{ ...inputStyle, width: '100%', marginTop: 8 }} value={paymentType || 'CASH'} onChange={(event) => setPaymentType(event.target.value as PaymentMethod['type'])}>
                         <option value="CASH">Efectivo</option>
                         <option value="TRANSFER">Transferencia</option>
                         <option value="CARD">Tarjeta</option>
                         <option value="QR">QR</option>
                     </select>
-                    <p style={{ color: debt > 0 ? '#FF9A9A' : '#80E0B0' }}>Saldo a cuenta: {formatCurrency(debt)}</p>
-                    <button disabled={!selectedSupplier || !items.length} onClick={() => setShowReview(true)} style={{ width: '100%', ...inputStyle, background: '#54C4F0', color: '#0F1115', fontWeight: 700, cursor: 'pointer' }}>Revisar y confirmar</button>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '16px 0' }}>
+                        <span style={{ opacity: .65 }}>Saldo a cuenta</span>
+                        <strong style={{ ...monoStyle, color: debt > 0 ? '#FF9A9A' : '#80E0B0' }}>{formatCurrency(debt)}</strong>
+                    </div>
+                    <button disabled={!selectedSupplier || !items.length} onClick={() => setShowReview(true)} style={{ width: '100%', ...primaryButtonStyle, opacity: (!selectedSupplier || !items.length) ? .4 : 1, cursor: (!selectedSupplier || !items.length) ? 'not-allowed' : 'pointer' }}>Revisar y confirmar</button>
                 </section>
                 <section style={panelStyle}>
-                    <h2 style={{ marginTop: 0 }}>Cuenta e historial</h2>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
-                        <span>Deuda actual</span>
-                        <strong style={{ color: '#FF9A9A' }}>{formatCurrency(selectedSupplier?.currentBalance || 0)}</strong>
+                    <div style={cardHeaderStyle}>
+                        <span style={sectionLabelStyle}>Cuenta e historial</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 16 }}>
+                        <span style={{ opacity: .65 }}>Deuda actual</span>
+                        <strong style={{ ...monoStyle, color: '#FF9A9A', fontSize: '1.1rem' }}>{formatCurrency(selectedSupplier?.currentBalance || 0)}</strong>
                     </div>
                     {history.slice(0, 6).map((purchase) =>
-                        <button type="button" key={purchase.docId} onClick={() => purchase.payStatus === 'PENDING' && setSelectedPurchase(purchase)} style={{ width: '100%', textAlign: 'left', color: 'white', background: 'transparent', border: 0, borderBottom: '1px solid rgba(255,255,255,.08)', padding: '9px 0', cursor: purchase.payStatus === 'PENDING' ? 'pointer' : 'default' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                <span>{new Date(purchase.createdAt).toLocaleDateString('es-AR')}
-                                    <small style={{ display: 'block', opacity: .5 }}>{purchase.docId}</small>
+                        <button type="button" key={purchase.docId} onClick={() => purchase.payStatus === 'PENDING' && setSelectedPurchase(purchase)} style={{ width: '100%', textAlign: 'left', color: 'white', background: 'transparent', border: 0, borderBottom: '1px solid rgba(255,255,255,.08)', padding: '10px 0', cursor: purchase.payStatus === 'PENDING' ? 'pointer' : 'default' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                <span style={{ fontSize: '0.9rem' }}>{new Date(purchase.createdAt).toLocaleDateString('es-AR')}
+                                    <small style={{ display: 'block', opacity: .5, ...monoStyle }}>{purchase.docId}</small>
                                 </span>
-                                <span style={{ textAlign: 'right' }}><strong>{formatCurrency(purchase.total)}</strong><small style={{ display: 'block', color: purchase.payStatus === 'PENDING' ? '#FFAB40' : '#80E0B0' }}>{purchase.payStatus === 'PENDING' ? `Pendiente · ${formatCurrency(purchase.debt)}` : 'Pagada'}</small></span>
+                                <span style={{ textAlign: 'right' }}>
+                                    <strong style={monoStyle}>{formatCurrency(purchase.total)}</strong>
+                                    <small style={{ display: 'block', marginTop: 4 }}>
+                                        <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 999, fontSize: '0.65rem', fontWeight: 700, background: purchase.payStatus === 'PENDING' ? 'rgba(255,171,64,.15)' : 'rgba(128,224,176,.15)', color: purchase.payStatus === 'PENDING' ? '#FFAB40' : '#80E0B0' }}>
+                                            {purchase.payStatus === 'PENDING' ? `Pendiente · ${formatCurrency(purchase.debt)}` : 'Pagada'}
+                                        </span>
+                                    </small>
+                                </span>
                             </div>
-                            <small style={{ opacity: .55 }}>{purchase.items.map((item) => `${item.article}: ${formatCurrency(item.unitCost)}/u`).join(' · ')}</small>
+                            <small style={{ opacity: .55, display: 'block', marginTop: 6 }}>{purchase.items.map((item) => `${item.article}: ${formatCurrency(item.unitCost)}/u`).join(' · ')}</small>
                         </button>)}
-                    {!history.length && <p style={{ opacity: .45 }}>Sin compras registradas.</p>}
+                    {!history.length && <p style={{ opacity: .45, textAlign: 'center', padding: '20px 0' }}>Sin compras registradas.</p>}
                 </section>
             </aside>
         </div>
@@ -204,13 +234,29 @@ export default function PurchasesScreen() {
         {showReview &&
             <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.7)', display: 'grid', placeItems: 'center', zIndex: 20 }}>
                 <div style={{ ...panelStyle, maxWidth: 520, width: 'calc(100% - 40px)' }}>
-                    <h2>Revisión sugerida</h2>{changedCosts.length ?
-                        <p>El costo unitario cambió en {changedCosts.length} producto(s). El precio de venta se conserva para que lo ajustes manualmente desde Stock.</p>
-                        : <p>No hay cambios de costo para revisar.</p>}
+                    <div style={cardHeaderStyle}>
+                        <h2 style={{ margin: 0, fontSize: '1.1rem' }}>Revisión sugerida</h2>
+                    </div>
+                    {changedCosts.length ? (
+                        <div>
+                            <p style={{ opacity: .65, margin: 0 }}>El costo unitario cambió en {changedCosts.length} producto(s). El precio de venta se conserva para que lo ajustes manualmente desde Stock.</p>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 14 }}>
+                                {changedCosts.map((item) => (
+                                    <div key={item.productId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#16191F', border: '1px solid rgba(255,255,255,.08)', borderRadius: 6, padding: '8px 12px' }}>
+                                        <span style={{ fontSize: '0.85rem' }}>{item.article}</span>
+                                        <span style={{ ...monoStyle, fontSize: '0.85rem' }}>
+                                            <span style={{ color: '#FF9A9A' }}>{formatCurrency(item.productCost)}</span>
+                                            <span style={{ opacity: .5 }}> → </span>
+                                            <span style={{ color: '#FFAB40' }}>{formatCurrency(item.unitCost)}</span>
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    ) : <p style={{ opacity: .65, margin: 0 }}>No hay cambios de costo para revisar.</p>}
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 20 }}>
-                        <button style={{ ...inputStyle, cursor: 'pointer' }} onClick={() => setShowReview(false)}>Volver</button>
-                        <button style={{ ...inputStyle, background: '#54C4F0', color: '#0F1115', cursor: 'pointer', fontWeight: 700 }}
-                            onClick={() => void confirmPurchase()}>Confirmar ingreso</button>
+                        <button style={ghostButtonStyle} onClick={() => setShowReview(false)}>Volver</button>
+                        <button style={primaryButtonStyle} onClick={() => void confirmPurchase()}>Confirmar ingreso</button>
                     </div>
                 </div>
             </div>}
