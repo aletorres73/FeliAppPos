@@ -16,6 +16,7 @@ export type Product = {
   expirationDate?: number | null;
   lastSoldAt?: number | null;
   unitsPerBulk?: number | null;
+  bulkCost?: number | null;
   lastSupplierId?: string | null;
   previousCost?: number | null;
   suggestedPrice?: number | null;

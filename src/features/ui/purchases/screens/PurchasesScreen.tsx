@@ -69,7 +69,7 @@ export default function PurchasesScreen() {
         setItems((current) => {
             const existing = current.find((item) => item.productId === product.id);
             if (existing) return current.map((item) => item.productId === product.id ? { ...item, quantity: item.quantity + 1, subtotal: (item.quantity + 1) * item.unitCost } : item);
-            return [...current, { productId: product.id, article: product.article, quantity: 1, saleWeight: product.saleWeight, bulks: 0, unitsPerBulk: product.unitsPerBulk || null, purchaseType: 'UNIT', unitCost: product.cost || 0, bulkCost: null, subtotal: product.saleWeight ? (product.cost || 0) * 10 : (product.cost || 0), productCost: product.cost || 0 }];
+            return [...current, { productId: product.id, article: product.article, quantity: 1, saleWeight: product.saleWeight, bulks: 0, unitsPerBulk: product.unitsPerBulk || null, previousUnitsPerBulk: product.unitsPerBulk || null, purchaseType: 'UNIT', unitCost: product.cost || 0, bulkCost: null, subtotal: product.saleWeight ? (product.cost || 0) * 10 : (product.cost || 0), productCost: product.cost || 0 }];
         });
         setSearchTerm('');
     };
@@ -165,13 +165,59 @@ export default function PurchasesScreen() {
                             </div>
                             <strong style={{ ...monoStyle, fontSize: '1rem' }}>{formatCurrency(item.subtotal)}</strong>
                         </div>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 12, alignItems: 'center' }}>
+                        <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
                             <button type="button" style={{ ...ghostButtonStyle, color: item.purchaseType === 'UNIT' ? '#54C4F0' : 'white', borderColor: item.purchaseType === 'UNIT' ? 'rgba(84,196,240,.5)' : 'rgba(255,255,255,.14)' }} onClick={() => chooseBulk(item, false)}>Por unidad</button>
                             <button type="button" style={{ ...ghostButtonStyle, color: item.purchaseType === 'BULK' ? '#54C4F0' : 'white', borderColor: item.purchaseType === 'BULK' ? 'rgba(84,196,240,.5)' : 'rgba(255,255,255,.14)' }} onClick={() => chooseBulk(item, true)}>Por bulto</button>
-                            {item.purchaseType === 'BULK' && <input style={{ ...inputStyle, width: 100 }} type="number" min="1" placeholder="Bultos" value={item.bulks} onChange={(event) => { const bulks = Number(event.target.value); const units = item.unitsPerBulk || 1; updateItem(item.productId, { bulks, quantity: bulks * units, bulkCost: item.bulkCost || 0, unitCost: item.bulkCost ? item.bulkCost / units : item.unitCost }); }} />}
-                            {item.purchaseType === 'BULK' && <input style={{ ...inputStyle, width: 125 }} type="number" min="0" step="0.01" placeholder="Precio bulto" value={item.bulkCost ?? ''} onChange={(event) => { const bulkCost = Number(event.target.value); updateItem(item.productId, { bulkCost, unitCost: bulkCost / (item.unitsPerBulk || 1) }); }} />}
-                            {item.purchaseType === 'UNIT' && <input style={{ ...inputStyle, width: 100 }} type="number" min="0" step={item.saleWeight ? '0.001' : '1'} placeholder={item.saleWeight ? 'Kg' : 'Cantidad'} value={item.quantity} onChange={(event) => updateItem(item.productId, { quantity: Number(event.target.value) })} />}
-                            {item.purchaseType === 'UNIT' && <input style={{ ...inputStyle, width: 125 }} type="number" min="0" step="0.01" placeholder="Costo unitario" value={item.unitCost} onChange={(event) => updateItem(item.productId, { unitCost: Number(event.target.value) })} />}
+                        </div>
+                        {item.purchaseType === 'BULK' ? (
+                            <>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginTop: 12 }}>
+                                    <label style={{ display: 'grid', gap: 4 }}>
+                                        <small style={{ opacity: .55, fontSize: '0.6rem', letterSpacing: '.5px', textTransform: 'uppercase' }}>Cant. por bulto</small>
+                                        <input style={inputStyle} type="number" min="1" step="1" value={item.unitsPerBulk ?? ''} onChange={(event) => { const units = Math.max(1, Number(event.target.value) || 1); updateItem(item.productId, { unitsPerBulk: units, quantity: item.bulks * units, unitCost: item.bulkCost ? Number((item.bulkCost / units).toFixed(4)) : item.unitCost }); }} />
+                                    </label>
+                                    <label style={{ display: 'grid', gap: 4 }}>
+                                        <small style={{ opacity: .55, fontSize: '0.6rem', letterSpacing: '.5px', textTransform: 'uppercase' }}>Precio por bulto</small>
+                                        <input style={inputStyle} type="number" min="0" step="0.01" value={item.bulkCost ?? ''} onChange={(event) => { const bulkCost = Number(event.target.value); updateItem(item.productId, { bulkCost, unitCost: bulkCost / (item.unitsPerBulk || 1) }); }} />
+                                    </label>
+                                    <label style={{ display: 'grid', gap: 4 }}>
+                                        <small style={{ opacity: .55, fontSize: '0.6rem', letterSpacing: '.5px', textTransform: 'uppercase' }}>Bultos</small>
+                                        <input style={inputStyle} type="number" min="1" step="1" value={item.bulks} onChange={(event) => { const bulks = Number(event.target.value); const units = item.unitsPerBulk || 1; updateItem(item.productId, { bulks, quantity: bulks * units, bulkCost: item.bulkCost || 0, unitCost: item.bulkCost ? item.bulkCost / units : item.unitCost }); }} />
+                                    </label>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginTop: 10, background: 'rgba(84,196,240,.08)', border: '1px solid rgba(84,196,240,.2)', borderRadius: 6, padding: '8px 12px' }}>
+                                    <div>
+                                        <small style={{ opacity: .55, display: 'block', fontSize: '0.6rem', textTransform: 'uppercase', letterSpacing: '.5px' }}>Cantidad total</small>
+                                        <strong style={{ ...monoStyle, fontSize: '0.95rem' }}>{item.quantity} {item.saleWeight ? 'kg' : 'uds'}</strong>
+                                    </div>
+                                    <div style={{ textAlign: 'right' }}>
+                                        <small style={{ opacity: .55, display: 'block', fontSize: '0.6rem', textTransform: 'uppercase', letterSpacing: '.5px' }}>Precio unitario</small>
+                                        <strong style={{ ...monoStyle, fontSize: '0.95rem', color: '#54C4F0' }}>{formatCurrency(item.unitCost)}</strong>
+                                    </div>
+                                </div>
+                                <small style={{ display: 'block', opacity: .5, marginTop: 8 }}>
+                                    {item.previousUnitsPerBulk ? `Cant. por bulto anterior: ${item.previousUnitsPerBulk} · ` : ''}costo anterior {formatCurrency(item.productCost)}
+                                </small>
+                            </>
+                        ) : (
+                            <>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8, marginTop: 12 }}>
+                                    <label style={{ display: 'grid', gap: 4 }}>
+                                        <small style={{ opacity: .55, fontSize: '0.6rem', letterSpacing: '.5px', textTransform: 'uppercase' }}>{item.saleWeight ? 'Cantidad (kg)' : 'Cantidad'}</small>
+                                        <input style={inputStyle} type="number" min="0" step={item.saleWeight ? '0.001' : '1'} value={item.quantity} onChange={(event) => updateItem(item.productId, { quantity: Number(event.target.value) })} />
+                                    </label>
+                                    <label style={{ display: 'grid', gap: 4 }}>
+                                        <small style={{ opacity: .55, fontSize: '0.6rem', letterSpacing: '.5px', textTransform: 'uppercase' }}>Costo unitario</small>
+                                        <input style={inputStyle} type="number" min="0" step="0.01" value={item.unitCost} onChange={(event) => updateItem(item.productId, { unitCost: Number(event.target.value) })} />
+                                    </label>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, background: 'rgba(84,196,240,.08)', border: '1px solid rgba(84,196,240,.2)', borderRadius: 6, padding: '8px 12px' }}>
+                                    <small style={{ opacity: .55, fontSize: '0.6rem', textTransform: 'uppercase', letterSpacing: '.5px' }}>Subtotal</small>
+                                    <strong style={{ ...monoStyle, fontSize: '0.95rem', color: '#54C4F0' }}>{formatCurrency(item.subtotal)}</strong>
+                                </div>
+                            </>
+                        )}
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
                             <button type="button" onClick={() => setItems((current) => current.filter((candidate) => candidate.productId !== item.productId))} style={dangerButtonStyle}>Quitar</button>
                         </div>
                     </article>)}

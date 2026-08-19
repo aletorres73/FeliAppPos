@@ -82,6 +82,7 @@ export const mapToProduct = (data: any): Product => {
     expirationDate: data.vencimiento || null,
     lastSoldAt: data.ultimaVentaAt || null,
     unitsPerBulk: data.unitsPerBulk || null,
+    bulkCost: data.bulkCost ?? null,
     lastSupplierId: data.lastSupplierId || null,
     previousCost: data.previousCost ?? null,
     suggestedPrice: data.suggestedPrice ?? null,
@@ -116,6 +117,7 @@ export const mapToFirestoreProduct = (product: Product): any => {
     vencimiento: product.expirationDate || null,
     ultimaVentaAt: product.lastSoldAt || null,
     unitsPerBulk: product.unitsPerBulk || null,
+    bulkCost: product.bulkCost || null,
     lastSupplierId: product.lastSupplierId || null,
     previousCost: product.previousCost || null,
     suggestedPrice: product.suggestedPrice || null,
@@ -186,6 +188,7 @@ export const updateProduct = async (docId: string, updatedData: Partial<Product>
     if (updatedData.expirationDate !== undefined) firestoreUpdates.vencimiento = updatedData.expirationDate;
     if (updatedData.lastSoldAt !== undefined) firestoreUpdates.ultimaVentaAt = updatedData.lastSoldAt;
     if (updatedData.unitsPerBulk !== undefined) firestoreUpdates.unitsPerBulk = updatedData.unitsPerBulk;
+    if (updatedData.bulkCost !== undefined) firestoreUpdates.bulkCost = updatedData.bulkCost;
     if (updatedData.lastSupplierId !== undefined) firestoreUpdates.lastSupplierId = updatedData.lastSupplierId;
     if (updatedData.previousCost !== undefined) firestoreUpdates.previousCost = updatedData.previousCost;
     if (updatedData.suggestedPrice !== undefined) firestoreUpdates.suggestedPrice = updatedData.suggestedPrice;
@@ -250,6 +253,8 @@ export const bulkActionRepository = {
     if (updates.isParent !== undefined) parentFirestoreUpdates.isParent = updates.isParent;
     if (updates.volumePrices !== undefined) parentFirestoreUpdates.volumePrices = updates.volumePrices;
     if (updates.pricingReviewPending !== undefined) parentFirestoreUpdates.pricingReviewPending = updates.pricingReviewPending;
+    if (updates.unitsPerBulk !== undefined) parentFirestoreUpdates.unitsPerBulk = updates.unitsPerBulk;
+    if (updates.bulkCost !== undefined) parentFirestoreUpdates.bulkCost = updates.bulkCost;
     parentFirestoreUpdates.updatedAt = Date.now();
 
     // Aplicar al Padre

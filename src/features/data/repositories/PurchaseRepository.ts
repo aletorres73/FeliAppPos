@@ -68,6 +68,10 @@ export const purchaseRepository = {
                 productUpdates.unitsPerBulk = item.unitsPerBulk;
             }
 
+            if (item.purchaseType === 'BULK' && item.bulkCost) {
+                productUpdates.bulkCost = item.bulkCost;
+            }
+
             // Usamos increment() para que sea 100% seguro contra ventas simultáneas
             if (originalProduct.saleWeight) {
                 productUpdates.peso = increment(item.quantity);

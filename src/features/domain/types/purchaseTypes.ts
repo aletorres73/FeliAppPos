@@ -30,4 +30,5 @@ export interface Purchase {
 
 export interface PurchaseDraftItem extends PurchaseItem {
   productCost: number;
+  previousUnitsPerBulk?: number | null;
 }
