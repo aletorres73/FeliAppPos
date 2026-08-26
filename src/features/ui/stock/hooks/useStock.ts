@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { getProducts, deleteProduct, addProduct, updateProduct, bulkActionRepository, resolvePriceReview, type PriceReviewDecision } from '../../../data/repositories/ProductRepository';
 import { type Product, getSlowMovers } from '../../../domain/types/productTypes';
+import { createEmptyProduct, toNewProduct, updateProductCost, updateProductGains, updateProductPrice } from './productForm';
 
 // Definimos la interfaz GroupedProduct aquí para que el sort tenga tipado estricto
 export interface GroupedProduct extends Product {
@@ -182,40 +183,15 @@ export function useStock() {
     };
 
     const handleCostChange = (costVal: number) => {
-        const gains = editingProduct?.gains || 0;
-        const calculatedPrice = costVal * (1 + gains / 100);
-
-        setEditingProduct(prev => prev ? {
-            ...prev,
-            cost: costVal,
-            price: Number(calculatedPrice.toFixed(2))
-        } : null);
+        setEditingProduct(prev => prev ? updateProductCost(prev, costVal) : null);
     };
 
     const handleGainsChange = (gainsVal: number) => {
-        const cost = editingProduct?.cost || 0;
-        const calculatedPrice = cost * (1 + gainsVal / 100);
-
-        setEditingProduct(prev => prev ? {
-            ...prev,
-            gains: gainsVal,
-            price: Number(calculatedPrice.toFixed(2))
-        } : null);
+        setEditingProduct(prev => prev ? updateProductGains(prev, gainsVal) : null);
     };
 
     const handlePriceChange = (priceVal: number) => {
-        const cost = editingProduct?.cost || 0;
-        let calculatedGains = 0;
-
-        if (cost > 0) {
-            calculatedGains = ((priceVal - cost) / cost) * 100;
-        }
-
-        setEditingProduct(prev => prev ? {
-            ...prev,
-            price: priceVal,
-            gains: Number(calculatedGains.toFixed(2))
-        } : null);
+        setEditingProduct(prev => prev ? updateProductPrice(prev, priceVal) : null);
     };
 
     const resolveProductPriceReview = async (productId: string, decision: PriceReviewDecision, customPrice?: number) => {
@@ -230,10 +206,7 @@ export function useStock() {
 
     const openCreateModal = () => {
         setIsEditingMode(false);
-        setEditingProduct({
-            id: '', active: true, saleWeight: false, stock: 0,
-            weight: 0, cost: 0, gains: 0, price: 0
-        });
+        setEditingProduct(createEmptyProduct());
         setIsModalOpen(true);
     };
 
@@ -262,29 +235,7 @@ export function useStock() {
                     await updateProduct(editingProduct.id, reviewedProduct);
                 }
             } else {
-                const newProduct: Product = {
-                    id: editingProduct.id.trim(),
-                    article: editingProduct.article,
-                    branch: editingProduct.branch || '',
-                    price: editingProduct.price,
-                    stock: editingProduct.stock || 0,
-                    cost: editingProduct.cost || 0,
-                    weight: editingProduct.weight || 0,
-                    saleWeight: editingProduct.saleWeight || false,
-                    active: editingProduct.active ?? true,
-                    gains: editingProduct.gains || 0,
-                    quantitySold: 0,
-                    weightSold: 0,
-                    createdAt: new Date().getTime(),
-                    updatedAt: null,
-                    isParent: editingProduct.isParent || false,
-                    parentId: editingProduct.parentId || null,
-                    stockLinked: editingProduct.stockLinked || false,
-                    conversionFactor: editingProduct.conversionFactor || null,
-                    volumePrices: editingProduct.volumePrices || [],
-                    expirationDate: editingProduct.expirationDate || null,
-                };
-                await addProduct(newProduct);
+                await addProduct(toNewProduct(editingProduct));
             }
 
             console.log(`Producto procesado con éxito`);

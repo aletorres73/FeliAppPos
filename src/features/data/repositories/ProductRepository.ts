@@ -161,6 +161,7 @@ export const addProduct = async (product: Product): Promise<void> => {
     console.log(`Producto agregado con ID personalizado: ${product.article}`);
   } catch (error) {
     console.error("Error al agregar producto:", error);
+    throw error;
   }
 };
 

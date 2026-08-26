@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { getProducts } from '../../../data/repositories/ProductRepository';
+import { addProduct as persistProduct, getProducts } from '../../../data/repositories/ProductRepository';
 import { purchaseRepository } from '../../../data/repositories/PurchaseRepository';
 import { supplierRepository } from '../../../data/repositories/SupplierRepository';
 import type { Product } from '../../../domain/types/productTypes';
@@ -9,6 +9,8 @@ import type { Supplier } from '../../../domain/types/supplierTypes';
 import { ScannerInput } from '../../orders/components/ScannerImput';
 import { PurchaseDetailModal } from '../components/PurchaseDetailModal';
 import { formatCurrency } from '../../../domain/utils/formats';
+import { StockModal } from '../../stock/components/StockModal';
+import { createEmptyProduct, toNewProduct, updateProductCost, updateProductGains, updateProductPrice } from '../../stock/hooks/productForm';
 
 const inputStyle: React.CSSProperties = { background: '#12151b', color: 'white', border: '1px solid rgba(255,255,255,.14)', borderRadius: 6, padding: '10px 12px', boxSizing: 'border-box' };
 const panelStyle: React.CSSProperties = { background: '#1A1D23', border: '1px solid rgba(255,255,255,.08)', borderRadius: 8, padding: 20 };
@@ -35,6 +37,8 @@ export default function PurchasesScreen() {
     const [message, setMessage] = useState('');
     const [selectedPurchase, setSelectedPurchase] = useState<Purchase | null>(null);
     const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+    const [isProductModalOpen, setIsProductModalOpen] = useState(false);
+    const [editingProduct, setEditingProduct] = useState<Partial<Product> | null>(null);
 
     const selectedSupplier = suppliers.find((supplier) => supplier.id === selectedSupplierId);
     const suggestions = useMemo(() => {
@@ -102,6 +106,42 @@ export default function PurchasesScreen() {
         setSupplierName(''); setSupplierContact(''); setShowSupplierForm(false); await loadData();
     };
 
+    const openProductModal = () => {
+        setEditingProduct(createEmptyProduct());
+        setIsProductModalOpen(true);
+    };
+
+    const closeProductModal = () => {
+        setEditingProduct(null);
+        setIsProductModalOpen(false);
+    };
+
+    const handleProductSave = async (event: React.SubmitEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        if (!editingProduct?.id?.trim() || !editingProduct.article?.trim() || editingProduct.price === undefined || editingProduct.price <= 0) {
+            setMessage('Completa código, nombre y un precio de venta mayor a cero.');
+            return;
+        }
+
+        try {
+            await persistProduct(toNewProduct(editingProduct));
+            const updatedProducts = await getProducts();
+            setProducts(updatedProducts);
+            closeProductModal();
+            setMessage(`Artículo ${editingProduct.article} creado y disponible para buscar.`);
+        } catch (error) {
+            setMessage(error instanceof Error ? error.message : 'No se pudo crear el artículo.');
+        }
+    };
+
+    const handleProductGroupAssignment = (parentId: string) => {
+        if (!editingProduct) return;
+        const parent = products.find((product) => product.id === parentId);
+        setEditingProduct(parent
+            ? { ...editingProduct, parentId, price: parent.price, cost: parent.cost, branch: parent.branch, isParent: false }
+            : { ...editingProduct, parentId: null });
+    };
+
     const handlePurchasePayment = async (amount: number, paymentMethods: PaymentMethod[]) => {
         if (!selectedSupplier || !selectedPurchase) return;
         try {
@@ -145,7 +185,10 @@ export default function PurchasesScreen() {
                 <h1 style={{ margin: 0, fontSize: '1.6rem', fontWeight: 700, letterSpacing: '-0.5px' }}>Compras y reposición</h1>
                 <p style={{ opacity: .55, margin: '6px 0 0', fontSize: '0.9rem' }}>Ingreso de mercadería, proveedores y cuentas pendientes</p>
             </div>
-            <button style={{ ...ghostButtonStyle, color: '#54C4F0' }} onClick={() => setShowSupplierForm((value) => !value)}>+ Proveedor</button>
+            <div style={{ display: 'flex', gap: 8 }}>
+                <button style={{ ...ghostButtonStyle, color: '#54C4F0' }} onClick={openProductModal}>+ Artículo</button>
+                <button style={{ ...ghostButtonStyle, color: '#54C4F0' }} onClick={() => setShowSupplierForm((value) => !value)}>+ Proveedor</button>
+            </div>
         </header>
         {message && <div style={{ ...panelStyle, color: '#80E0B0', marginBottom: 16, borderLeft: '3px solid #80E0B0' }}>✓ {message}</div>}
         {showSupplierForm && <form onSubmit={saveSupplier} style={{ ...panelStyle, display: 'flex', gap: 10, marginBottom: 16, alignItems: 'center' }}><input style={{ ...inputStyle, flex: 1 }} placeholder="Nombre" value={supplierName} onChange={(event) => setSupplierName(event.target.value)} /><input style={{ ...inputStyle, flex: 1 }} placeholder="Contacto" value={supplierContact} onChange={(event) => setSupplierContact(event.target.value)} /><button style={primaryButtonStyle}>Guardar</button></form>}
@@ -277,6 +320,19 @@ export default function PurchasesScreen() {
             </aside>
         </div>
         {selectedPurchase && <PurchaseDetailModal purchase={selectedPurchase} onClose={() => setSelectedPurchase(null)} onConfirm={handlePurchasePayment} isProcessing={isProcessingPayment} />}
+        {isProductModalOpen && editingProduct && <StockModal
+            isEditingMode={false}
+            product={editingProduct}
+            allProducts={products}
+            setEditingProduct={setEditingProduct}
+            handleSave={handleProductSave}
+            handleCostChange={(cost) => setEditingProduct((current) => current ? updateProductCost(current, cost) : null)}
+            handleGainsChange={(gains) => setEditingProduct((current) => current ? updateProductGains(current, gains) : null)}
+            handlePriceChange={(price) => setEditingProduct((current) => current ? updateProductPrice(current, price) : null)}
+            handleGroupAssignment={handleProductGroupAssignment}
+            setIsModalOpen={setIsProductModalOpen}
+            onClose={closeProductModal}
+        />}
         {showReview &&
             <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.7)', display: 'grid', placeItems: 'center', zIndex: 20 }}>
                 <div style={{ ...panelStyle, maxWidth: 520, width: 'calc(100% - 40px)' }}>
