@@ -11,6 +11,7 @@ import { PurchaseDetailModal } from '../components/PurchaseDetailModal';
 import { formatCurrency } from '../../../domain/utils/formats';
 import { StockModal } from '../../stock/components/StockModal';
 import { createEmptyProduct, toNewProduct, updateProductCost, updateProductGains, updateProductPrice } from '../../stock/hooks/productForm';
+import { useKeyboardShortcuts } from '../../../domain/utils/keyboardShorcuts';
 
 const inputStyle: React.CSSProperties = { background: '#12151b', color: 'white', border: '1px solid rgba(255,255,255,.14)', borderRadius: 6, padding: '10px 12px', boxSizing: 'border-box' };
 const panelStyle: React.CSSProperties = { background: '#1A1D23', border: '1px solid rgba(255,255,255,.08)', borderRadius: 8, padding: 20 };
@@ -53,6 +54,12 @@ export default function PurchasesScreen() {
     const [isSavingSupplier, setIsSavingSupplier] = useState(false);
     const [isSavingProduct, setIsSavingProduct] = useState(false);
     const [isConfirmingPurchase, setIsConfirmingPurchase] = useState(false);
+
+    // Keyboard shortcuts for review modal
+    useKeyboardShortcuts({
+        Enter: () => { if (showReview && !isConfirmingPurchase) void confirmPurchase(); },
+        Escape: () => { if (showReview) setShowReview(false); },
+    });
 
     const selectedSupplier = suppliers.find((supplier) => supplier.id === selectedSupplierId);
     const suggestions = useMemo(() => {
@@ -414,28 +421,30 @@ export default function PurchasesScreen() {
         />}
         {showReview &&
             <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.7)', display: 'grid', placeItems: 'center', zIndex: 20 }}>
-                <div style={{ ...panelStyle, maxWidth: 520, width: 'calc(100% - 40px)' }}>
+                <div style={{ ...panelStyle, maxWidth: 520, width: 'calc(100% - 40px)', maxHeight: '85vh', display: 'flex', flexDirection: 'column' }}>
                     <div style={cardHeaderStyle}>
                         <h2 style={{ margin: 0, fontSize: '1.1rem' }}>Revisión sugerida</h2>
                     </div>
-                    {changedCosts.length ? (
-                        <div>
-                            <p style={{ opacity: .65, margin: 0 }}>El costo unitario cambió en {changedCosts.length} producto(s). El precio de venta se conserva para que lo ajustes manualmente desde Stock.</p>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 14 }}>
-                                {changedCosts.map((item) => (
-                                    <div key={item.productId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#16191F', border: '1px solid rgba(255,255,255,.08)', borderRadius: 6, padding: '8px 12px' }}>
-                                        <span style={{ fontSize: '0.85rem' }}>{item.article}</span>
-                                        <span style={{ ...monoStyle, fontSize: '0.85rem' }}>
-                                            <span style={{ color: '#FF9A9A' }}>{formatCurrency(item.productCost)}</span>
-                                            <span style={{ opacity: .5 }}> → </span>
-                                            <span style={{ color: '#FFAB40' }}>{formatCurrency(item.unitCost)}</span>
-                                        </span>
-                                    </div>
-                                ))}
+                    <div style={{ overflowY: 'auto', flex: 1, paddingRight: 8 }}>
+                        {changedCosts.length ? (
+                            <div>
+                                <p style={{ opacity: .65, margin: 0 }}>El costo unitario cambió en {changedCosts.length} producto(s). El precio de venta se conserva para que lo ajustes manualmente desde Stock.</p>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 14 }}>
+                                    {changedCosts.map((item) => (
+                                        <div key={item.productId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#16191F', border: '1px solid rgba(255,255,255,.08)', borderRadius: 6, padding: '8px 12px' }}>
+                                            <span style={{ fontSize: '0.85rem' }}>{item.article}</span>
+                                            <span style={{ ...monoStyle, fontSize: '0.85rem' }}>
+                                                <span style={{ color: '#FF9A9A' }}>{formatCurrency(item.productCost)}</span>
+                                                <span style={{ opacity: .5 }}> → </span>
+                                                <span style={{ color: '#FFAB40' }}>{formatCurrency(item.unitCost)}</span>
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
-                        </div>
-                    ) : <p style={{ opacity: .65, margin: 0 }}>No hay cambios de costo para revisar.</p>}
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 20 }}>
+                        ) : <p style={{ opacity: .65, margin: 0 }}>No hay cambios de costo para revisar.</p>}
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 20, flexShrink: 0 }}>
                         <button style={ghostButtonStyle} onClick={() => setShowReview(false)} disabled={isConfirmingPurchase}>Volver</button>
                         <button style={{ ...primaryButtonStyle, opacity: isConfirmingPurchase ? .6 : 1, cursor: isConfirmingPurchase ? 'not-allowed' : 'pointer' }} onClick={() => void confirmPurchase()} disabled={isConfirmingPurchase}>{isConfirmingPurchase ? 'Confirmando...' : 'Confirmar ingreso'}</button>
                     </div>
