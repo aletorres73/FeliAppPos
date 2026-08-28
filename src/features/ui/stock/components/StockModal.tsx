@@ -20,6 +20,7 @@ interface StockModalProps {
     handleGroupAssignment: (parentId: string) => void;
     setIsModalOpen: (open: boolean) => void;
     onClose?: () => void;
+    isSaving?: boolean;
 }
 
 // utils/priceCalculator.ts
@@ -39,7 +40,8 @@ export function StockModal(
         handleGainsChange,
         handlePriceChange,
         handleGroupAssignment,
-        onClose
+        onClose,
+        isSaving = false
     }: StockModalProps
 ) {
 
@@ -495,11 +497,12 @@ export function StockModal(
                             type="button"
                             style={modalStyles.cancelButton}
                             onClick={onClose}
+                            disabled={isSaving}
                         >
                             CANCELAR
                         </button>
-                        <button type="submit" style={modalStyles.submitButton}>
-                            {isEditingMode ? 'GUARDAR CAMBIOS' : 'AGREGAR ARTÍCULO'}
+                        <button type="submit" style={{ ...modalStyles.submitButton, opacity: isSaving ? .6 : 1, cursor: isSaving ? 'not-allowed' : 'pointer' }} disabled={isSaving}>
+                            {isSaving ? 'GUARDANDO...' : (isEditingMode ? 'GUARDAR CAMBIOS' : 'AGREGAR ARTÍCULO')}
                         </button>
                     </div>
                 </form>

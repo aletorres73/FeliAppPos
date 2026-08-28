@@ -33,6 +33,8 @@ export type DiscountType = 'PERCENT' | 'AMOUNT';
 export interface PurchaseDraftItem extends PurchaseItem {
   productCost: number;
   previousUnitsPerBulk?: number | null;
+  // unitCost entered before the item discount is applied; unitCost itself becomes the discounted value
+  rawUnitCost: number;
   // subtotal before applying discountType/discountValue; UI-only, never persisted
   rawSubtotal: number;
   discountType: DiscountType;

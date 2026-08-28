@@ -22,9 +22,9 @@ const dangerButtonStyle: React.CSSProperties = { ...inputStyle, color: '#FF7E7E'
 const monoStyle: React.CSSProperties = { fontFamily: 'monospace' };
 const discountToggleStyle = (active: boolean): React.CSSProperties => ({ ...inputStyle, padding: '6px 10px', cursor: 'pointer', background: active ? 'rgba(84,196,240,.18)' : 'transparent', color: active ? '#54C4F0' : 'white', borderColor: active ? 'rgba(84,196,240,.5)' : 'rgba(255,255,255,.14)' });
 
-const computeDiscountedSubtotal = (rawSubtotal: number, discountType: DiscountType, discountValue: number) => {
+const applyDiscount = (rawValue: number, discountType: DiscountType, discountValue: number) => {
     const value = Math.max(0, Number(discountValue) || 0);
-    const discounted = discountType === 'PERCENT' ? rawSubtotal * (1 - Math.min(value, 100) / 100) : rawSubtotal - value;
+    const discounted = discountType === 'PERCENT' ? rawValue * (1 - Math.min(value, 100) / 100) : rawValue - value;
     return Number(Math.max(0, discounted).toFixed(2));
 };
 
@@ -48,6 +48,11 @@ export default function PurchasesScreen() {
     const [isProcessingPayment, setIsProcessingPayment] = useState(false);
     const [isProductModalOpen, setIsProductModalOpen] = useState(false);
     const [editingProduct, setEditingProduct] = useState<Partial<Product> | null>(null);
+    const [isInitialLoading, setIsInitialLoading] = useState(true);
+    const [isHistoryLoading, setIsHistoryLoading] = useState(false);
+    const [isSavingSupplier, setIsSavingSupplier] = useState(false);
+    const [isSavingProduct, setIsSavingProduct] = useState(false);
+    const [isConfirmingPurchase, setIsConfirmingPurchase] = useState(false);
 
     const selectedSupplier = suppliers.find((supplier) => supplier.id === selectedSupplierId);
     const suggestions = useMemo(() => {
@@ -72,10 +77,11 @@ export default function PurchasesScreen() {
         if (!selectedSupplierId && supplierData[0]) setSelectedSupplierId(supplierData[0].id);
     };
 
-    useEffect(() => { void loadData(); }, []);
+    useEffect(() => { setIsInitialLoading(true); void loadData().finally(() => setIsInitialLoading(false)); }, []);
     useEffect(() => {
         if (!selectedSupplierId) { setHistory([]); return; }
-        void purchaseRepository.getBySupplier(selectedSupplierId).then(setHistory);
+        setIsHistoryLoading(true);
+        void purchaseRepository.getBySupplier(selectedSupplierId).then(setHistory).finally(() => setIsHistoryLoading(false));
     }, [selectedSupplierId]);
 
     const addProduct = (productId: string) => {
@@ -87,12 +93,13 @@ export default function PurchasesScreen() {
                 return current.map((item) => {
                     if (item.productId !== product.id) return item;
                     const quantity = item.quantity + 1;
-                    const rawSubtotal = Number((quantity * item.unitCost).toFixed(2));
-                    return { ...item, quantity, rawSubtotal, subtotal: computeDiscountedSubtotal(rawSubtotal, item.discountType, item.discountValue) };
+                    const rawSubtotal = Number((quantity * item.rawUnitCost).toFixed(2));
+                    return { ...item, quantity, rawSubtotal, subtotal: Number((quantity * item.unitCost).toFixed(2)) };
                 });
             }
-            const rawSubtotal = product.saleWeight ? (product.cost || 0) * 10 : (product.cost || 0);
-            return [...current, { productId: product.id, article: product.article, quantity: 1, saleWeight: product.saleWeight, bulks: 0, unitsPerBulk: product.unitsPerBulk || null, previousUnitsPerBulk: product.unitsPerBulk || null, purchaseType: 'UNIT', unitCost: product.cost || 0, bulkCost: null, rawSubtotal, discountType: 'AMOUNT', discountValue: 0, subtotal: rawSubtotal, productCost: product.cost || 0 }];
+            const rawUnitCost = product.cost || 0;
+            const rawSubtotal = product.saleWeight ? rawUnitCost * 10 : rawUnitCost;
+            return [...current, { productId: product.id, article: product.article, quantity: 1, saleWeight: product.saleWeight, bulks: 0, unitsPerBulk: product.unitsPerBulk || null, previousUnitsPerBulk: product.unitsPerBulk || null, purchaseType: 'UNIT', rawUnitCost, unitCost: rawUnitCost, bulkCost: null, rawSubtotal, discountType: 'AMOUNT', discountValue: 0, subtotal: rawSubtotal, productCost: product.cost || 0 }];
         });
         setSearchTerm('');
     };
@@ -102,10 +109,11 @@ export default function PurchasesScreen() {
             if (item.productId !== productId) return item;
             const next = { ...item, ...patch };
             const quantity = Math.max(0, Number(next.quantity) || 0);
-            const unitCost = Math.max(0, Number(next.unitCost) || 0);
+            const rawUnitCost = Math.max(0, Number(next.rawUnitCost) || 0);
             const subtotalMultiplier = next.saleWeight ? 10 : 1;
-            const rawSubtotal = Number((quantity * unitCost * subtotalMultiplier).toFixed(2));
-            return { ...next, quantity, unitCost, rawSubtotal, subtotal: computeDiscountedSubtotal(rawSubtotal, next.discountType, next.discountValue) };
+            const rawSubtotal = Number((quantity * rawUnitCost * subtotalMultiplier).toFixed(2));
+            const unitCost = applyDiscount(rawUnitCost, next.discountType, next.discountValue);
+            return { ...next, quantity, rawUnitCost, unitCost, rawSubtotal, subtotal: Number((quantity * unitCost * subtotalMultiplier).toFixed(2)) };
         }));
     };
 
@@ -113,25 +121,32 @@ export default function PurchasesScreen() {
         setItems((current) => current.map((item) => {
             if (item.productId !== productId) return item;
             const next = { ...item, ...patch };
-            return { ...next, subtotal: computeDiscountedSubtotal(next.rawSubtotal, next.discountType, next.discountValue) };
+            const subtotalMultiplier = next.saleWeight ? 10 : 1;
+            const unitCost = applyDiscount(next.rawUnitCost, next.discountType, next.discountValue);
+            return { ...next, unitCost, subtotal: Number((next.quantity * unitCost * subtotalMultiplier).toFixed(2)) };
         }));
     };
 
     const chooseBulk = (item: PurchaseDraftItem, isBulk: boolean) => {
         const units = item.unitsPerBulk || 1;
         if (!isBulk) {
-            updateItem(item.productId, { purchaseType: 'UNIT', bulks: 0, bulkCost: null, quantity: 1, unitCost: item.productCost });
+            updateItem(item.productId, { purchaseType: 'UNIT', bulks: 0, bulkCost: null, quantity: 1, rawUnitCost: item.productCost });
             return;
         }
         const bulkCost = item.bulkCost || item.productCost * units;
-        updateItem(item.productId, { purchaseType: 'BULK', bulks: 1, bulkCost, quantity: units, unitCost: Number((bulkCost / units).toFixed(4)) });
+        updateItem(item.productId, { purchaseType: 'BULK', bulks: 1, bulkCost, quantity: units, rawUnitCost: Number((bulkCost / units).toFixed(4)) });
     };
 
     const saveSupplier = async (event: React.FormEvent) => {
         event.preventDefault();
-        if (!supplierName.trim()) return;
-        await supplierRepository.save({ name: supplierName.trim(), contact: supplierContact.trim(), currentBalance: 0 });
-        setSupplierName(''); setSupplierContact(''); setShowSupplierForm(false); await loadData();
+        if (!supplierName.trim() || isSavingSupplier) return;
+        try {
+            setIsSavingSupplier(true);
+            await supplierRepository.save({ name: supplierName.trim(), contact: supplierContact.trim(), currentBalance: 0 });
+            setSupplierName(''); setSupplierContact(''); setShowSupplierForm(false); await loadData();
+        } finally {
+            setIsSavingSupplier(false);
+        }
     };
 
     const openProductModal = () => {
@@ -152,6 +167,7 @@ export default function PurchasesScreen() {
         }
 
         try {
+            setIsSavingProduct(true);
             await persistProduct(toNewProduct(editingProduct));
             const updatedProducts = await getProducts();
             setProducts(updatedProducts);
@@ -159,6 +175,8 @@ export default function PurchasesScreen() {
             setMessage(`Artículo ${editingProduct.article} creado y disponible para buscar.`);
         } catch (error) {
             setMessage(error instanceof Error ? error.message : 'No se pudo crear el artículo.');
+        } finally {
+            setIsSavingProduct(false);
         }
     };
 
@@ -188,7 +206,7 @@ export default function PurchasesScreen() {
     };
 
     const confirmPurchase = async () => {
-        if (!selectedSupplier || !items.length) return;
+        if (!selectedSupplier || !items.length || isConfirmingPurchase) return;
         const createdAt = new Date().getTime();
         const docId = `PUR-${createdAt}`;
         const purchase: Purchase = {
@@ -202,10 +220,21 @@ export default function PurchasesScreen() {
             paymentMethod: paid > 0 ? [{ type: paymentType, amount: paid }] : [],
             createdAt,
         };
-        await purchaseRepository.confirm({ purchase, supplier: selectedSupplier, products });
-        setItems([]); setPayment('0'); setShowReview(false); setMessage(`Compra ${docId} confirmada.`); await loadData();
-        setHistory(await purchaseRepository.getBySupplier(selectedSupplier.id));
+        try {
+            setIsConfirmingPurchase(true);
+            await purchaseRepository.confirm({ purchase, supplier: selectedSupplier, products });
+            setItems([]); setPayment('0'); setShowReview(false); setMessage(`Compra ${docId} confirmada.`); await loadData();
+            setHistory(await purchaseRepository.getBySupplier(selectedSupplier.id));
+        } catch (error) {
+            setMessage(error instanceof Error ? error.message : 'No se pudo confirmar la compra.');
+        } finally {
+            setIsConfirmingPurchase(false);
+        }
     };
+
+    if (isInitialLoading) {
+        return <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', background: '#0F1115' }}><span>CARGANDO COMPRAS...</span></div>;
+    }
 
     return <div style={{ minHeight: '100vh', padding: '36px 28px', color: 'white', background: '#0F1115' }}>
         <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28 }}>
@@ -219,7 +248,7 @@ export default function PurchasesScreen() {
             </div>
         </header>
         {message && <div style={{ ...panelStyle, color: '#80E0B0', marginBottom: 16, borderLeft: '3px solid #80E0B0' }}>✓ {message}</div>}
-        {showSupplierForm && <form onSubmit={saveSupplier} style={{ ...panelStyle, display: 'flex', gap: 10, marginBottom: 16, alignItems: 'center' }}><input style={{ ...inputStyle, flex: 1 }} placeholder="Nombre" value={supplierName} onChange={(event) => setSupplierName(event.target.value)} /><input style={{ ...inputStyle, flex: 1 }} placeholder="Contacto" value={supplierContact} onChange={(event) => setSupplierContact(event.target.value)} /><button style={primaryButtonStyle}>Guardar</button></form>}
+        {showSupplierForm && <form onSubmit={saveSupplier} style={{ ...panelStyle, display: 'flex', gap: 10, marginBottom: 16, alignItems: 'center' }}><input style={{ ...inputStyle, flex: 1 }} placeholder="Nombre" value={supplierName} onChange={(event) => setSupplierName(event.target.value)} disabled={isSavingSupplier} /><input style={{ ...inputStyle, flex: 1 }} placeholder="Contacto" value={supplierContact} onChange={(event) => setSupplierContact(event.target.value)} disabled={isSavingSupplier} /><button style={{ ...primaryButtonStyle, opacity: isSavingSupplier ? .6 : 1, cursor: isSavingSupplier ? 'not-allowed' : 'pointer' }} disabled={isSavingSupplier}>{isSavingSupplier ? 'Guardando...' : 'Guardar'}</button></form>}
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.4fr) minmax(280px, .8fr)', gap: 20 }}>
             <section style={panelStyle}>
                 <div style={cardHeaderStyle}>
@@ -248,15 +277,15 @@ export default function PurchasesScreen() {
                                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginTop: 12 }}>
                                     <label style={{ display: 'grid', gap: 4 }}>
                                         <small style={{ opacity: .55, fontSize: '0.6rem', letterSpacing: '.5px', textTransform: 'uppercase' }}>Cant. por bulto</small>
-                                        <input style={inputStyle} type="number" min="1" step="1" value={item.unitsPerBulk ?? ''} onChange={(event) => { const units = Math.max(1, Number(event.target.value) || 1); updateItem(item.productId, { unitsPerBulk: units, quantity: item.bulks * units, unitCost: item.bulkCost ? Number((item.bulkCost / units).toFixed(4)) : item.unitCost }); }} />
+                                        <input style={inputStyle} type="number" min="1" step="1" value={item.unitsPerBulk ?? ''} onChange={(event) => { const units = Math.max(1, Number(event.target.value) || 1); updateItem(item.productId, { unitsPerBulk: units, quantity: item.bulks * units, rawUnitCost: item.bulkCost ? Number((item.bulkCost / units).toFixed(4)) : item.rawUnitCost }); }} />
                                     </label>
                                     <label style={{ display: 'grid', gap: 4 }}>
                                         <small style={{ opacity: .55, fontSize: '0.6rem', letterSpacing: '.5px', textTransform: 'uppercase' }}>Precio por bulto</small>
-                                        <input style={inputStyle} type="number" min="0" step="0.01" value={item.bulkCost ?? ''} onChange={(event) => { const bulkCost = Number(event.target.value); updateItem(item.productId, { bulkCost, unitCost: bulkCost / (item.unitsPerBulk || 1) }); }} />
+                                        <input style={inputStyle} type="number" min="0" step="0.01" value={item.bulkCost ?? ''} onChange={(event) => { const bulkCost = Number(event.target.value); updateItem(item.productId, { bulkCost, rawUnitCost: bulkCost / (item.unitsPerBulk || 1) }); }} />
                                     </label>
                                     <label style={{ display: 'grid', gap: 4 }}>
                                         <small style={{ opacity: .55, fontSize: '0.6rem', letterSpacing: '.5px', textTransform: 'uppercase' }}>Bultos</small>
-                                        <input style={inputStyle} type="number" min="1" step="1" value={item.bulks} onChange={(event) => { const bulks = Number(event.target.value); const units = item.unitsPerBulk || 1; updateItem(item.productId, { bulks, quantity: bulks * units, bulkCost: item.bulkCost || 0, unitCost: item.bulkCost ? item.bulkCost / units : item.unitCost }); }} />
+                                        <input style={inputStyle} type="number" min="1" step="1" value={item.bulks} onChange={(event) => { const bulks = Number(event.target.value); const units = item.unitsPerBulk || 1; updateItem(item.productId, { bulks, quantity: bulks * units, bulkCost: item.bulkCost || 0, rawUnitCost: item.bulkCost ? item.bulkCost / units : item.rawUnitCost }); }} />
                                     </label>
                                 </div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginTop: 10, background: 'rgba(84,196,240,.08)', border: '1px solid rgba(84,196,240,.2)', borderRadius: 6, padding: '8px 12px' }}>
@@ -282,7 +311,8 @@ export default function PurchasesScreen() {
                                     </label>
                                     <label style={{ display: 'grid', gap: 4 }}>
                                         <small style={{ opacity: .55, fontSize: '0.6rem', letterSpacing: '.5px', textTransform: 'uppercase' }}>Costo unitario</small>
-                                        <input style={inputStyle} type="number" min="0" step="0.01" value={item.unitCost} onChange={(event) => updateItem(item.productId, { unitCost: Number(event.target.value) })} />
+                                        <input style={inputStyle} type="number" min="0" step="0.01" value={item.rawUnitCost} onChange={(event) => updateItem(item.productId, { rawUnitCost: Number(event.target.value) })} />
+                                        {item.unitCost !== item.rawUnitCost && <small style={{ opacity: .5 }}>con descuento: {formatCurrency(item.unitCost)}</small>}
                                     </label>
                                 </div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, background: 'rgba(84,196,240,.08)', border: '1px solid rgba(84,196,240,.2)', borderRadius: 6, padding: '8px 12px' }}>
@@ -335,17 +365,18 @@ export default function PurchasesScreen() {
                         <span style={{ opacity: .65 }}>Saldo a cuenta</span>
                         <strong style={{ ...monoStyle, color: debt > 0 ? '#FF9A9A' : '#80E0B0' }}>{formatCurrency(debt)}</strong>
                     </div>
-                    <button disabled={!selectedSupplier || !items.length} onClick={() => setShowReview(true)} style={{ width: '100%', ...primaryButtonStyle, opacity: (!selectedSupplier || !items.length) ? .4 : 1, cursor: (!selectedSupplier || !items.length) ? 'not-allowed' : 'pointer' }}>Revisar y confirmar</button>
+                    <button disabled={!selectedSupplier || !items.length || isConfirmingPurchase} onClick={() => setShowReview(true)} style={{ width: '100%', ...primaryButtonStyle, opacity: (!selectedSupplier || !items.length || isConfirmingPurchase) ? .4 : 1, cursor: (!selectedSupplier || !items.length || isConfirmingPurchase) ? 'not-allowed' : 'pointer' }}>Revisar y confirmar</button>
                 </section>
                 <section style={panelStyle}>
                     <div style={cardHeaderStyle}>
                         <span style={sectionLabelStyle}>Cuenta e historial</span>
+                        {isHistoryLoading && <small style={{ opacity: .5 }}>Cargando...</small>}
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 16 }}>
                         <span style={{ opacity: .65 }}>Deuda actual</span>
                         <strong style={{ ...monoStyle, color: '#FF9A9A', fontSize: '1.1rem' }}>{formatCurrency(selectedSupplier?.currentBalance || 0)}</strong>
                     </div>
-                    {history.slice(0, 6).map((purchase) =>
+                    {!isHistoryLoading && history.slice(0, 6).map((purchase) =>
                         <button type="button" key={purchase.docId} onClick={() => purchase.payStatus === 'PENDING' && setSelectedPurchase(purchase)} style={{ width: '100%', textAlign: 'left', color: 'white', background: 'transparent', border: 0, borderBottom: '1px solid rgba(255,255,255,.08)', padding: '10px 0', cursor: purchase.payStatus === 'PENDING' ? 'pointer' : 'default' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                 <span style={{ fontSize: '0.9rem' }}>{new Date(purchase.createdAt).toLocaleDateString('es-AR')}
@@ -362,7 +393,7 @@ export default function PurchasesScreen() {
                             </div>
                             <small style={{ opacity: .55, display: 'block', marginTop: 6 }}>{purchase.items.map((item) => `${item.article}: ${formatCurrency(item.unitCost)}/u`).join(' · ')}</small>
                         </button>)}
-                    {!history.length && <p style={{ opacity: .45, textAlign: 'center', padding: '20px 0' }}>Sin compras registradas.</p>}
+                    {!isHistoryLoading && !history.length && <p style={{ opacity: .45, textAlign: 'center', padding: '20px 0' }}>Sin compras registradas.</p>}
                 </section>
             </aside>
         </div>
@@ -379,6 +410,7 @@ export default function PurchasesScreen() {
             handleGroupAssignment={handleProductGroupAssignment}
             setIsModalOpen={setIsProductModalOpen}
             onClose={closeProductModal}
+            isSaving={isSavingProduct}
         />}
         {showReview &&
             <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.7)', display: 'grid', placeItems: 'center', zIndex: 20 }}>
@@ -404,8 +436,8 @@ export default function PurchasesScreen() {
                         </div>
                     ) : <p style={{ opacity: .65, margin: 0 }}>No hay cambios de costo para revisar.</p>}
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 20 }}>
-                        <button style={ghostButtonStyle} onClick={() => setShowReview(false)}>Volver</button>
-                        <button style={primaryButtonStyle} onClick={() => void confirmPurchase()}>Confirmar ingreso</button>
+                        <button style={ghostButtonStyle} onClick={() => setShowReview(false)} disabled={isConfirmingPurchase}>Volver</button>
+                        <button style={{ ...primaryButtonStyle, opacity: isConfirmingPurchase ? .6 : 1, cursor: isConfirmingPurchase ? 'not-allowed' : 'pointer' }} onClick={() => void confirmPurchase()} disabled={isConfirmingPurchase}>{isConfirmingPurchase ? 'Confirmando...' : 'Confirmar ingreso'}</button>
                     </div>
                 </div>
             </div>}
