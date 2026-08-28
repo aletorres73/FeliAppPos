@@ -3,7 +3,7 @@ import { addProduct as persistProduct, getProducts } from '../../../data/reposit
 import { purchaseRepository } from '../../../data/repositories/PurchaseRepository';
 import { supplierRepository } from '../../../data/repositories/SupplierRepository';
 import type { Product } from '../../../domain/types/productTypes';
-import type { Purchase, PurchaseDraftItem } from '../../../domain/types/purchaseTypes';
+import type { DiscountType, Purchase, PurchaseDraftItem } from '../../../domain/types/purchaseTypes';
 import type { PaymentMethod } from '../../../domain/types/orderTypes';
 import type { Supplier } from '../../../domain/types/supplierTypes';
 import { ScannerInput } from '../../orders/components/ScannerImput';
@@ -20,6 +20,13 @@ const primaryButtonStyle: React.CSSProperties = { ...inputStyle, background: '#5
 const ghostButtonStyle: React.CSSProperties = { ...inputStyle, cursor: 'pointer', background: 'transparent' };
 const dangerButtonStyle: React.CSSProperties = { ...inputStyle, color: '#FF7E7E', cursor: 'pointer', background: 'transparent' };
 const monoStyle: React.CSSProperties = { fontFamily: 'monospace' };
+const discountToggleStyle = (active: boolean): React.CSSProperties => ({ ...inputStyle, padding: '6px 10px', cursor: 'pointer', background: active ? 'rgba(84,196,240,.18)' : 'transparent', color: active ? '#54C4F0' : 'white', borderColor: active ? 'rgba(84,196,240,.5)' : 'rgba(255,255,255,.14)' });
+
+const computeDiscountedSubtotal = (rawSubtotal: number, discountType: DiscountType, discountValue: number) => {
+    const value = Math.max(0, Number(discountValue) || 0);
+    const discounted = discountType === 'PERCENT' ? rawSubtotal * (1 - Math.min(value, 100) / 100) : rawSubtotal - value;
+    return Number(Math.max(0, discounted).toFixed(2));
+};
 
 export default function PurchasesScreen() {
     const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -29,6 +36,8 @@ export default function PurchasesScreen() {
     const [searchTerm, setSearchTerm] = useState('');
     const [payment, setPayment] = useState('0');
     const [paymentType, setPaymentType] = useState<PaymentMethod['type']>('CASH');
+    const [totalDiscountType, setTotalDiscountType] = useState<DiscountType>('AMOUNT');
+    const [totalDiscountValue, setTotalDiscountValue] = useState('0');
     const [showReview, setShowReview] = useState(false);
     const [showSupplierForm, setShowSupplierForm] = useState(false);
     const [supplierName, setSupplierName] = useState('');
@@ -49,7 +58,9 @@ export default function PurchasesScreen() {
             product.branch?.toLowerCase().includes(term) ||
             product.id.toLowerCase().includes(term)).slice(0, 8);
     }, [products, searchTerm]);
-    const total = items.reduce((sum, item) => sum + item.subtotal, 0);
+    const itemsSubtotal = items.reduce((sum, item) => sum + item.subtotal, 0);
+    const totalDiscountAmount = totalDiscountType === 'PERCENT' ? itemsSubtotal * Math.min(Math.max(Number(totalDiscountValue) || 0, 0), 100) / 100 : Math.max(Number(totalDiscountValue) || 0, 0);
+    const total = Math.max(0, Number((itemsSubtotal - totalDiscountAmount).toFixed(2)));
     const paid = Math.min(Math.max(Number(payment) || 0, 0), total);
     const debt = total - paid;
     const changedCosts = items.filter((item) => item.productCost !== item.unitCost);
@@ -72,8 +83,16 @@ export default function PurchasesScreen() {
         if (!product) return;
         setItems((current) => {
             const existing = current.find((item) => item.productId === product.id);
-            if (existing) return current.map((item) => item.productId === product.id ? { ...item, quantity: item.quantity + 1, subtotal: (item.quantity + 1) * item.unitCost } : item);
-            return [...current, { productId: product.id, article: product.article, quantity: 1, saleWeight: product.saleWeight, bulks: 0, unitsPerBulk: product.unitsPerBulk || null, previousUnitsPerBulk: product.unitsPerBulk || null, purchaseType: 'UNIT', unitCost: product.cost || 0, bulkCost: null, subtotal: product.saleWeight ? (product.cost || 0) * 10 : (product.cost || 0), productCost: product.cost || 0 }];
+            if (existing) {
+                return current.map((item) => {
+                    if (item.productId !== product.id) return item;
+                    const quantity = item.quantity + 1;
+                    const rawSubtotal = Number((quantity * item.unitCost).toFixed(2));
+                    return { ...item, quantity, rawSubtotal, subtotal: computeDiscountedSubtotal(rawSubtotal, item.discountType, item.discountValue) };
+                });
+            }
+            const rawSubtotal = product.saleWeight ? (product.cost || 0) * 10 : (product.cost || 0);
+            return [...current, { productId: product.id, article: product.article, quantity: 1, saleWeight: product.saleWeight, bulks: 0, unitsPerBulk: product.unitsPerBulk || null, previousUnitsPerBulk: product.unitsPerBulk || null, purchaseType: 'UNIT', unitCost: product.cost || 0, bulkCost: null, rawSubtotal, discountType: 'AMOUNT', discountValue: 0, subtotal: rawSubtotal, productCost: product.cost || 0 }];
         });
         setSearchTerm('');
     };
@@ -85,7 +104,16 @@ export default function PurchasesScreen() {
             const quantity = Math.max(0, Number(next.quantity) || 0);
             const unitCost = Math.max(0, Number(next.unitCost) || 0);
             const subtotalMultiplier = next.saleWeight ? 10 : 1;
-            return { ...next, quantity, unitCost, subtotal: Number((quantity * unitCost * subtotalMultiplier).toFixed(2)) };
+            const rawSubtotal = Number((quantity * unitCost * subtotalMultiplier).toFixed(2));
+            return { ...next, quantity, unitCost, rawSubtotal, subtotal: computeDiscountedSubtotal(rawSubtotal, next.discountType, next.discountValue) };
+        }));
+    };
+
+    const updateItemDiscount = (productId: string, patch: Partial<Pick<PurchaseDraftItem, 'discountType' | 'discountValue'>>) => {
+        setItems((current) => current.map((item) => {
+            if (item.productId !== productId) return item;
+            const next = { ...item, ...patch };
+            return { ...next, subtotal: computeDiscountedSubtotal(next.rawSubtotal, next.discountType, next.discountValue) };
         }));
     };
 
@@ -200,13 +228,16 @@ export default function PurchasesScreen() {
                 <select style={{ ...inputStyle, width: '100%', marginBottom: 20 }} value={selectedSupplierId} onChange={(event) => setSelectedSupplierId(event.target.value)}><option value="">Seleccionar proveedor</option>{suppliers.map((supplier) => <option key={supplier.id} value={supplier.id}>{supplier.name} · deuda {formatCurrency(supplier.currentBalance)}</option>)}</select>
                 <ScannerInput onScan={addProduct} externalValue={searchTerm} onChange={setSearchTerm} suggestions={suggestions} />
                 <div style={{ marginTop: 24 }}>
-                    {items.map((item) => <article key={item.productId} style={{ border: '1px solid rgba(255,255,255,.08)', borderRadius: 8, padding: '14px 16px', marginBottom: 12, background: '#16191F' }}>
+                    {[...items].reverse().map((item) => <article key={item.productId} style={{ border: '1px solid rgba(255,255,255,.08)', borderRadius: 8, padding: '14px 16px', marginBottom: 12, background: '#16191F' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
                             <div>
                                 <strong style={{ fontSize: '0.95rem' }}>{item.article}</strong>
                                 <small style={{ display: 'block', opacity: .5, marginTop: 2 }}>{item.saleWeight ? `${item.quantity} kg` : `${item.quantity} unidades`} · costo anterior {formatCurrency(item.productCost)}</small>
                             </div>
-                            <strong style={{ ...monoStyle, fontSize: '1rem' }}>{formatCurrency(item.subtotal)}</strong>
+                            <div style={{ textAlign: 'right' }}>
+                                {item.subtotal !== item.rawSubtotal && <small style={{ display: 'block', opacity: .5, textDecoration: 'line-through' }}>{formatCurrency(item.rawSubtotal)}</small>}
+                                <strong style={{ ...monoStyle, fontSize: '1rem' }}>{formatCurrency(item.subtotal)}</strong>
+                            </div>
                         </div>
                         <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
                             <button type="button" style={{ ...ghostButtonStyle, color: item.purchaseType === 'UNIT' ? '#54C4F0' : 'white', borderColor: item.purchaseType === 'UNIT' ? 'rgba(84,196,240,.5)' : 'rgba(255,255,255,.14)' }} onClick={() => chooseBulk(item, false)}>Por unidad</button>
@@ -260,6 +291,12 @@ export default function PurchasesScreen() {
                                 </div>
                             </>
                         )}
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 12 }}>
+                            <small style={{ opacity: .55, fontSize: '0.6rem', letterSpacing: '.5px', textTransform: 'uppercase' }}>Descuento</small>
+                            <button type="button" style={discountToggleStyle(item.discountType === 'PERCENT')} onClick={() => updateItemDiscount(item.productId, { discountType: 'PERCENT' })}>%</button>
+                            <button type="button" style={discountToggleStyle(item.discountType === 'AMOUNT')} onClick={() => updateItemDiscount(item.productId, { discountType: 'AMOUNT' })}>$</button>
+                            <input style={{ ...inputStyle, flex: 1 }} type="number" min="0" step={item.discountType === 'PERCENT' ? '1' : '0.01'} value={item.discountValue} onChange={(event) => updateItemDiscount(item.productId, { discountValue: Number(event.target.value) })} />
+                        </div>
                         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
                             <button type="button" onClick={() => setItems((current) => current.filter((candidate) => candidate.productId !== item.productId))} style={dangerButtonStyle}>Quitar</button>
                         </div>
@@ -273,6 +310,16 @@ export default function PurchasesScreen() {
                         <span style={sectionLabelStyle}>Resumen</span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                        <span style={{ opacity: .65 }}>Subtotal</span>
+                        <strong style={monoStyle}>{formatCurrency(itemsSubtotal)}</strong>
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 12 }}>
+                        <small style={{ opacity: .55, fontSize: '0.6rem', letterSpacing: '.5px', textTransform: 'uppercase' }}>Descuento total</small>
+                        <button type="button" style={discountToggleStyle(totalDiscountType === 'PERCENT')} onClick={() => setTotalDiscountType('PERCENT')}>%</button>
+                        <button type="button" style={discountToggleStyle(totalDiscountType === 'AMOUNT')} onClick={() => setTotalDiscountType('AMOUNT')}>$</button>
+                        <input style={{ ...inputStyle, flex: 1 }} type="number" min="0" step={totalDiscountType === 'PERCENT' ? '1' : '0.01'} value={totalDiscountValue} onChange={(event) => setTotalDiscountValue(event.target.value)} />
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 16 }}>
                         <span style={{ opacity: .65 }}>Total</span>
                         <strong style={{ ...monoStyle, fontSize: 26, color: '#54C4F0' }}>{formatCurrency(total)}</strong>
                     </div>

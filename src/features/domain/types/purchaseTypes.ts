@@ -28,7 +28,13 @@ export interface Purchase {
   createdAt: number;
 }
 
+export type DiscountType = 'PERCENT' | 'AMOUNT';
+
 export interface PurchaseDraftItem extends PurchaseItem {
   productCost: number;
   previousUnitsPerBulk?: number | null;
+  // subtotal before applying discountType/discountValue; UI-only, never persisted
+  rawSubtotal: number;
+  discountType: DiscountType;
+  discountValue: number;
 }
