@@ -126,9 +126,17 @@ export default function PurchasesScreen() {
             const quantity = Math.max(0, Number(next.quantity) || 0);
             const rawUnitCost = Math.max(0, Number(next.rawUnitCost) || 0);
             const subtotalMultiplier = next.saleWeight ? 10 : 1;
-            const rawSubtotal = Number((quantity * rawUnitCost * subtotalMultiplier).toFixed(2));
-            const unitCost = applyDiscount(rawUnitCost, next.discountType, next.discountValue);
-            return { ...next, quantity, rawUnitCost, unitCost, rawSubtotal, subtotal: Number((quantity * unitCost * subtotalMultiplier).toFixed(2)) };
+
+            // Si es por bulto, el costo base total es exacto (bultos * precio por bulto)
+            const rawSubtotal = next.purchaseType === 'BULK' && next.bulkCost !== null
+                ? Number(((next.bulks || 0) * (next.bulkCost || 0)).toFixed(2))
+                : Number((quantity * rawUnitCost * subtotalMultiplier).toFixed(2));
+
+            // Aplica el descuento sobre el subtotal total
+            const subtotal = applyDiscount(rawSubtotal, next.discountType, next.discountValue);
+            const unitCost = quantity > 0 ? Number((subtotal / (quantity * subtotalMultiplier)).toFixed(4)) : rawUnitCost;
+
+            return { ...next, quantity, rawUnitCost, unitCost, rawSubtotal, subtotal };
         }));
     };
 
@@ -137,8 +145,15 @@ export default function PurchasesScreen() {
             if (item.productId !== productId) return item;
             const next = { ...item, ...patch };
             const subtotalMultiplier = next.saleWeight ? 10 : 1;
-            const unitCost = applyDiscount(next.rawUnitCost, next.discountType, next.discountValue);
-            return { ...next, unitCost, subtotal: Number((next.quantity * unitCost * subtotalMultiplier).toFixed(2)) };
+
+            const rawSubtotal = next.purchaseType === 'BULK' && next.bulkCost !== null
+                ? Number(((next.bulks || 0) * (next.bulkCost || 0)).toFixed(2))
+                : Number((next.quantity * next.rawUnitCost * subtotalMultiplier).toFixed(2));
+
+            const subtotal = applyDiscount(rawSubtotal, next.discountType, next.discountValue);
+            const unitCost = next.quantity > 0 ? Number((subtotal / (next.quantity * subtotalMultiplier)).toFixed(4)) : next.rawUnitCost;
+
+            return { ...next, unitCost, subtotal };
         }));
     };
 
@@ -149,7 +164,7 @@ export default function PurchasesScreen() {
             return;
         }
         const bulkCost = item.bulkCost || item.productCost * units;
-        updateItem(item.productId, { purchaseType: 'BULK', bulks: 1, bulkCost, quantity: units, rawUnitCost: Number((bulkCost / units).toFixed(4)) });
+        updateItem(item.productId, { purchaseType: 'BULK', bulks: 1, bulkCost, quantity: units, rawUnitCost: Number((bulkCost / units).toFixed(2)) });
     };
 
     const saveSupplier = async (event: React.FormEvent) => {
@@ -329,15 +344,59 @@ export default function PurchasesScreen() {
                                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginTop: 12 }}>
                                             <label style={{ display: 'grid', gap: 4 }}>
                                                 <small style={{ opacity: .55, fontSize: '0.6rem', letterSpacing: '.5px', textTransform: 'uppercase' }}>Cant. por bulto</small>
-                                                <input style={{ ...inputStyle, width: '100%' }} type="number" min="1" step="1" value={item.unitsPerBulk ?? ''} onChange={(event) => { const units = Math.max(1, Number(event.target.value) || 1); updateItem(item.productId, { unitsPerBulk: units, quantity: item.bulks * units, rawUnitCost: item.bulkCost ? Number((item.bulkCost / units).toFixed(4)) : item.rawUnitCost }); }} />
+                                                <input
+                                                    style={{ ...inputStyle, width: '100%' }}
+                                                    type="number"
+                                                    min="1"
+                                                    step="1"
+                                                    value={item.unitsPerBulk ?? ''}
+                                                    onChange={(event) => {
+                                                        const units = Math.max(1, Number(event.target.value) || 1);
+                                                        updateItem(item.productId, {
+                                                            unitsPerBulk: units,
+                                                            quantity: item.bulks * units,
+                                                            rawUnitCost: item.bulkCost ? Number((item.bulkCost / units).toFixed(4)) : item.rawUnitCost
+                                                        });
+                                                    }}
+                                                />
                                             </label>
+
                                             <label style={{ display: 'grid', gap: 4 }}>
                                                 <small style={{ opacity: .55, fontSize: '0.6rem', letterSpacing: '.5px', textTransform: 'uppercase' }}>Precio por bulto</small>
-                                                <input style={{ ...inputStyle, width: '100%' }} type="number" min="0" step="0.01" value={item.bulkCost ?? ''} onChange={(event) => { const bulkCost = Number(event.target.value); updateItem(item.productId, { bulkCost, rawUnitCost: bulkCost / (item.unitsPerBulk || 1) }); }} />
+                                                <input
+                                                    style={{ ...inputStyle, width: '100%' }}
+                                                    type="number"
+                                                    min="0"
+                                                    step="0.01"
+                                                    value={item.bulkCost ?? ''}
+                                                    onChange={(event) => {
+                                                        const bulkCost = Number(event.target.value);
+                                                        const units = item.unitsPerBulk || 1;
+                                                        updateItem(item.productId, {
+                                                            bulkCost,
+                                                            rawUnitCost: Number((bulkCost / units).toFixed(4))
+                                                        });
+                                                    }}
+                                                />
                                             </label>
+
                                             <label style={{ display: 'grid', gap: 4 }}>
                                                 <small style={{ opacity: .55, fontSize: '0.6rem', letterSpacing: '.5px', textTransform: 'uppercase' }}>Bultos</small>
-                                                <input style={{ ...inputStyle, width: '100%' }} type="number" min="1" step="1" value={item.bulks} onChange={(event) => { const bulks = Number(event.target.value); const units = item.unitsPerBulk || 1; updateItem(item.productId, { bulks, quantity: bulks * units, bulkCost: item.bulkCost || 0, rawUnitCost: item.bulkCost ? item.bulkCost / units : item.rawUnitCost }); }} />
+                                                <input
+                                                    style={{ ...inputStyle, width: '100%' }}
+                                                    type="number"
+                                                    min="1"
+                                                    step="1"
+                                                    value={item.bulks}
+                                                    onChange={(event) => {
+                                                        const bulks = Number(event.target.value);
+                                                        const units = item.unitsPerBulk || 1;
+                                                        updateItem(item.productId, {
+                                                            bulks,
+                                                            quantity: bulks * units
+                                                        });
+                                                    }}
+                                                />
                                             </label>
                                         </div>
 
