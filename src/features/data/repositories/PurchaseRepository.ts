@@ -89,7 +89,7 @@ export const purchaseRepository = {
                 amount: purchase.payed,
                 paymentMethod: purchase.paymentMethod || [],
                 createdAt: purchase.createdAt,
-                note: `Compra ${purchase.docId}`,
+                note: `Compra ${purchase.docId} - proveedor ${supplier.name}`,
             });
         }
 

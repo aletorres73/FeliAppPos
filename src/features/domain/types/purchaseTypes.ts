@@ -6,6 +6,7 @@ export type PurchasePaymentType = 'UNIT' | 'BULK';
 export interface PurchaseItem {
   productId: string;
   article: string;
+  branch: string;
   quantity: number;
   saleWeight?: boolean;
   bulks: number;
