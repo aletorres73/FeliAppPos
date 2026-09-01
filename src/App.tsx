@@ -8,23 +8,21 @@ const OrderScreen = lazy(() => import("./features/ui/orders/screens/OrdersScreen
 const StockScreen = lazy(() => import("./features/ui/stock/screen/StockScreen"));
 const CustomerLedgerScreen = lazy(() => import("./features/ui/customers/sreens/CustomerLedgerScreen"));
 const PurchasesScreen = lazy(() => import("./features/ui/purchases/screens/PurchasesScreen"));
-
+const NotificationsScreen = lazy(() => import("./features/ui/notifications/screens/NotificationsScreen"));
 
 export default function AppRouter() {
   return (
     <BrowserRouter>
       <Routes>
-
-        {/* Envolvemos todas las pantallas internas bajo el MainLayout */}
         <Route path="/" element={<MainLayout />}>
           <Route index element={<OrderScreen />} />
+          <Route path="notifications" element={<NotificationsScreen />} />
           <Route path="cashflow" element={<CashFlowDashboard />} />
           <Route path="reports" element={<SalesDashboard />} />
           <Route path="stock" element={<StockScreen />} />
           <Route path="customers" element={<CustomerLedgerScreen />} />
           <Route path="purchases" element={<PurchasesScreen />} />
         </Route>
-
       </Routes>
     </BrowserRouter>
   );

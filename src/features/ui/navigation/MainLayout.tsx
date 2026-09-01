@@ -1,16 +1,25 @@
-import { useState } from "react"; // 1. Importamos useState
+import { useState } from "react";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import feliLogo from "../../../../src/assets/logo-feli.webp";
-import { CashFlowButton, CustomerLedgerButton, PurchasesButton, SaleDashboardButton, StockButton } from "./navigationButtons";
-import { ShoppingCartIcon} from "@heroicons/react/24/solid";
+import { 
+  CashFlowButton, 
+  CustomerLedgerButton, 
+  PurchasesButton, 
+  SaleDashboardButton, 
+  StockButton,
+  NotificationsButton 
+} from "./navigationButtons";
+import { ShoppingCartIcon } from "@heroicons/react/24/solid";
 import { iconStyle } from "./navigationButtons";
+import { useNotifications } from "../notifications/hooks/useNotifications";
 
 export default function MainLayout() {
   const navigate = useNavigate();
   const location = useLocation();
-
-  // 2. Estado para controlar si la barra lateral está abierta
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  
+  // Obtenemos el conteo reactivo
+  const { unreadCount } = useNotifications();
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -19,12 +28,10 @@ export default function MainLayout() {
       ...styles.dashboardLayout,
       ["--sidebar-width" as any]: isSidebarOpen ? "260px" : "0px"
     }}>
-
-      {/* SIDEBAR GLOBAL PERMANENTE (Con estilos dinámicos) */}
       <aside
         style={{
           ...styles.sidebar,
-          ...(!isSidebarOpen ? styles.sidebarClosed : {}) // Aplica estilos de cierre si isOpen es false
+          ...(!isSidebarOpen ? styles.sidebarClosed : {})
         }}
       >
         <div style={styles.sidebarLogoWrapper}>
@@ -32,8 +39,6 @@ export default function MainLayout() {
             <img src={feliLogo} alt="Logo" style={styles.sidebarLogo} />
             <span style={styles.sidebarBrandText}>Feli App</span>
           </div>
-
-          {/* Botón para ocultar la barra */}
           <button
             onClick={() => setIsSidebarOpen(false)}
             style={styles.toggleCloseButton}
@@ -52,10 +57,18 @@ export default function MainLayout() {
             }}
           >
             <ShoppingCartIcon style={iconStyle} />
-             Nueva Venta
+            Nueva Venta
           </button>
 
           <hr style={styles.divider} />
+
+          <div style={styles.sectionHeader}>SISTEMA Y ALERTAS</div>
+          <div style={styles.groupedButtons}>
+            <NotificationsButton 
+              onClick={() => navigate('/notifications')} 
+              unreadCount={unreadCount} 
+            />
+          </div>
 
           <div style={styles.sectionHeader}>REPORTES Y CAJA</div>
           <div style={styles.groupedButtons}>
@@ -63,7 +76,7 @@ export default function MainLayout() {
             <SaleDashboardButton onClick={() => navigate('/reports')} />
           </div>
 
-          <div style ={styles.sectionHeader}>INVENTARIO</div>
+          <div style={styles.sectionHeader}>INVENTARIO</div>
           <div style={styles.groupedButtons}>
             <StockButton onClick={() => navigate('/stock')} />
             <PurchasesButton onClick={() => navigate('/purchases')} />
@@ -76,10 +89,7 @@ export default function MainLayout() {
         </div>
       </aside>
 
-      {/* CONTENEDOR DINÁMICO DE LAS PANTALLAS */}
       <main style={styles.mainContent}>
-
-        {/* Botón para mostrar la barra (Solo visible si está oculta) */}
         {!isSidebarOpen && (
           <button
             onClick={() => setIsSidebarOpen(true)}
@@ -89,10 +99,8 @@ export default function MainLayout() {
             ☰
           </button>
         )}
-
         <Outlet />
       </main>
-
     </div>
   );
 }
