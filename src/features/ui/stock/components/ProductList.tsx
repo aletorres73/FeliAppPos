@@ -131,6 +131,17 @@ export function ProductList({
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                                     {hasVariations && <span style={productBadge(product.active)}>GRUPO</span>}
                                     {hasVolumePrice && <span style={productBadgePromotion(product.active)}>PROMOCION</span>}
+                                    {product.pricingReviewPending && (
+                                        <span style={{
+                                            fontSize: '0.5rem', padding: '2px 4px', borderRadius: '4px',
+                                            backgroundColor: 'rgba(255, 171, 64, 0.15)',
+                                            color: '#FFAB40', fontWeight: 700,
+                                            border: '1px solid rgba(255, 171, 64, 0.4)',
+                                            marginBottom: '8px',
+                                        }}>
+                                            COSTO CAMBIÓ
+                                        </span>
+                                    )}
                                     {productExpirationState && (
                                         <span style={getExpirationBadgeStyle(productExpirationState)}>
                                             {productExpirationState === 'expired' ? 'VENCIDO' : 'VENCE PRONTO'} · {formatExpirationDate(product.expirationDate)}
@@ -216,6 +227,18 @@ export function ProductList({
                                                     {variationExpirationState && (
                                                         <span style={getExpirationBadgeStyle(variationExpirationState)}>
                                                             {variationExpirationState === 'expired' ? 'VENCIDO' : 'VENCE PRONTO'} · {formatExpirationDate(v.expirationDate)}
+                                                        </span>
+                                                    )}
+
+                                                    {v.pricingReviewPending && (
+                                                        <span style={{
+                                                            fontSize: '0.45rem', padding: '2px 4px', borderRadius: '4px',
+                                                            backgroundColor: 'rgba(255, 171, 64, 0.15)',
+                                                            color: '#FFAB40', fontWeight: 700,
+                                                            border: '1px solid rgba(255, 171, 64, 0.4)',
+                                                            marginBottom: '8px', whiteSpace: 'nowrap'
+                                                        }}>
+                                                            COSTO CAMBIÓ
                                                         </span>
                                                     )}
 

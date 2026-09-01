@@ -3,6 +3,7 @@ import {
     WalletIcon,
     UserGroupIcon,
     BuildingStorefrontIcon
+    , TruckIcon
 } from "@heroicons/react/24/solid";
 
 interface Props {
@@ -83,4 +84,18 @@ export const buttonStyles: React.CSSProperties = {
 
 export const iconStyle: React.CSSProperties = {
     width: '20px', height: '20px', fontSize: '10px'
+}
+
+export function PurchasesButton({ onClick }: Props) {
+    return (
+        <button
+            onClick={onClick}
+            style={buttonStyles}
+            onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#252a33'}
+            onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#1A1D23'}
+        >
+            <TruckIcon style={iconStyle} />
+            Compras
+        </button>
+    )
 }

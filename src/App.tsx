@@ -7,6 +7,7 @@ const SalesDashboard = lazy(() => import("./features/ui/dashboard/screens/SalesD
 const OrderScreen = lazy(() => import("./features/ui/orders/screens/OrdersScreen"));
 const StockScreen = lazy(() => import("./features/ui/stock/screen/StockScreen"));
 const CustomerLedgerScreen = lazy(() => import("./features/ui/customers/sreens/CustomerLedgerScreen"));
+const PurchasesScreen = lazy(() => import("./features/ui/purchases/screens/PurchasesScreen"));
 
 
 export default function AppRouter() {
@@ -21,6 +22,7 @@ export default function AppRouter() {
           <Route path="reports" element={<SalesDashboard />} />
           <Route path="stock" element={<StockScreen />} />
           <Route path="customers" element={<CustomerLedgerScreen />} />
+          <Route path="purchases" element={<PurchasesScreen />} />
         </Route>
 
       </Routes>

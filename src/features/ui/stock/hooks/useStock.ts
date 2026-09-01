@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
-import { getProducts, deleteProduct, addProduct, updateProduct, bulkActionRepository } from '../../../data/repositories/ProductRepository';
+import { getProducts, deleteProduct, addProduct, updateProduct, bulkActionRepository, resolvePriceReview, type PriceReviewDecision } from '../../../data/repositories/ProductRepository';
 import { type Product, getSlowMovers } from '../../../domain/types/productTypes';
+import { createEmptyProduct, toNewProduct, updateProductCost, updateProductGains, updateProductPrice } from './productForm';
 
 // Definimos la interfaz GroupedProduct aquí para que el sort tenga tipado estricto
 export interface GroupedProduct extends Product {
@@ -15,7 +16,7 @@ export function useStock() {
     const [isEditingMode, setIsEditingMode] = useState(false);
     const [editingProduct, setEditingProduct] = useState<Partial<Product> | null>(null);
     const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
-    const [productFilter, setProductFilter] = useState<'all' | 'combos' | 'promotions' | 'grouped' | 'expiration' | 'slowMovers'>('all');
+    const [productFilter, setProductFilter] = useState<'all' | 'combos' | 'promotions' | 'grouped' | 'expiration' | 'slowMovers' | 'priceReview'>('all');
 
     useEffect(() => {
         loadProducts();
@@ -90,6 +91,8 @@ export function useStock() {
                     const isStagnant = lastActivity === 0 || (now - lastActivity) > slowMoversThreshold;
                     return checkHasStock(v) && isStagnant;
                 });
+            } else if (productFilter === 'priceReview') {
+                variations = variations.filter(v => v.pricingReviewPending);
             }
 
             return { ...parent, variations } as GroupedProduct;
@@ -121,6 +124,10 @@ export function useStock() {
                 const parentIsStagnant = parentLastActivity === 0 || (now - parentLastActivity) > slowMoversThreshold;
                 const parentMatchesSlow = checkHasStock(group as Product) && parentIsStagnant;
                 return parentMatchesSlow || group.variations.length > 0;
+            }
+
+            if (productFilter === 'priceReview') {
+                return Boolean(group.pricingReviewPending) || group.variations.length > 0;
             }
 
             return false;
@@ -176,48 +183,30 @@ export function useStock() {
     };
 
     const handleCostChange = (costVal: number) => {
-        const gains = editingProduct?.gains || 0;
-        const calculatedPrice = costVal * (1 + gains / 100);
-
-        setEditingProduct(prev => prev ? {
-            ...prev,
-            cost: costVal,
-            price: Number(calculatedPrice.toFixed(2))
-        } : null);
+        setEditingProduct(prev => prev ? updateProductCost(prev, costVal) : null);
     };
 
     const handleGainsChange = (gainsVal: number) => {
-        const cost = editingProduct?.cost || 0;
-        const calculatedPrice = cost * (1 + gainsVal / 100);
-
-        setEditingProduct(prev => prev ? {
-            ...prev,
-            gains: gainsVal,
-            price: Number(calculatedPrice.toFixed(2))
-        } : null);
+        setEditingProduct(prev => prev ? updateProductGains(prev, gainsVal) : null);
     };
 
     const handlePriceChange = (priceVal: number) => {
-        const cost = editingProduct?.cost || 0;
-        let calculatedGains = 0;
+        setEditingProduct(prev => prev ? updateProductPrice(prev, priceVal) : null);
+    };
 
-        if (cost > 0) {
-            calculatedGains = ((priceVal - cost) / cost) * 100;
+    const resolveProductPriceReview = async (productId: string, decision: PriceReviewDecision, customPrice?: number) => {
+        setIsLoading(true);
+        try {
+            await resolvePriceReview(productId, decision, customPrice);
+            await loadProducts();
+        } finally {
+            setIsLoading(false);
         }
-
-        setEditingProduct(prev => prev ? {
-            ...prev,
-            price: priceVal,
-            gains: Number(calculatedGains.toFixed(2))
-        } : null);
     };
 
     const openCreateModal = () => {
         setIsEditingMode(false);
-        setEditingProduct({
-            id: '', active: true, saleWeight: false, stock: 0,
-            weight: 0, cost: 0, gains: 0, price: 0
-        });
+        setEditingProduct(createEmptyProduct());
         setIsModalOpen(true);
     };
 
@@ -238,35 +227,15 @@ export function useStock() {
 
         try {
             if (isEditingMode) {
+                // Al guardar desde el modal se considera revisado el cambio de costo
+                const reviewedProduct = { ...editingProduct, pricingReviewPending: false };
                 if (editingProduct.isParent) {
-                    await bulkActionRepository.updateParentAndChildren(editingProduct.id, editingProduct);
+                    await bulkActionRepository.updateParentAndChildren(editingProduct.id, reviewedProduct);
                 } else {
-                    await updateProduct(editingProduct.id, editingProduct);
+                    await updateProduct(editingProduct.id, reviewedProduct);
                 }
             } else {
-                const newProduct: Product = {
-                    id: editingProduct.id.trim(),
-                    article: editingProduct.article,
-                    branch: editingProduct.branch || '',
-                    price: editingProduct.price,
-                    stock: editingProduct.stock || 0,
-                    cost: editingProduct.cost || 0,
-                    weight: editingProduct.weight || 0,
-                    saleWeight: editingProduct.saleWeight || false,
-                    active: editingProduct.active ?? true,
-                    gains: editingProduct.gains || 0,
-                    quantitySold: 0,
-                    weightSold: 0,
-                    createdAt: new Date().getTime(),
-                    updatedAt: null,
-                    isParent: editingProduct.isParent || false,
-                    parentId: editingProduct.parentId || null,
-                    stockLinked: editingProduct.stockLinked || false,
-                    conversionFactor: editingProduct.conversionFactor || null,
-                    volumePrices: editingProduct.volumePrices || [],
-                    expirationDate: editingProduct.expirationDate || null,
-                };
-                await addProduct(newProduct);
+                await addProduct(toNewProduct(editingProduct));
             }
 
             console.log(`Producto procesado con éxito`);
@@ -302,7 +271,7 @@ export function useStock() {
         editingProduct, groupedProducts, selectedProductIds, totalInvestment, productFilter,
         setSearchTerm, setIsEditingMode, setEditingProduct, setIsModalOpen, setSelectedProductIds,
         handleDelete, handleSave, handleCostChange, handleGainsChange, handlePriceChange,
-        handleDestroyGroup, openCreateModal, closeModal, toggleSelectProduct,
+        handleDestroyGroup, openCreateModal, closeModal, toggleSelectProduct, resolveProductPriceReview,
         handleBulkGroupAssignment, setProductFilter
     };
 }

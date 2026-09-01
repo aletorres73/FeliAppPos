@@ -15,6 +15,13 @@ export type Product = {
   weightSold: number;
   expirationDate?: number | null;
   lastSoldAt?: number | null;
+  unitsPerBulk?: number | null;
+  bulkCost?: number | null;
+  lastSupplierId?: string | null;
+  previousCost?: number | null;
+  suggestedPrice?: number | null;
+  pricingReviewPending?: boolean;
+  costUpdatedAt?: number | null;
 
   // --- Campos para Lógica Masiva y Jerárquica ---
   isParent: boolean;      // Define si es el producto "plantilla" del grupo

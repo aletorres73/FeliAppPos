@@ -1,10 +1,12 @@
 //stockmodal
 import type React from 'react';
+import { useEffect, useState } from 'react';
 import { modalStyles } from '../styles/ModalStockStyles';
 import { type Product, type VolumePrice } from '../../../domain/types/productTypes'; // 🆕 Asegurá tener exportado VolumePrice de tus types
 import { labelStyle, searchInputStyle } from '../styles/StockScreenStyles';
-import { formatDateForInput } from '../../../domain/utils/formats';
+import { formatCurrency, formatDateForInput } from '../../../domain/utils/formats';
 import { useKeyboardShortcuts } from '../../../domain/utils/keyboardShorcuts';
+import { supplierRepository } from '../../../data/repositories/SupplierRepository';
 
 interface StockModalProps {
     isEditingMode: boolean;
@@ -18,6 +20,7 @@ interface StockModalProps {
     handleGroupAssignment: (parentId: string) => void;
     setIsModalOpen: (open: boolean) => void;
     onClose?: () => void;
+    isSaving?: boolean;
 }
 
 // utils/priceCalculator.ts
@@ -37,9 +40,25 @@ export function StockModal(
         handleGainsChange,
         handlePriceChange,
         handleGroupAssignment,
-        onClose
+        onClose,
+        isSaving = false
     }: StockModalProps
 ) {
+
+    // --- 🆕 Nombre del último proveedor (para datos de bulto) ---
+    const [lastSupplierName, setLastSupplierName] = useState('');
+
+    useEffect(() => {
+        let active = true;
+        if (product.lastSupplierId) {
+            supplierRepository.getById(product.lastSupplierId).then((supplier) => {
+                if (active && supplier) setLastSupplierName(supplier.name);
+            });
+        } else {
+            setLastSupplierName('');
+        }
+        return () => { active = false; };
+    }, [product.lastSupplierId]);
 
     // --- 🆕 Funciones Locales para Manejar Escalas de Precios ---
     const addVolumePriceRule = () => {
@@ -101,6 +120,76 @@ export function StockModal(
                 <h3 style={modalStyles.title}>
                     {isEditingMode ? 'Editar Artículo' : 'Nuevo Artículo'}
                 </h3>
+
+                {/* 🆕 ETIQUETA DE CAMBIO DE COSTO PENDIENTE DE REVISIÓN */}
+                {product.pricingReviewPending && (
+                    <div style={{
+                        backgroundColor: 'rgba(255, 171, 64, 0.12)',
+                        border: '1px solid rgba(255, 171, 64, 0.45)',
+                        borderRadius: '8px',
+                        padding: '12px 14px',
+                        marginBottom: '16px',
+                        color: 'white'
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                            <span style={{ fontSize: '1.1rem' }}>⚠️</span>
+                            <strong style={{ color: '#FFAB40', fontSize: '0.85rem', letterSpacing: '0.5px' }}>
+                                COSTO ACTUALIZADO · REVISAR PRECIO
+                            </strong>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    const suggested = product.suggestedPrice ?? product.price ?? 0;
+                                    const newCost = product.cost ?? 0;
+                                    setEditingProduct({
+                                        ...product,
+                                        cost: newCost,
+                                        price: suggested,
+                                        gains: Number(calculateMargin(newCost, suggested).toFixed(2)),
+                                        pricingReviewPending: false
+                                    });
+                                }}
+                                style={{
+                                    marginLeft: 'auto',
+                                    background: '#54C4F0',
+                                    color: '#0F1115',
+                                    border: 'none',
+                                    borderRadius: '6px',
+                                    padding: '6px 10px',
+                                    fontSize: '0.7rem',
+                                    fontWeight: 700,
+                                    cursor: 'pointer',
+                                    whiteSpace: 'nowrap'
+                                }}
+                            >
+                                APLICAR SUGERIDO
+                            </button>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 16px', fontSize: '0.8rem' }}>
+                            <div>
+                                <small style={{ opacity: 0.55, display: 'block' }}>COSTO ANTERIOR</small>
+                                <strong style={{ color: '#FF9A9A' }}>{formatCurrency(product.previousCost ?? 0)}</strong>
+                            </div>
+                            <div>
+                                <small style={{ opacity: 0.55, display: 'block' }}>COSTO ACTUAL</small>
+                                <strong style={{ color: '#FFAB40' }}>{formatCurrency(product.cost ?? 0)}</strong>
+                            </div>
+                            <div>
+                                <small style={{ opacity: 0.55, display: 'block' }}>MARGEN</small>
+                                <strong>{product.gains ?? 0}%</strong>
+                            </div>
+                            <div>
+                                <small style={{ opacity: 0.55, display: 'block' }}>PRECIO SUGERIDO</small>
+                                <strong style={{ color: '#54C4F0' }}>{formatCurrency(product.suggestedPrice ?? 0)}</strong>
+                            </div>
+                        </div>
+                        {product.costUpdatedAt ? (
+                            <small style={{ opacity: 0.5, display: 'block', marginTop: '8px' }}>
+                                Cambio registrado el {formatDateForInput(product.costUpdatedAt)}
+                            </small>
+                        ) : null}
+                    </div>
+                )}
 
                 <div style={modalStyles.checkboxRow}>
                     <span style={modalStyles.checkboxLabel}>
@@ -182,7 +271,7 @@ export function StockModal(
                                 style={modalStyles.input}
                                 min="0"
                                 step="any"
-                                value={product.cost || ''}
+                                value={product.pricingReviewPending ? (product.previousCost ?? '') : (product.cost ?? '')}
                                 onChange={e => handleCostChange(Number(e.target.value))}
                             />
                         </div>
@@ -211,6 +300,55 @@ export function StockModal(
                             />
                         </div>
                     </div>
+
+                    {/* 🆕 DATOS DE COMPRA POR BULTO */}
+                    {(product.unitsPerBulk || product.bulkCost || product.lastSupplierId) && (
+                        <div style={{ marginTop: '15px', marginBottom: '15px' }}>
+                            <span style={labelStyle}>DATOS DE COMPRA POR BULTO</span>
+                            <div style={modalStyles.row}>
+                                <div style={{ ...modalStyles.formGroup, flex: 1 }}>
+                                    <label style={{ ...modalStyles.label, fontSize: '0.55rem' }}>CANTIDAD POR BULTO</label>
+                                    <input
+                                        type="number"
+                                        style={modalStyles.input}
+                                        min="1"
+                                        step="1"
+                                        value={product.unitsPerBulk ?? ''}
+                                        onChange={e => {
+                                            const units = Math.max(1, Number(e.target.value) || 1);
+                                            setEditingProduct({ ...product, unitsPerBulk: units });
+                                            if (product.bulkCost && product.bulkCost > 0) handleCostChange(product.bulkCost / units);
+                                        }}
+                                    />
+                                </div>
+                                <div style={{ ...modalStyles.formGroup, flex: 1 }}>
+                                    <label style={{ ...modalStyles.label, fontSize: '0.55rem' }}>COSTO POR BULTO</label>
+                                    <input
+                                        type="number"
+                                        style={modalStyles.input}
+                                        min="0"
+                                        step="0.01"
+                                        value={product.bulkCost ?? ''}
+                                        onChange={e => {
+                                            const bulkCost = Number(e.target.value);
+                                            const units = product.unitsPerBulk || 1;
+                                            setEditingProduct({ ...product, bulkCost });
+                                            if (units > 0 && bulkCost > 0) handleCostChange(bulkCost / units);
+                                        }}
+                                    />
+                                </div>
+                                <div style={{ ...modalStyles.formGroup, flex: 1 }}>
+                                    <label style={{ ...modalStyles.label, fontSize: '0.55rem' }}>ÚLTIMO PROVEEDOR</label>
+                                    <input
+                                        type="text"
+                                        style={{ ...modalStyles.input, backgroundColor: '#22262F', color: 'rgba(255,255,255,0.4)' }}
+                                        disabled
+                                        value={lastSupplierName || (product.lastSupplierId || 'Sin proveedor registrado')}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                     {/* 🆕 SECCIÓN DE PRECIOS POR VOLUMEN / ESCALONADOS */}
                     <div style={modalStyles.volumeSectionContainer}>
@@ -359,11 +497,12 @@ export function StockModal(
                             type="button"
                             style={modalStyles.cancelButton}
                             onClick={onClose}
+                            disabled={isSaving}
                         >
                             CANCELAR
                         </button>
-                        <button type="submit" style={modalStyles.submitButton}>
-                            {isEditingMode ? 'GUARDAR CAMBIOS' : 'AGREGAR ARTÍCULO'}
+                        <button type="submit" style={{ ...modalStyles.submitButton, opacity: isSaving ? .6 : 1, cursor: isSaving ? 'not-allowed' : 'pointer' }} disabled={isSaving}>
+                            {isSaving ? 'GUARDANDO...' : (isEditingMode ? 'GUARDAR CAMBIOS' : 'AGREGAR ARTÍCULO')}
                         </button>
                     </div>
                 </form>

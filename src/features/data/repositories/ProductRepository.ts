@@ -81,6 +81,13 @@ export const mapToProduct = (data: any): Product => {
     weightSold: data.pesoVendido,
     expirationDate: data.vencimiento || null,
     lastSoldAt: data.ultimaVentaAt || null,
+    unitsPerBulk: data.unitsPerBulk || null,
+    bulkCost: data.bulkCost ?? null,
+    lastSupplierId: data.lastSupplierId || null,
+    previousCost: data.previousCost ?? null,
+    suggestedPrice: data.suggestedPrice ?? null,
+    pricingReviewPending: data.pricingReviewPending || false,
+    costUpdatedAt: data.costUpdatedAt ?? null,
     isParent: data.isParent || false,
     parentId: data.parentId || null,
     stockLinked: data.stockLinked || false,
@@ -109,6 +116,13 @@ export const mapToFirestoreProduct = (product: Product): any => {
     pesoVendido: product.weightSold,
     vencimiento: product.expirationDate || null,
     ultimaVentaAt: product.lastSoldAt || null,
+    unitsPerBulk: product.unitsPerBulk || null,
+    bulkCost: product.bulkCost || null,
+    lastSupplierId: product.lastSupplierId || null,
+    previousCost: product.previousCost || null,
+    suggestedPrice: product.suggestedPrice || null,
+    pricingReviewPending: product.pricingReviewPending || false,
+    costUpdatedAt: product.costUpdatedAt || null,
     isParent: product.isParent || false,
     parentId: product.parentId || null,
     stockLinked: product.stockLinked || false,
@@ -147,6 +161,7 @@ export const addProduct = async (product: Product): Promise<void> => {
     console.log(`Producto agregado con ID personalizado: ${product.article}`);
   } catch (error) {
     console.error("Error al agregar producto:", error);
+    throw error;
   }
 };
 
@@ -173,6 +188,13 @@ export const updateProduct = async (docId: string, updatedData: Partial<Product>
     if (updatedData.conversionFactor !== undefined) firestoreUpdates.conversionFactor = updatedData.conversionFactor;
     if (updatedData.expirationDate !== undefined) firestoreUpdates.vencimiento = updatedData.expirationDate;
     if (updatedData.lastSoldAt !== undefined) firestoreUpdates.ultimaVentaAt = updatedData.lastSoldAt;
+    if (updatedData.unitsPerBulk !== undefined) firestoreUpdates.unitsPerBulk = updatedData.unitsPerBulk;
+    if (updatedData.bulkCost !== undefined) firestoreUpdates.bulkCost = updatedData.bulkCost;
+    if (updatedData.lastSupplierId !== undefined) firestoreUpdates.lastSupplierId = updatedData.lastSupplierId;
+    if (updatedData.previousCost !== undefined) firestoreUpdates.previousCost = updatedData.previousCost;
+    if (updatedData.suggestedPrice !== undefined) firestoreUpdates.suggestedPrice = updatedData.suggestedPrice;
+    if (updatedData.pricingReviewPending !== undefined) firestoreUpdates.pricingReviewPending = updatedData.pricingReviewPending;
+    if (updatedData.costUpdatedAt !== undefined) firestoreUpdates.costUpdatedAt = updatedData.costUpdatedAt;
     if (updatedData.volumePrices !== undefined) firestoreUpdates.volumePrices = updatedData.volumePrices;
 
     firestoreUpdates.updatedAt = Date.now();
@@ -182,6 +204,37 @@ export const updateProduct = async (docId: string, updatedData: Partial<Product>
   } catch (error) {
     console.error("Error al actualizar producto:", error);
   }
+};
+
+export type PriceReviewDecision = 'KEEP' | 'SUGGESTED' | 'CUSTOM';
+
+export const resolvePriceReview = async (
+  docId: string,
+  decision: PriceReviewDecision,
+  customPrice?: number
+): Promise<void> => {
+  const product = await getProductById(docId);
+  if (!product) throw new Error('Producto no encontrado.');
+
+  const nextPrice = decision === 'KEEP'
+    ? product.price
+    : decision === 'SUGGESTED'
+      ? product.suggestedPrice
+      : customPrice;
+
+  if (nextPrice === undefined || nextPrice === null || nextPrice < 0) {
+    throw new Error('El precio seleccionado no es válido.');
+  }
+
+  const nextGains = product.cost > 0
+    ? Number((((nextPrice - product.cost) / product.cost) * 100).toFixed(2))
+    : product.gains;
+
+  await updateProduct(docId, {
+    price: nextPrice,
+    gains: nextGains,
+    pricingReviewPending: false,
+  });
 };
 
 // 2. Corrección del BulkAction para usar los nombres correctos de la DB (Español)
@@ -200,6 +253,9 @@ export const bulkActionRepository = {
     if (updates.gains !== undefined) parentFirestoreUpdates.ganancia = updates.gains;
     if (updates.isParent !== undefined) parentFirestoreUpdates.isParent = updates.isParent;
     if (updates.volumePrices !== undefined) parentFirestoreUpdates.volumePrices = updates.volumePrices;
+    if (updates.pricingReviewPending !== undefined) parentFirestoreUpdates.pricingReviewPending = updates.pricingReviewPending;
+    if (updates.unitsPerBulk !== undefined) parentFirestoreUpdates.unitsPerBulk = updates.unitsPerBulk;
+    if (updates.bulkCost !== undefined) parentFirestoreUpdates.bulkCost = updates.bulkCost;
     parentFirestoreUpdates.updatedAt = Date.now();
 
     // Aplicar al Padre
@@ -223,6 +279,7 @@ export const bulkActionRepository = {
         activo: updates.active ?? childData.activo,
         ganancia: updates.gains ?? childData.ganancia,
         volumePrices: updates.volumePrices ?? childData.volumePrices,
+        pricingReviewPending: updates.pricingReviewPending ?? childData.pricingReviewPending,
         updatedAt: Date.now()
       });
     });

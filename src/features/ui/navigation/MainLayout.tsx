@@ -1,7 +1,7 @@
 import { useState } from "react"; // 1. Importamos useState
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import feliLogo from "../../../../src/assets/logo-feli.webp";
-import { CashFlowButton, CustomerLedgerButton, SaleDashboardButton, StockButton } from "./navigationButtons";
+import { CashFlowButton, CustomerLedgerButton, PurchasesButton, SaleDashboardButton, StockButton } from "./navigationButtons";
 import { ShoppingCartIcon} from "@heroicons/react/24/solid";
 import { iconStyle } from "./navigationButtons";
 
@@ -66,6 +66,7 @@ export default function MainLayout() {
           <div style ={styles.sectionHeader}>INVENTARIO</div>
           <div style={styles.groupedButtons}>
             <StockButton onClick={() => navigate('/stock')} />
+            <PurchasesButton onClick={() => navigate('/purchases')} />
           </div>
         </nav>
 
