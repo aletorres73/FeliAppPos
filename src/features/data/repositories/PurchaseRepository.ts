@@ -58,10 +58,11 @@ export const purchaseRepository = {
 
             const costChanged = Number(originalProduct.cost || 0) !== Number(item.unitCost || 0);
             if (costChanged) {
-                productUpdates.previousCost = originalProduct.cost || 0;
-                productUpdates.suggestedPrice = Number((item.unitCost * (1 + (originalProduct.gains || 0) / 100)).toFixed(2));
-                productUpdates.pricingReviewPending = true;
-                productUpdates.costUpdatedAt = Date.now();
+                // productUpdates.previousCost = originalProduct.cost || 0;
+                // productUpdates.suggestedPrice = Number((item.unitCost * (1 + (originalProduct.gains || 0) / 100)).toFixed(2));
+                // productUpdates.pricingReviewPending = true;
+                // productUpdates.costUpdatedAt = Date.now();
+                productUpdates.cost = item.unitCost;
             }
 
             if (item.unitsPerBulk) {
