@@ -1,10 +1,12 @@
 import {
     collection,
+    deleteDoc,
     doc,
     getDocs,
     increment,
     query,
     runTransaction,
+    setDoc,
     where,
     writeBatch,
 } from 'firebase/firestore';
@@ -24,8 +26,112 @@ export const purchaseRepository = {
     async getBySupplier(supplierId: string): Promise<Purchase[]> {
         const snapshot = await getDocs(query(collection(db, 'purchases'), where('supplierId', '==', supplierId)));
         return snapshot.docs
-            .map((purchaseDoc) => ({ docId: purchaseDoc.id, ...purchaseDoc.data() }) as Purchase)
+            .map((purchaseDoc) => {
+                const data = purchaseDoc.data() as Purchase;
+                return {
+                    ...data,
+                    docId: purchaseDoc.id,
+                    status: data.status || 'RECEIVED', // Por compatibilidad con compras anteriores
+                };
+            })
             .sort((a, b) => b.createdAt - a.createdAt);
+    },
+
+    async saveDraft({ purchase }: { purchase: Purchase }): Promise<void> {
+        if (!purchase.items.length) throw new Error('El pedido no tiene artículos.');
+        const batch = writeBatch(db);
+        const purchaseRef = doc(db, 'purchases', purchase.docId);
+
+        const draftData: Purchase = {
+            ...purchase,
+            status: 'DRAFT',
+            payStatus: 'PENDING',
+            payed: 0,
+            debt: purchase.total,
+            paymentMethod: null,
+            receivedAt: null,
+        };
+
+        batch.set(purchaseRef, draftData);
+        await batch.commit();
+    },
+
+    async updateDraft({ purchase }: { purchase: Purchase }): Promise<void> {
+        const purchaseRef = doc(db, 'purchases', purchase.docId);
+        await setDoc(purchaseRef, {
+            ...purchase,
+            status: 'DRAFT',
+            debt: purchase.total,
+            payed: 0,
+        }, { merge: true });
+    },
+
+    async deleteDraft(purchaseId: string): Promise<void> {
+        const purchaseRef = doc(db, 'purchases', purchaseId);
+        await deleteDoc(purchaseRef);
+    },
+
+    async receiveOrder({ purchase, supplier, products }: PurchaseConfirmation): Promise<void> {
+        if (!purchase.items.length) throw new Error('La compra no tiene artículos.');
+        if (purchase.payed < 0 || purchase.payed > purchase.total) throw new Error('El pago no es válido.');
+
+        const batch = writeBatch(db);
+        const purchaseRef = doc(db, 'purchases', purchase.docId);
+        const supplierRef = doc(db, 'suppliers', supplier.id);
+        const expenseRef = purchase.payed > 0 ? doc(collection(db, 'expenses')) : null;
+
+        const receivedPurchase: Purchase = {
+            ...purchase,
+            status: 'RECEIVED',
+            receivedAt: Date.now(),
+        };
+
+        batch.set(purchaseRef, receivedPurchase);
+        if (purchase.debt > 0) {
+            batch.update(supplierRef, {
+                currentBalance: Number(supplier.currentBalance || 0) + purchase.debt,
+            });
+        }
+
+        for (const item of purchase.items) {
+            const originalProduct = products.find((p) => p.id === item.productId);
+            if (!originalProduct) continue;
+
+            const productUpdates: Record<string, unknown> = {
+                costo: item.unitCost,
+                cost: item.unitCost,
+                updatedAt: Date.now(),
+                lastSupplierId: purchase.supplierId,
+            };
+
+            if (item.unitsPerBulk) {
+                productUpdates.unitsPerBulk = item.unitsPerBulk;
+            }
+
+            if (item.purchaseType === 'BULK' && item.bulkCost) {
+                productUpdates.bulkCost = item.bulkCost;
+            }
+
+            if (originalProduct.saleWeight) {
+                productUpdates.peso = increment(item.quantity);
+            } else {
+                productUpdates.stock = increment(item.quantity);
+            }
+
+            batch.update(doc(db, 'products', item.productId), productUpdates);
+        }
+
+        if (expenseRef) {
+            batch.set(expenseRef, {
+                category: 'SUPPLIER',
+                amount: purchase.payed,
+                paymentMethod: purchase.paymentMethod || [],
+                createdAt: Date.now(),
+                note: `Compra ${purchase.docId} - proveedor ${supplier.name}`,
+            });
+        }
+
+        await batch.commit();
     },
 
     async confirm({ purchase, supplier, products }: PurchaseConfirmation): Promise<void> {
@@ -37,7 +143,13 @@ export const purchaseRepository = {
         const supplierRef = doc(db, 'suppliers', supplier.id);
         const expenseRef = purchase.payed > 0 ? doc(collection(db, 'expenses')) : null;
 
-        batch.set(purchaseRef, purchase);
+        const fullPurchase: Purchase = {
+            ...purchase,
+            status: 'RECEIVED',
+            receivedAt: purchase.createdAt || Date.now(),
+        };
+
+        batch.set(purchaseRef, fullPurchase);
         if (purchase.debt > 0) {
             batch.update(supplierRef, {
                 currentBalance: Number(supplier.currentBalance || 0) + purchase.debt,
@@ -52,18 +164,10 @@ export const purchaseRepository = {
             // Preparamos SOLO los campos que queremos actualizar
             const productUpdates: Record<string, unknown> = {
                 costo: item.unitCost,
+                cost: item.unitCost,
                 updatedAt: Date.now(),
                 lastSupplierId: purchase.supplierId, // Usamos el proveedor de la compra
             };
-
-            const costChanged = Number(originalProduct.cost || 0) !== Number(item.unitCost || 0);
-            if (costChanged) {
-                // productUpdates.previousCost = originalProduct.cost || 0;
-                // productUpdates.suggestedPrice = Number((item.unitCost * (1 + (originalProduct.gains || 0) / 100)).toFixed(2));
-                // productUpdates.pricingReviewPending = true;
-                // productUpdates.costUpdatedAt = Date.now();
-                productUpdates.cost = item.unitCost;
-            }
 
             if (item.unitsPerBulk) {
                 productUpdates.unitsPerBulk = item.unitsPerBulk;

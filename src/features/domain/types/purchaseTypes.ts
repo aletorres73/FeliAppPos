@@ -1,5 +1,6 @@
 import type { PaymentMethod } from './orderTypes';
 
+export type PurchaseStatus = 'DRAFT' | 'RECEIVED' | 'CANCELLED';
 export type PurchasePayStatus = 'PENDING' | 'PAID';
 export type PurchasePaymentType = 'UNIT' | 'BULK';
 
@@ -20,6 +21,7 @@ export interface PurchaseItem {
 export interface Purchase {
   docId: string;
   supplierId: string;
+  status?: PurchaseStatus; // DRAFT: pedido no ingresado a stock, RECEIVED: ingresado a stock
   items: PurchaseItem[];
   total: number;
   payed: number;
@@ -27,6 +29,7 @@ export interface Purchase {
   payStatus: PurchasePayStatus;
   paymentMethod: PaymentMethod[] | null;
   createdAt: number;
+  receivedAt?: number | null;
 }
 
 export type DiscountType = 'PERCENT' | 'AMOUNT';
