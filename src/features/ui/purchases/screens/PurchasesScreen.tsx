@@ -37,7 +37,8 @@ export default function PurchasesScreen() {
     const [selectedSupplierId, setSelectedSupplierId] = useState('');
     const [items, setItems] = useState<PurchaseDraftItem[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
-    const [isDraftMode, setIsDraftMode] = useState(false); // 🆕 Switch: Pedido Borrador vs Ingreso Inmediato
+    const [isDraftMode, setIsDraftMode] = useState(false); // Switch: Pedido Borrador vs Ingreso Inmediato
+    const [editingPurchaseId, setEditingPurchaseId] = useState<string | null>(null); // ID del pedido que se está editando en pantalla
     const [payment, setPayment] = useState('0');
     const [paymentType, setPaymentType] = useState<PaymentMethod['type']>('CASH');
     const [totalDiscountType, setTotalDiscountType] = useState<DiscountType>('AMOUNT');
@@ -257,6 +258,10 @@ export default function PurchasesScreen() {
             setHistory(updatedHistory);
             setSelectedPurchase(null);
             setQuotePreviewPurchase(null);
+            if (editingPurchaseId === updatedPurchase.docId) {
+                setEditingPurchaseId(null);
+                setItems([]);
+            }
             setMessage(`Mercadería del pedido ${updatedPurchase.docId} ingresada con éxito al stock.`);
             await loadData();
         } catch (error) {
@@ -266,20 +271,46 @@ export default function PurchasesScreen() {
         }
     };
 
-    const handleUpdateDraft = async (updatedPurchase: Purchase) => {
-        if (!selectedSupplier) return;
-        try {
-            setIsUpdatingDraft(true);
-            await purchaseRepository.updateDraft({ purchase: updatedPurchase });
-            const updatedHistory = await purchaseRepository.getBySupplier(selectedSupplier.id);
-            setHistory(updatedHistory);
-            setQuotePreviewPurchase(updatedPurchase);
-            setMessage(`Pedido ${updatedPurchase.docId} actualizado.`);
-        } catch (error) {
-            setMessage(error instanceof Error ? error.message : 'No se pudo actualizar el pedido.');
-        } finally {
-            setIsUpdatingDraft(false);
-        }
+    const handleEditInScreen = (purchase: Purchase) => {
+        const mappedItems: PurchaseDraftItem[] = purchase.items.map((item) => {
+            const prod = products.find((p) => p.id === item.productId);
+            const rawUnitCost = item.unitCost;
+            const rawSubtotal = item.subtotal;
+            return {
+                productId: item.productId,
+                article: item.article,
+                branch: item.branch,
+                quantity: item.quantity,
+                saleWeight: item.saleWeight,
+                bulks: item.bulks,
+                unitsPerBulk: item.unitsPerBulk,
+                previousUnitsPerBulk: prod?.unitsPerBulk || item.unitsPerBulk || null,
+                purchaseType: item.purchaseType,
+                unitCost: item.unitCost,
+                bulkCost: item.bulkCost,
+                rawUnitCost,
+                rawSubtotal,
+                discountType: 'AMOUNT',
+                discountValue: 0,
+                subtotal: item.subtotal,
+                productCost: prod?.cost || item.unitCost,
+            };
+        });
+        setItems(mappedItems);
+        setSelectedSupplierId(purchase.supplierId);
+        setIsDraftMode(true);
+        setEditingPurchaseId(purchase.docId);
+        setQuotePreviewPurchase(null);
+        setSelectedPurchase(null);
+        setMessage(`Pedido ${purchase.docId} cargado en pantalla. Puedes agregar, quitar o modificar cantidades y precios como si fuera nuevo.`);
+    };
+
+    const handleCancelEditing = () => {
+        setItems([]);
+        setEditingPurchaseId(null);
+        setIsDraftMode(false);
+        setPayment('0');
+        setMessage('Edición de pedido cancelada.');
     };
 
     const handleDeleteDraft = async (docId: string) => {
@@ -291,6 +322,10 @@ export default function PurchasesScreen() {
             setHistory(updatedHistory);
             setQuotePreviewPurchase(null);
             setSelectedPurchase(null);
+            if (editingPurchaseId === docId) {
+                setEditingPurchaseId(null);
+                setItems([]);
+            }
             setMessage(`Pedido ${docId} eliminado.`);
         } catch (error) {
             setMessage(error instanceof Error ? error.message : 'No se pudo eliminar el pedido.');
@@ -302,7 +337,7 @@ export default function PurchasesScreen() {
     const handleMainAction = async () => {
         if (!selectedSupplier || !items.length || isConfirmingPurchase) return;
         const createdAt = new Date().getTime();
-        const docId = `PUR-${createdAt}`;
+        const docId = editingPurchaseId || `PUR-${createdAt}`;
         const purchase: Purchase = {
             docId,
             supplierId: selectedSupplier.id,
@@ -331,13 +366,29 @@ export default function PurchasesScreen() {
         try {
             setIsConfirmingPurchase(true);
             if (isDraftMode) {
-                await purchaseRepository.saveDraft({ purchase });
-                setItems([]); setPayment('0'); setShowReview(false);
-                setMessage(`Pedido ${docId} guardado como borrador (no sumó stock ni deuda).`);
+                if (editingPurchaseId) {
+                    await purchaseRepository.updateDraft({ purchase });
+                    setMessage(`Pedido ${docId} actualizado.`);
+                } else {
+                    await purchaseRepository.saveDraft({ purchase });
+                    setMessage(`Pedido ${docId} guardado como borrador (no sumó stock ni deuda).`);
+                }
+                setItems([]);
+                setPayment('0');
+                setEditingPurchaseId(null);
+                setShowReview(false);
             } else {
-                await purchaseRepository.confirm({ purchase, supplier: selectedSupplier, products });
-                setItems([]); setPayment('0'); setShowReview(false);
-                setMessage(`Compra ${docId} confirmada e ingresada al stock.`);
+                if (editingPurchaseId) {
+                    await purchaseRepository.receiveOrder({ purchase, supplier: selectedSupplier, products });
+                    setMessage(`Pedido ${docId} confirmado e ingresado al stock.`);
+                } else {
+                    await purchaseRepository.confirm({ purchase, supplier: selectedSupplier, products });
+                    setMessage(`Compra ${docId} confirmada e ingresada al stock.`);
+                }
+                setItems([]);
+                setPayment('0');
+                setEditingPurchaseId(null);
+                setShowReview(false);
             }
             await loadData();
             setHistory(await purchaseRepository.getBySupplier(selectedSupplier.id));
@@ -394,6 +445,34 @@ export default function PurchasesScreen() {
                 </div>
             </header>
             {message && <div style={{ ...panelStyle, color: '#80E0B0', marginBottom: 16, borderLeft: '3px solid #80E0B0' }}>✓ {message}</div>}
+
+            {editingPurchaseId && (
+                <div style={{
+                    ...panelStyle,
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: 16,
+                    background: 'rgba(255,171,64,.08)',
+                    border: '1px solid rgba(255,171,64,.4)',
+                    color: 'white',
+                    padding: '14px 20px',
+                }}>
+                    <div>
+                        <strong style={{ color: '#FFAB40', fontSize: '1rem' }}>✏️ Editando Pedido: {editingPurchaseId}</strong>
+                        <p style={{ margin: '4px 0 0', opacity: .7, fontSize: '0.85rem' }}>
+                            Modifica productos, bultos, cantidades o precios como si cargaras una compra nueva. Al finalizar, haz clic en guardar.
+                        </p>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={handleCancelEditing}
+                        style={{ ...ghostButtonStyle, borderColor: 'rgba(255,171,64,.5)', color: '#FFAB40' }}
+                    >
+                        ✕ Cancelar Edición
+                    </button>
+                </div>
+            )}
 
             {showSupplierForm &&
                 <form onSubmit={saveSupplier} style={{ ...panelStyle, display: 'flex', gap: 10, marginBottom: 16, alignItems: 'center' }}>
@@ -635,7 +714,11 @@ export default function PurchasesScreen() {
                                     cursor: (!selectedSupplier || !items.length || isConfirmingPurchase) ? 'not-allowed' : 'pointer',
                                 }}
                             >
-                                {isConfirmingPurchase ? 'Procesando...' : isDraftMode ? 'Guardar Pedido / Borrador' : 'Revisar y confirmar ingreso'}
+                                {isConfirmingPurchase
+                                    ? 'Procesando...'
+                                    : editingPurchaseId
+                                        ? (isDraftMode ? '💾 Guardar Cambios en Pedido' : '📥 Confirmar e Ingresar a Stock')
+                                        : (isDraftMode ? 'Guardar Pedido / Borrador' : 'Revisar y confirmar ingreso')}
                             </button>
                         </div>
                     </section>
@@ -651,6 +734,7 @@ export default function PurchasesScreen() {
                         </div>
                         {!isHistoryLoading && history.slice(0, 10).map((purchase) => {
                             const isDraft = purchase.status === 'DRAFT';
+                            const isBeingEdited = editingPurchaseId === purchase.docId;
                             return (
                                 <div
                                     key={purchase.docId}
@@ -661,6 +745,7 @@ export default function PurchasesScreen() {
                                         display: 'flex',
                                         flexDirection: 'column',
                                         gap: 6,
+                                        background: isBeingEdited ? 'rgba(255,171,64,.05)' : 'transparent',
                                     }}
                                 >
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -673,7 +758,7 @@ export default function PurchasesScreen() {
                                             <div style={{ marginTop: 4 }}>
                                                 {isDraft ? (
                                                     <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 999, fontSize: '0.65rem', fontWeight: 700, background: 'rgba(255,171,64,.15)', color: '#FFAB40', border: '1px solid rgba(255,171,64,.3)' }}>
-                                                        📝 Pedido Borrador
+                                                        {isBeingEdited ? '✏️ Editando...' : '📝 Pedido Borrador'}
                                                     </span>
                                                 ) : (
                                                     <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 999, fontSize: '0.65rem', fontWeight: 700, background: purchase.payStatus === 'PENDING' ? 'rgba(255,126,126,.15)' : 'rgba(128,224,176,.15)', color: purchase.payStatus === 'PENDING' ? '#FF7E7E' : '#80E0B0' }}>
@@ -694,7 +779,14 @@ export default function PurchasesScreen() {
                                                     onClick={() => setQuotePreviewPurchase(purchase)}
                                                     style={{ ...ghostButtonStyle, padding: '4px 8px', fontSize: '0.72rem', color: '#54C4F0' }}
                                                 >
-                                                    📋 Ver / Compartir / Editar
+                                                    📋 Ver Cotización
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleEditInScreen(purchase)}
+                                                    style={{ ...secondaryButtonStyle, padding: '4px 8px', fontSize: '0.72rem' }}
+                                                >
+                                                    ✏️ Editar en Pantalla
                                                 </button>
                                                 <button
                                                     type="button"
@@ -740,6 +832,7 @@ export default function PurchasesScreen() {
                     onClose={() => setSelectedPurchase(null)}
                     onConfirm={handlePurchasePayment}
                     onConfirmReceive={handleReceiveOrder}
+                    onEditInScreen={handleEditInScreen}
                     isProcessing={isProcessingPayment}
                 />
             )}
@@ -750,7 +843,7 @@ export default function PurchasesScreen() {
                     purchase={quotePreviewPurchase}
                     supplier={selectedSupplier}
                     onClose={() => setQuotePreviewPurchase(null)}
-                    onUpdateDraft={quotePreviewPurchase.status === 'DRAFT' && history.some((h) => h.docId === quotePreviewPurchase.docId) ? handleUpdateDraft : undefined}
+                    onEditInScreen={quotePreviewPurchase.status === 'DRAFT' ? handleEditInScreen : undefined}
                     onDeleteDraft={quotePreviewPurchase.status === 'DRAFT' && history.some((h) => h.docId === quotePreviewPurchase.docId) ? handleDeleteDraft : undefined}
                     onOpenReceive={quotePreviewPurchase.status === 'DRAFT' ? (p) => {
                         setQuotePreviewPurchase(null);

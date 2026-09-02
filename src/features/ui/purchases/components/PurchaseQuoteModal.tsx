@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { Purchase, PurchaseItem } from '../../../domain/types/purchaseTypes';
+import type { Purchase } from '../../../domain/types/purchaseTypes';
 import type { Supplier } from '../../../domain/types/supplierTypes';
 import { formatCurrency } from '../../../domain/utils/formats';
 
@@ -7,7 +7,7 @@ interface PurchaseQuoteModalProps {
     purchase: Purchase;
     supplier?: Supplier;
     onClose: () => void;
-    onUpdateDraft?: (updatedPurchase: Purchase) => Promise<void>;
+    onEditInScreen?: (purchase: Purchase) => void;
     onDeleteDraft?: (docId: string) => Promise<void>;
     onOpenReceive?: (purchase: Purchase) => void;
     isSaving?: boolean;
@@ -35,16 +35,6 @@ const panelStyle: React.CSSProperties = {
     display: 'flex',
     flexDirection: 'column',
     boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
-};
-
-const inputStyle: React.CSSProperties = {
-    background: '#12151b',
-    color: 'white',
-    border: '1px solid rgba(255,255,255,.16)',
-    borderRadius: 6,
-    padding: '6px 10px',
-    boxSizing: 'border-box',
-    fontSize: '0.85rem',
 };
 
 const primaryButtonStyle: React.CSSProperties = {
@@ -98,93 +88,13 @@ export function PurchaseQuoteModal({
     purchase,
     supplier,
     onClose,
-    onUpdateDraft,
+    onEditInScreen,
     onDeleteDraft,
     onOpenReceive,
     isSaving = false,
 }: PurchaseQuoteModalProps) {
-    const [isEditing, setIsEditing] = useState(false);
-    const [items, setItems] = useState<PurchaseItem[]>(purchase.items);
     const [copied, setCopied] = useState(false);
-    const [message, setMessage] = useState('');
-
-    const total = items.reduce((sum, item) => sum + item.subtotal, 0);
-
-    const handlePriceChange = (index: number, newUnitCost: number) => {
-        setItems((current) => current.map((item, idx) => {
-            if (idx !== index) return item;
-            const subtotalMultiplier = item.saleWeight ? 10 : 1;
-            const subtotal = item.purchaseType === 'BULK' && item.bulkCost !== null
-                ? Number(((item.bulks || 0) * (item.bulkCost || 0)).toFixed(2))
-                : Number((item.quantity * newUnitCost * subtotalMultiplier).toFixed(2));
-
-            return {
-                ...item,
-                unitCost: newUnitCost,
-                subtotal,
-            };
-        }));
-    };
-
-    const handleBulkCostChange = (index: number, newBulkCost: number) => {
-        setItems((current) => current.map((item, idx) => {
-            if (idx !== index) return item;
-            const units = item.unitsPerBulk || 1;
-            const unitCost = Number((newBulkCost / units).toFixed(4));
-            const subtotal = Number(((item.bulks || 1) * newBulkCost).toFixed(2));
-            return {
-                ...item,
-                bulkCost: newBulkCost,
-                unitCost,
-                subtotal,
-            };
-        }));
-    };
-
-    const handleQuantityChange = (index: number, newQuantity: number) => {
-        setItems((current) => current.map((item, idx) => {
-            if (idx !== index) return item;
-            const subtotalMultiplier = item.saleWeight ? 10 : 1;
-            const subtotal = item.purchaseType === 'BULK' && item.bulkCost !== null
-                ? Number(((item.bulks || 0) * (item.bulkCost || 0)).toFixed(2))
-                : Number((newQuantity * item.unitCost * subtotalMultiplier).toFixed(2));
-
-            return {
-                ...item,
-                quantity: newQuantity,
-                subtotal,
-            };
-        }));
-    };
-
-    const handleBulksChange = (index: number, newBulks: number) => {
-        setItems((current) => current.map((item, idx) => {
-            if (idx !== index) return item;
-            const units = item.unitsPerBulk || 1;
-            const quantity = newBulks * units;
-            const subtotal = Number((newBulks * (item.bulkCost || 0)).toFixed(2));
-            return {
-                ...item,
-                bulks: newBulks,
-                quantity,
-                subtotal,
-            };
-        }));
-    };
-
-    const handleSave = async () => {
-        if (!onUpdateDraft) return;
-        const updatedPurchase: Purchase = {
-            ...purchase,
-            items,
-            total,
-            debt: total,
-        };
-        await onUpdateDraft(updatedPurchase);
-        setIsEditing(false);
-        setMessage('Cambios guardados en el pedido.');
-        setTimeout(() => setMessage(''), 3000);
-    };
+    const isDraft = purchase.status === 'DRAFT';
 
     const generateTextForSharing = (): string => {
         const supplierName = supplier?.name ? `Proveedor: ${supplier.name}\n` : '';
@@ -195,7 +105,7 @@ export function PurchaseQuoteModal({
         if (supplierName) text += `${supplierName}`;
         text += `----------------------------------------\n`;
 
-        items.forEach((item, index) => {
+        purchase.items.forEach((item, index) => {
             const branchText = item.branch ? `[${item.branch.toUpperCase()}] ` : '';
             text += `${index + 1}. *${branchText}${item.article}*\n`;
             if (item.purchaseType === 'BULK') {
@@ -209,7 +119,7 @@ export function PurchaseQuoteModal({
         });
 
         text += `----------------------------------------\n`;
-        text += `💰 *TOTAL ESTIMADO: ${formatCurrency(total)}*`;
+        text += `💰 *TOTAL ESTIMADO: ${formatCurrency(purchase.total)}*`;
         return text;
     };
 
@@ -223,8 +133,6 @@ export function PurchaseQuoteModal({
             alert('No se pudo copiar automáticamente. Puedes seleccionar el texto.');
         }
     };
-
-    const isDraft = purchase.status === 'DRAFT';
 
     return (
         <div style={overlayStyle} role="dialog" aria-modal="true">
@@ -255,13 +163,7 @@ export function PurchaseQuoteModal({
                     <button type="button" onClick={onClose} style={ghostButtonStyle}>✕ Cerrar</button>
                 </div>
 
-                {message && (
-                    <div style={{ background: 'rgba(128,224,176,.12)', color: '#80E0B0', border: '1px solid rgba(128,224,176,.3)', borderRadius: 6, padding: '8px 12px', marginBottom: 14, fontSize: '0.85rem' }}>
-                        ✓ {message}
-                    </div>
-                )}
-
-                {/* Tabla de Artículos */}
+                {/* Tabla Limpia de Artículos */}
                 <div style={{ overflowX: 'auto', marginBottom: 16 }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
                         <thead>
@@ -274,7 +176,7 @@ export function PurchaseQuoteModal({
                             </tr>
                         </thead>
                         <tbody>
-                            {items.map((item, index) => (
+                            {purchase.items.map((item) => (
                                 <tr key={item.productId} style={{ borderBottom: '1px solid rgba(255,255,255,.06)' }}>
                                     <td style={{ padding: '10px 6px', verticalAlign: 'middle' }}>
                                         {item.branch && <span style={{ display: 'block', fontSize: '0.75rem', opacity: .55, textTransform: 'uppercase' }}>{item.branch}</span>}
@@ -284,71 +186,19 @@ export function PurchaseQuoteModal({
                                         {item.purchaseType === 'BULK' ? 'Por Bulto' : 'Por Unidad'}
                                     </td>
                                     <td style={{ padding: '10px 6px', verticalAlign: 'middle', textAlign: 'center' }}>
-                                        {isEditing ? (
-                                            item.purchaseType === 'BULK' ? (
-                                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                                                        <input
-                                                            style={{ ...inputStyle, width: 60, textAlign: 'center' }}
-                                                            type="number"
-                                                            min="1"
-                                                            value={item.bulks}
-                                                            onChange={(e) => handleBulksChange(index, Number(e.target.value) || 1)}
-                                                        />
-                                                        <span style={{ fontSize: '0.75rem', opacity: .6 }}>bultos</span>
-                                                    </div>
-                                                    <small style={{ opacity: .5, fontSize: '0.7rem' }}>({item.quantity} {item.saleWeight ? 'kg' : 'uds'})</small>
-                                                </div>
-                                            ) : (
-                                                <input
-                                                    style={{ ...inputStyle, width: 70, textAlign: 'center' }}
-                                                    type="number"
-                                                    min="0"
-                                                    step={item.saleWeight ? '0.001' : '1'}
-                                                    value={item.quantity}
-                                                    onChange={(e) => handleQuantityChange(index, Number(e.target.value) || 0)}
-                                                />
-                                            )
+                                        {item.purchaseType === 'BULK' ? (
+                                            <span>{item.bulks} bulto(s) <small style={{ opacity: .5 }}>({item.quantity} {item.saleWeight ? 'kg' : 'uds'})</small></span>
                                         ) : (
-                                            item.purchaseType === 'BULK' ? (
-                                                <span>{item.bulks} bulto(s) <small style={{ opacity: .5 }}>({item.quantity} {item.saleWeight ? 'kg' : 'uds'})</small></span>
-                                            ) : (
-                                                <span>{item.quantity} {item.saleWeight ? 'kg' : 'uds'}</span>
-                                            )
+                                            <span>{item.quantity} {item.saleWeight ? 'kg' : 'uds'}</span>
                                         )}
                                     </td>
                                     <td style={{ padding: '10px 6px', verticalAlign: 'middle', textAlign: 'right' }}>
-                                        {isEditing ? (
-                                            item.purchaseType === 'BULK' ? (
-                                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-                                                    <input
-                                                        style={{ ...inputStyle, width: 90, textAlign: 'right' }}
-                                                        type="number"
-                                                        min="0"
-                                                        step="0.01"
-                                                        value={item.bulkCost ?? ''}
-                                                        onChange={(e) => handleBulkCostChange(index, Number(e.target.value) || 0)}
-                                                    />
-                                                    <small style={{ opacity: .5, fontSize: '0.7rem' }}>u: {formatCurrency(item.unitCost)}</small>
-                                                </div>
-                                            ) : (
-                                                <input
-                                                    style={{ ...inputStyle, width: 90, textAlign: 'right' }}
-                                                    type="number"
-                                                    min="0"
-                                                    step="0.01"
-                                                    value={item.unitCost}
-                                                    onChange={(e) => handlePriceChange(index, Number(e.target.value) || 0)}
-                                                />
-                                            )
-                                        ) : (
-                                            <div>
-                                                <strong style={monoStyle}>{formatCurrency(item.purchaseType === 'BULK' && item.bulkCost ? item.bulkCost : item.unitCost)}</strong>
-                                                {item.purchaseType === 'BULK' && (
-                                                    <small style={{ display: 'block', opacity: .5, fontSize: '0.7rem' }}>u: {formatCurrency(item.unitCost)}</small>
-                                                )}
-                                            </div>
-                                        )}
+                                        <div>
+                                            <strong style={monoStyle}>{formatCurrency(item.purchaseType === 'BULK' && item.bulkCost ? item.bulkCost : item.unitCost)}</strong>
+                                            {item.purchaseType === 'BULK' && (
+                                                <small style={{ display: 'block', opacity: .5, fontSize: '0.7rem' }}>u: {formatCurrency(item.unitCost)}</small>
+                                            )}
+                                        </div>
                                     </td>
                                     <td style={{ padding: '10px 6px', verticalAlign: 'middle', textAlign: 'right' }}>
                                         <strong style={{ ...monoStyle, color: '#54C4F0' }}>{formatCurrency(item.subtotal)}</strong>
@@ -362,7 +212,7 @@ export function PurchaseQuoteModal({
                 {/* Resumen Total */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#16191F', border: '1px solid rgba(255,255,255,.1)', borderRadius: 8, padding: '14px 18px', marginBottom: 20 }}>
                     <span style={{ fontSize: '0.95rem', fontWeight: 600 }}>Total Estimado del Pedido:</span>
-                    <strong style={{ ...monoStyle, fontSize: '1.3rem', color: '#54C4F0' }}>{formatCurrency(total)}</strong>
+                    <strong style={{ ...monoStyle, fontSize: '1.3rem', color: '#54C4F0' }}>{formatCurrency(purchase.total)}</strong>
                 </div>
 
                 {/* Barra de Acciones */}
@@ -385,20 +235,16 @@ export function PurchaseQuoteModal({
                     </div>
 
                     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                        <button
-                            type="button"
-                            style={isEditing ? primaryButtonStyle : secondaryButtonStyle}
-                            onClick={() => {
-                                if (isEditing) {
-                                    void handleSave();
-                                } else {
-                                    setIsEditing(true);
-                                }
-                            }}
-                            disabled={isSaving}
-                        >
-                            {isEditing ? (isSaving ? 'Guardando...' : '💾 Guardar Cambios') : '✏️ Modificar Precios'}
-                        </button>
+                        {isDraft && onEditInScreen && (
+                            <button
+                                type="button"
+                                style={secondaryButtonStyle}
+                                onClick={() => onEditInScreen(purchase)}
+                            >
+                                ✏️ Cargar y Editar en Pantalla
+                            </button>
+                        )}
+
                         <button
                             type="button"
                             style={{ ...secondaryButtonStyle, color: copied ? '#80E0B0' : '#54C4F0', borderColor: copied ? '#80E0B0' : 'rgba(84,196,240,.4)' }}
@@ -411,7 +257,7 @@ export function PurchaseQuoteModal({
                             <button
                                 type="button"
                                 style={primaryButtonStyle}
-                                onClick={() => onOpenReceive({ ...purchase, items, total, debt: total })}
+                                onClick={() => onOpenReceive(purchase)}
                             >
                                 📥 Recepcionar
                             </button>

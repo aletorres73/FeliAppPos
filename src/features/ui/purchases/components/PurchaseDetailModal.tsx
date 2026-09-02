@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { PaymentMethod } from '../../../domain/types/orderTypes';
-import type { Purchase, PurchaseItem } from '../../../domain/types/purchaseTypes';
+import type { Purchase } from '../../../domain/types/purchaseTypes';
 import { formatCurrency } from '../../../domain/utils/formats';
 
 interface PurchaseDetailModalProps {
@@ -8,6 +8,7 @@ interface PurchaseDetailModalProps {
   onClose: () => void;
   onConfirm?: (amount: number, paymentMethods: PaymentMethod[]) => Promise<void>;
   onConfirmReceive?: (updatedPurchase: Purchase, amountPaid: number, paymentMethods: PaymentMethod[]) => Promise<void>;
+  onEditInScreen?: (purchase: Purchase) => void;
   isProcessing: boolean;
 }
 
@@ -17,7 +18,7 @@ const overlayStyle: React.CSSProperties = {
 };
 
 const panelStyle: React.CSSProperties = {
-  width: 'min(640px, 100%)', maxHeight: '90vh', overflowY: 'auto',
+  width: 'min(580px, 100%)', maxHeight: '90vh', overflowY: 'auto',
   background: '#1A1D23', border: '1px solid rgba(255,255,255,.08)',
   borderRadius: 8, color: 'white', padding: 24,
 };
@@ -42,22 +43,26 @@ const primaryButtonStyle: React.CSSProperties = {
   cursor: 'pointer', border: 'none',
 };
 
+const secondaryButtonStyle: React.CSSProperties = {
+  ...inputStyle, background: 'rgba(84,196,240,.12)', color: '#54C4F0',
+  border: '1px solid rgba(84,196,240,.4)', cursor: 'pointer', fontWeight: 600,
+};
+
 const ghostButtonStyle: React.CSSProperties = {
   ...inputStyle, cursor: 'pointer', background: 'transparent',
 };
 
 const monoStyle: React.CSSProperties = { fontFamily: 'monospace' };
 
-export function PurchaseDetailModal({ purchase, onClose, onConfirm, onConfirmReceive, isProcessing }: PurchaseDetailModalProps) {
+export function PurchaseDetailModal({ purchase, onClose, onConfirm, onConfirmReceive, onEditInScreen, isProcessing }: PurchaseDetailModalProps) {
   const isDraft = purchase.status === 'DRAFT';
-  const [items, setItems] = useState<PurchaseItem[]>(purchase.items);
   const [cash, setCash] = useState(0);
   const [transfer, setTransfer] = useState(0);
   const [card, setCard] = useState(0);
   const [qr, setQr] = useState(0);
   const [error, setError] = useState('');
 
-  const currentTotal = isDraft ? items.reduce((sum, item) => sum + item.subtotal, 0) : purchase.total;
+  const currentTotal = purchase.total;
 
   const paymentMethods = useMemo(() => [
     { type: 'CASH' as const, amount: cash },
@@ -68,50 +73,6 @@ export function PurchaseDetailModal({ purchase, onClose, onConfirm, onConfirmRec
 
   const newPayment = paymentMethods.reduce((sum, method) => sum + method.amount, 0);
   const pendingBalance = Math.max(0, isDraft ? (currentTotal - newPayment) : (purchase.debt - newPayment));
-
-  const handlePriceChange = (index: number, newUnitCost: number) => {
-    setItems((current) => current.map((item, idx) => {
-      if (idx !== index) return item;
-      const subtotalMultiplier = item.saleWeight ? 10 : 1;
-      const subtotal = item.purchaseType === 'BULK' && item.bulkCost !== null
-        ? Number(((item.bulks || 0) * (item.bulkCost || 0)).toFixed(2))
-        : Number((item.quantity * newUnitCost * subtotalMultiplier).toFixed(2));
-
-      return { ...item, unitCost: newUnitCost, subtotal };
-    }));
-  };
-
-  const handleBulkCostChange = (index: number, newBulkCost: number) => {
-    setItems((current) => current.map((item, idx) => {
-      if (idx !== index) return item;
-      const units = item.unitsPerBulk || 1;
-      const unitCost = Number((newBulkCost / units).toFixed(4));
-      const subtotal = Number(((item.bulks || 1) * newBulkCost).toFixed(2));
-      return { ...item, bulkCost: newBulkCost, unitCost, subtotal };
-    }));
-  };
-
-  const handleQuantityChange = (index: number, newQuantity: number) => {
-    setItems((current) => current.map((item, idx) => {
-      if (idx !== index) return item;
-      const subtotalMultiplier = item.saleWeight ? 10 : 1;
-      const subtotal = item.purchaseType === 'BULK' && item.bulkCost !== null
-        ? Number(((item.bulks || 0) * (item.bulkCost || 0)).toFixed(2))
-        : Number((newQuantity * item.unitCost * subtotalMultiplier).toFixed(2));
-
-      return { ...item, quantity: newQuantity, subtotal };
-    }));
-  };
-
-  const handleBulksChange = (index: number, newBulks: number) => {
-    setItems((current) => current.map((item, idx) => {
-      if (idx !== index) return item;
-      const units = item.unitsPerBulk || 1;
-      const quantity = newBulks * units;
-      const subtotal = Number((newBulks * (item.bulkCost || 0)).toFixed(2));
-      return { ...item, bulks: newBulks, quantity, subtotal };
-    }));
-  };
 
   const handleConfirmAction = async () => {
     if (isDraft) {
@@ -126,8 +87,6 @@ export function PurchaseDetailModal({ purchase, onClose, onConfirm, onConfirmRec
       setError('');
       const updatedPurchase: Purchase = {
         ...purchase,
-        items,
-        total: currentTotal,
         payed: newPayment,
         debt: currentTotal - newPayment,
         payStatus: (currentTotal - newPayment) > 0 ? 'PENDING' : 'PAID',
@@ -176,86 +135,34 @@ export function PurchaseDetailModal({ purchase, onClose, onConfirm, onConfirmRec
         <button type="button" onClick={onClose} style={ghostButtonStyle}>Cerrar</button>
       </header>
 
-      {isDraft && (
-        <div style={{ background: 'rgba(84,196,240,.08)', border: '1px solid rgba(84,196,240,.25)', borderRadius: 6, padding: '10px 12px', marginBottom: 16, fontSize: '0.85rem', color: '#54C4F0' }}>
-          📦 Verifica o ajusta las cantidades recibidas y los costos reales antes de ingresar la mercadería al stock.
+      {isDraft && onEditInScreen && (
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(84,196,240,.08)', border: '1px solid rgba(84,196,240,.25)', borderRadius: 6, padding: '10px 12px', marginBottom: 16 }}>
+          <span style={{ fontSize: '0.82rem', color: '#54C4F0' }}>
+            💡 ¿Necesitas modificar artículos o cantidades antes de ingresar?
+          </span>
+          <button
+            type="button"
+            onClick={() => onEditInScreen(purchase)}
+            style={{ ...secondaryButtonStyle, padding: '4px 10px', fontSize: '0.75rem', whiteSpace: 'nowrap' }}
+          >
+            ✏️ Editar en Pantalla
+          </button>
         </div>
       )}
 
       <section>
-        <span style={sectionLabelStyle}>Artículos {isDraft ? '(Ajuste de llegada)' : ''}</span>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {items.map((item, index) => (
+        <span style={sectionLabelStyle}>Artículos del pedido</span>
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          {purchase.items.map((item) => (
             <div key={item.productId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, borderBottom: '1px solid rgba(255,255,255,.08)', padding: '10px 0' }}>
-              <div style={{ flex: 1.2 }}>
+              <div>
                 {item.branch && <small style={{ display: 'block', opacity: .5, textTransform: 'uppercase', fontSize: '0.65rem' }}>{item.branch}</small>}
                 <strong style={{ fontSize: '0.9rem' }}>{item.article}</strong>
+                <small style={{ display: 'block', opacity: .5, marginTop: 2, fontSize: '0.75rem' }}>
+                  {item.purchaseType === 'BULK' ? `${item.bulks} bulto(s) (${item.quantity} ${item.saleWeight ? 'kg' : 'unidades'})` : `${item.quantity} ${item.saleWeight ? 'kg' : 'unidades'}`} · {formatCurrency(item.unitCost)}/u
+                </small>
               </div>
-
-              {isDraft ? (
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flex: 1.5, justifyContent: 'flex-end' }}>
-                  {item.purchaseType === 'BULK' ? (
-                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                      <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                        <span style={{ fontSize: '0.6rem', opacity: .55 }}>Bultos</span>
-                        <input
-                          style={{ ...inputStyle, width: 55, padding: '4px 6px', textAlign: 'center' }}
-                          type="number"
-                          min="1"
-                          value={item.bulks}
-                          onChange={(e) => handleBulksChange(index, Number(e.target.value) || 1)}
-                        />
-                      </label>
-                      <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-                        <span style={{ fontSize: '0.6rem', opacity: .55 }}>$ Bulto</span>
-                        <input
-                          style={{ ...inputStyle, width: 80, padding: '4px 6px', textAlign: 'right' }}
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          value={item.bulkCost ?? ''}
-                          onChange={(e) => handleBulkCostChange(index, Number(e.target.value) || 0)}
-                        />
-                      </label>
-                    </div>
-                  ) : (
-                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                      <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                        <span style={{ fontSize: '0.6rem', opacity: .55 }}>Cant</span>
-                        <input
-                          style={{ ...inputStyle, width: 65, padding: '4px 6px', textAlign: 'center' }}
-                          type="number"
-                          min="0"
-                          step={item.saleWeight ? '0.001' : '1'}
-                          value={item.quantity}
-                          onChange={(e) => handleQuantityChange(index, Number(e.target.value) || 0)}
-                        />
-                      </label>
-                      <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-                        <span style={{ fontSize: '0.6rem', opacity: .55 }}>$ Costo</span>
-                        <input
-                          style={{ ...inputStyle, width: 80, padding: '4px 6px', textAlign: 'right' }}
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          value={item.unitCost}
-                          onChange={(e) => handlePriceChange(index, Number(e.target.value) || 0)}
-                        />
-                      </label>
-                    </div>
-                  )}
-                  <strong style={{ ...monoStyle, fontSize: '0.9rem', minWidth: 70, textAlign: 'right' }}>
-                    {formatCurrency(item.subtotal)}
-                  </strong>
-                </div>
-              ) : (
-                <div style={{ textAlign: 'right' }}>
-                  <small style={{ display: 'block', opacity: .5, fontSize: '0.75rem' }}>
-                    {item.quantity} {item.saleWeight ? 'kg' : 'unidades'} · {formatCurrency(item.unitCost)}/u
-                  </small>
-                  <strong style={{ ...monoStyle, fontSize: '0.9rem' }}>{formatCurrency(item.subtotal)}</strong>
-                </div>
-              )}
+              <strong style={{ ...monoStyle, fontSize: '0.9rem' }}>{formatCurrency(item.subtotal)}</strong>
             </div>
           ))}
         </div>
