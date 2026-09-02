@@ -723,104 +723,135 @@ export default function PurchasesScreen() {
                         </div>
                     </section>
 
-                    <section style={panelStyle}>
+                    <section style={{ ...panelStyle, display: 'flex', flexDirection: 'column' }}>
                         <div style={cardHeaderStyle}>
-                            <span style={sectionLabelStyle}>Historial y Pedidos Pendientes</span>
+                            <div>
+                                <span style={sectionLabelStyle}>Historial y Pedidos</span>
+                                <small style={{ opacity: .5, fontSize: '0.72rem' }}>
+                                    {history.length} {history.length === 1 ? 'registro' : 'registros'}
+                                </small>
+                            </div>
                             {isHistoryLoading && <small style={{ opacity: .5 }}>Cargando...</small>}
                         </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 16 }}>
-                            <span style={{ opacity: .65 }}>Deuda actual con proveedor</span>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 14 }}>
+                            <span style={{ opacity: .65, fontSize: '0.85rem' }}>Deuda actual con proveedor</span>
                             <strong style={{ ...monoStyle, color: '#FF9A9A', fontSize: '1.1rem' }}>{formatCurrency(selectedSupplier?.currentBalance || 0)}</strong>
                         </div>
-                        {!isHistoryLoading && history.slice(0, 10).map((purchase) => {
-                            const isDraft = purchase.status === 'DRAFT';
-                            const isBeingEdited = editingPurchaseId === purchase.docId;
-                            return (
-                                <div
-                                    key={purchase.docId}
-                                    style={{
-                                        width: '100%',
-                                        borderBottom: '1px solid rgba(255,255,255,.08)',
-                                        padding: '12px 0',
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        gap: 6,
-                                        background: isBeingEdited ? 'rgba(255,171,64,.05)' : 'transparent',
-                                    }}
-                                >
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                        <div>
-                                            <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>{new Date(purchase.createdAt).toLocaleDateString('es-AR')}</span>
-                                            <small style={{ display: 'block', opacity: .5, ...monoStyle }}>{purchase.docId}</small>
-                                        </div>
-                                        <div style={{ textAlign: 'right' }}>
-                                            <strong style={monoStyle}>{formatCurrency(purchase.total)}</strong>
-                                            <div style={{ marginTop: 4 }}>
-                                                {isDraft ? (
-                                                    <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 999, fontSize: '0.65rem', fontWeight: 700, background: 'rgba(255,171,64,.15)', color: '#FFAB40', border: '1px solid rgba(255,171,64,.3)' }}>
-                                                        {isBeingEdited ? '✏️ Editando...' : '📝 Pedido Borrador'}
-                                                    </span>
-                                                ) : (
-                                                    <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 999, fontSize: '0.65rem', fontWeight: 700, background: purchase.payStatus === 'PENDING' ? 'rgba(255,126,126,.15)' : 'rgba(128,224,176,.15)', color: purchase.payStatus === 'PENDING' ? '#FF7E7E' : '#80E0B0' }}>
-                                                        {purchase.payStatus === 'PENDING' ? `Pendiente Pago · ${formatCurrency(purchase.debt)}` : '✓ Pagada'}
-                                                    </span>
-                                                )}
+
+                        {/* Listado con scroll vertical dedicado y tarjetas limpias */}
+                        <div style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 8,
+                            maxHeight: '440px',
+                            overflowY: 'auto',
+                            paddingRight: 4,
+                        }}>
+                            {!isHistoryLoading && history.map((purchase) => {
+                                const isDraft = purchase.status === 'DRAFT';
+                                const isBeingEdited = editingPurchaseId === purchase.docId;
+                                const itemCount = purchase.items.reduce((sum, item) => sum + (item.quantity || 0), 0);
+
+                                return (
+                                    <div
+                                        key={purchase.docId}
+                                        style={{
+                                            background: isBeingEdited ? 'rgba(255,171,64,.08)' : '#16191F',
+                                            border: `1px solid ${isBeingEdited ? 'rgba(255,171,64,.4)' : 'rgba(255,255,255,.07)'}`,
+                                            borderRadius: 8,
+                                            padding: '12px 14px',
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            gap: 8,
+                                            transition: 'border-color 0.2s',
+                                        }}
+                                    >
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                            <div>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                    <strong style={{ fontSize: '0.9rem' }}>
+                                                        {new Date(purchase.createdAt).toLocaleDateString('es-AR')}
+                                                    </strong>
+                                                    <span style={{ opacity: .4, fontSize: '0.75rem' }}>• {purchase.items.length} art. ({itemCount} {purchase.items.some(i => i.saleWeight) ? 'kg/u' : 'uds'})</span>
+                                                </div>
+                                                <small style={{ display: 'block', opacity: .45, ...monoStyle, fontSize: '0.75rem', marginTop: 2 }}>
+                                                    {purchase.docId}
+                                                </small>
+                                            </div>
+
+                                            <div style={{ textAlign: 'right' }}>
+                                                <strong style={{ ...monoStyle, fontSize: '0.95rem', color: isDraft ? '#FFAB40' : 'white' }}>
+                                                    {formatCurrency(purchase.total)}
+                                                </strong>
+                                                <div style={{ marginTop: 3 }}>
+                                                    {isDraft ? (
+                                                        <span style={{ display: 'inline-block', padding: '2px 7px', borderRadius: 999, fontSize: '0.62rem', fontWeight: 700, background: 'rgba(255,171,64,.15)', color: '#FFAB40', border: '1px solid rgba(255,171,64,.3)' }}>
+                                                            {isBeingEdited ? '✏️ Editando' : '📝 Pedido Borrador'}
+                                                        </span>
+                                                    ) : (
+                                                        <span style={{ display: 'inline-block', padding: '2px 7px', borderRadius: 999, fontSize: '0.62rem', fontWeight: 700, background: purchase.payStatus === 'PENDING' ? 'rgba(255,126,126,.15)' : 'rgba(128,224,176,.15)', color: purchase.payStatus === 'PENDING' ? '#FF7E7E' : '#80E0B0' }}>
+                                                            {purchase.payStatus === 'PENDING' ? `Deuda ${formatCurrency(purchase.debt)}` : '✓ Pagada'}
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
 
-                                    <small style={{ opacity: .55, display: 'block' }}>{purchase.items.map((item) => `${item.article}: ${formatCurrency(item.unitCost)}/u`).join(' · ')}</small>
-
-                                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6, marginTop: 4 }}>
-                                        {isDraft ? (
-                                            <>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setQuotePreviewPurchase(purchase)}
-                                                    style={{ ...ghostButtonStyle, padding: '4px 8px', fontSize: '0.72rem', color: '#54C4F0' }}
-                                                >
-                                                    📋 Ver Cotización
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleEditInScreen(purchase)}
-                                                    style={{ ...secondaryButtonStyle, padding: '4px 8px', fontSize: '0.72rem' }}
-                                                >
-                                                    ✏️ Editar en Pantalla
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setSelectedPurchase(purchase)}
-                                                    style={{ ...primaryButtonStyle, padding: '4px 8px', fontSize: '0.72rem' }}
-                                                >
-                                                    📥 Recepcionar
-                                                </button>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setQuotePreviewPurchase(purchase)}
-                                                    style={{ ...ghostButtonStyle, padding: '4px 8px', fontSize: '0.72rem', opacity: .7 }}
-                                                >
-                                                    👁️ Ver
-                                                </button>
-                                                {purchase.payStatus === 'PENDING' && (
+                                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6, paddingTop: 6, borderTop: '1px solid rgba(255,255,255,.05)' }}>
+                                            {isDraft ? (
+                                                <>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setQuotePreviewPurchase(purchase)}
+                                                        style={{ ...ghostButtonStyle, padding: '4px 8px', fontSize: '0.72rem', color: '#54C4F0' }}
+                                                    >
+                                                        👁️ Ver Pedido
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleEditInScreen(purchase)}
+                                                        style={{ ...secondaryButtonStyle, padding: '4px 8px', fontSize: '0.72rem' }}
+                                                    >
+                                                        ✏️ Editar
+                                                    </button>
                                                     <button
                                                         type="button"
                                                         onClick={() => setSelectedPurchase(purchase)}
-                                                        style={{ ...secondaryButtonStyle, padding: '4px 8px', fontSize: '0.72rem' }}
+                                                        style={{ ...primaryButtonStyle, padding: '4px 8px', fontSize: '0.72rem' }}
                                                     >
-                                                        💳 Abonar
+                                                        📥 Recepcionar
                                                     </button>
-                                                )}
-                                            </>
-                                        )}
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setQuotePreviewPurchase(purchase)}
+                                                        style={{ ...ghostButtonStyle, padding: '4px 8px', fontSize: '0.72rem', opacity: .8 }}
+                                                    >
+                                                        👁️ Ver Detalle
+                                                    </button>
+                                                    {purchase.payStatus === 'PENDING' && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setSelectedPurchase(purchase)}
+                                                            style={{ ...secondaryButtonStyle, padding: '4px 8px', fontSize: '0.72rem' }}
+                                                        >
+                                                            💳 Abonar
+                                                        </button>
+                                                    )}
+                                                </>
+                                            )}
+                                        </div>
                                     </div>
-                                </div>
-                            );
-                        })}
-                        {!isHistoryLoading && !history.length && <p style={{ opacity: .45, textAlign: 'center', padding: '20px 0' }}>Sin compras ni pedidos registrados.</p>}
+                                );
+                            })}
+                            {!isHistoryLoading && !history.length && (
+                                <p style={{ opacity: .45, textAlign: 'center', padding: '30px 0', fontSize: '0.85rem' }}>
+                                    Sin compras ni pedidos registrados para este proveedor.
+                                </p>
+                            )}
+                        </div>
                     </section>
                 </aside>
             </div>
