@@ -8,6 +8,7 @@ import type { PaymentMethod } from '../../../domain/types/orderTypes';
 import type { Supplier } from '../../../domain/types/supplierTypes';
 import { ScannerInput } from '../../orders/components/ScannerImput';
 import { PurchaseDetailModal } from '../components/PurchaseDetailModal';
+import { PurchaseQuoteModal } from '../components/PurchaseQuoteModal';
 import { formatCurrency } from '../../../domain/utils/formats';
 import { StockModal } from '../../stock/components/StockModal';
 import { createEmptyProduct, toNewProduct, updateProductCost, updateProductGains, updateProductPrice } from '../../stock/hooks/productForm';
@@ -18,6 +19,7 @@ const panelStyle: React.CSSProperties = { background: '#1A1D23', border: '1px so
 const sectionLabelStyle: React.CSSProperties = { display: 'block', marginBottom: 8, opacity: .65, fontSize: '0.7rem', letterSpacing: '1px', textTransform: 'uppercase', fontWeight: 600 };
 const cardHeaderStyle: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, paddingBottom: 12, borderBottom: '1px solid rgba(255,255,255,.08)' };
 const primaryButtonStyle: React.CSSProperties = { ...inputStyle, background: '#54C4F0', color: '#0F1115', fontWeight: 700, cursor: 'pointer', border: 'none' };
+const secondaryButtonStyle: React.CSSProperties = { ...inputStyle, background: 'rgba(84,196,240,.12)', color: '#54C4F0', border: '1px solid rgba(84,196,240,.4)', cursor: 'pointer', fontWeight: 600 };
 const ghostButtonStyle: React.CSSProperties = { ...inputStyle, cursor: 'pointer', background: 'transparent' };
 const dangerButtonStyle: React.CSSProperties = { ...inputStyle, color: '#FF7E7E', cursor: 'pointer', background: 'transparent' };
 const monoStyle: React.CSSProperties = { fontFamily: 'monospace' };
@@ -35,6 +37,8 @@ export default function PurchasesScreen() {
     const [selectedSupplierId, setSelectedSupplierId] = useState('');
     const [items, setItems] = useState<PurchaseDraftItem[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
+    const [isDraftMode, setIsDraftMode] = useState(false); // Switch: Pedido Borrador vs Ingreso Inmediato
+    const [editingPurchaseId, setEditingPurchaseId] = useState<string | null>(null); // ID del pedido que se está editando en pantalla
     const [payment, setPayment] = useState('0');
     const [paymentType, setPaymentType] = useState<PaymentMethod['type']>('CASH');
     const [totalDiscountType, setTotalDiscountType] = useState<DiscountType>('AMOUNT');
@@ -46,6 +50,7 @@ export default function PurchasesScreen() {
     const [history, setHistory] = useState<Purchase[]>([]);
     const [message, setMessage] = useState('');
     const [selectedPurchase, setSelectedPurchase] = useState<Purchase | null>(null);
+    const [quotePreviewPurchase, setQuotePreviewPurchase] = useState<Purchase | null>(null);
     const [isProcessingPayment, setIsProcessingPayment] = useState(false);
     const [isProductModalOpen, setIsProductModalOpen] = useState(false);
     const [editingProduct, setEditingProduct] = useState<Partial<Product> | null>(null);
@@ -54,10 +59,11 @@ export default function PurchasesScreen() {
     const [isSavingSupplier, setIsSavingSupplier] = useState(false);
     const [isSavingProduct, setIsSavingProduct] = useState(false);
     const [isConfirmingPurchase, setIsConfirmingPurchase] = useState(false);
+    const [isUpdatingDraft, setIsUpdatingDraft] = useState(false);
 
     // Keyboard shortcuts for review modal
     useKeyboardShortcuts({
-        Enter: () => { if (showReview && !isConfirmingPurchase) void confirmPurchase(); },
+        Enter: () => { if (showReview && !isConfirmingPurchase) void handleMainAction(); },
         Escape: () => { if (showReview) setShowReview(false); },
     });
 
@@ -73,8 +79,8 @@ export default function PurchasesScreen() {
     const itemsSubtotal = items.reduce((sum, item) => sum + item.subtotal, 0);
     const totalDiscountAmount = totalDiscountType === 'PERCENT' ? itemsSubtotal * Math.min(Math.max(Number(totalDiscountValue) || 0, 0), 100) / 100 : Math.max(Number(totalDiscountValue) || 0, 0);
     const total = Math.max(0, Number((itemsSubtotal - totalDiscountAmount).toFixed(2)));
-    const paid = Math.min(Math.max(Number(payment) || 0, 0), total);
-    const debt = total - paid;
+    const paid = isDraftMode ? 0 : Math.min(Math.max(Number(payment) || 0, 0), total);
+    const debt = isDraftMode ? total : (total - paid);
     const changedCosts = items.filter((item) => item.productCost !== item.unitCost);
 
     const loadData = async () => {
@@ -96,7 +102,7 @@ export default function PurchasesScreen() {
         if (!product) return;
         setItems((current) => {
             const existing = current.find((item) => item.productId === product.id);
-            const branch = product.branch
+            const branch = product.branch;
 
             if (existing) {
                 return current.map((item) => {
@@ -127,12 +133,10 @@ export default function PurchasesScreen() {
             const rawUnitCost = Math.max(0, Number(next.rawUnitCost) || 0);
             const subtotalMultiplier = next.saleWeight ? 10 : 1;
 
-            // Si es por bulto, el costo base total es exacto (bultos * precio por bulto)
             const rawSubtotal = next.purchaseType === 'BULK' && next.bulkCost !== null
                 ? Number(((next.bulks || 0) * (next.bulkCost || 0)).toFixed(2))
                 : Number((quantity * rawUnitCost * subtotalMultiplier).toFixed(2));
 
-            // Aplica el descuento sobre el subtotal total
             const subtotal = applyDiscount(rawSubtotal, next.discountType, next.discountValue);
             const unitCost = quantity > 0 ? Number((subtotal / (quantity * subtotalMultiplier)).toFixed(4)) : rawUnitCost;
 
@@ -235,13 +239,109 @@ export default function PurchasesScreen() {
         }
     };
 
-    const confirmPurchase = async () => {
+    const handleReceiveOrder = async (updatedPurchase: Purchase, amountPaid: number, paymentMethods: PaymentMethod[]) => {
+        if (!selectedSupplier) return;
+        try {
+            setIsProcessingPayment(true);
+            await purchaseRepository.receiveOrder({
+                purchase: {
+                    ...updatedPurchase,
+                    payed: amountPaid,
+                    debt: updatedPurchase.total - amountPaid,
+                    payStatus: (updatedPurchase.total - amountPaid) > 0 ? 'PENDING' : 'PAID',
+                    paymentMethod: paymentMethods.length ? paymentMethods : null,
+                },
+                supplier: selectedSupplier,
+                products,
+            });
+            const updatedHistory = await purchaseRepository.getBySupplier(selectedSupplier.id);
+            setHistory(updatedHistory);
+            setSelectedPurchase(null);
+            setQuotePreviewPurchase(null);
+            if (editingPurchaseId === updatedPurchase.docId) {
+                setEditingPurchaseId(null);
+                setItems([]);
+            }
+            setMessage(`Mercadería del pedido ${updatedPurchase.docId} ingresada con éxito al stock.`);
+            await loadData();
+        } catch (error) {
+            setMessage(error instanceof Error ? error.message : 'No se pudo recepcionar el pedido.');
+        } finally {
+            setIsProcessingPayment(false);
+        }
+    };
+
+    const handleEditInScreen = (purchase: Purchase) => {
+        const mappedItems: PurchaseDraftItem[] = purchase.items.map((item) => {
+            const prod = products.find((p) => p.id === item.productId);
+            const rawUnitCost = item.unitCost;
+            const rawSubtotal = item.subtotal;
+            return {
+                productId: item.productId,
+                article: item.article,
+                branch: item.branch,
+                quantity: item.quantity,
+                saleWeight: item.saleWeight,
+                bulks: item.bulks,
+                unitsPerBulk: item.unitsPerBulk,
+                previousUnitsPerBulk: prod?.unitsPerBulk || item.unitsPerBulk || null,
+                purchaseType: item.purchaseType,
+                unitCost: item.unitCost,
+                bulkCost: item.bulkCost,
+                rawUnitCost,
+                rawSubtotal,
+                discountType: 'AMOUNT',
+                discountValue: 0,
+                subtotal: item.subtotal,
+                productCost: prod?.cost || item.unitCost,
+            };
+        });
+        setItems(mappedItems);
+        setSelectedSupplierId(purchase.supplierId);
+        setIsDraftMode(true);
+        setEditingPurchaseId(purchase.docId);
+        setQuotePreviewPurchase(null);
+        setSelectedPurchase(null);
+        setMessage(`Pedido ${purchase.docId} cargado en pantalla. Puedes agregar, quitar o modificar cantidades y precios como si fuera nuevo.`);
+    };
+
+    const handleCancelEditing = () => {
+        setItems([]);
+        setEditingPurchaseId(null);
+        setIsDraftMode(false);
+        setPayment('0');
+        setMessage('Edición de pedido cancelada.');
+    };
+
+    const handleDeleteDraft = async (docId: string) => {
+        if (!selectedSupplier) return;
+        try {
+            setIsUpdatingDraft(true);
+            await purchaseRepository.deleteDraft(docId);
+            const updatedHistory = await purchaseRepository.getBySupplier(selectedSupplier.id);
+            setHistory(updatedHistory);
+            setQuotePreviewPurchase(null);
+            setSelectedPurchase(null);
+            if (editingPurchaseId === docId) {
+                setEditingPurchaseId(null);
+                setItems([]);
+            }
+            setMessage(`Pedido ${docId} eliminado.`);
+        } catch (error) {
+            setMessage(error instanceof Error ? error.message : 'No se pudo eliminar el pedido.');
+        } finally {
+            setIsUpdatingDraft(false);
+        }
+    };
+
+    const handleMainAction = async () => {
         if (!selectedSupplier || !items.length || isConfirmingPurchase) return;
         const createdAt = new Date().getTime();
-        const docId = `PUR-${createdAt}`;
+        const docId = editingPurchaseId || `PUR-${createdAt}`;
         const purchase: Purchase = {
             docId,
             supplierId: selectedSupplier.id,
+            status: isDraftMode ? 'DRAFT' : 'RECEIVED',
             items: items.map((item) => ({
                 productId: item.productId,
                 branch: item.branch,
@@ -254,25 +354,78 @@ export default function PurchasesScreen() {
                 unitCost: item.unitCost,
                 bulkCost: item.bulkCost,
                 subtotal: item.subtotal
-
             })),
             total,
-            payed: paid,
-            debt,
-            payStatus: debt > 0 ? 'PENDING' : 'PAID',
-            paymentMethod: paid > 0 ? [{ type: paymentType, amount: paid }] : [],
+            payed: isDraftMode ? 0 : paid,
+            debt: isDraftMode ? total : debt,
+            payStatus: isDraftMode ? 'PENDING' : (debt > 0 ? 'PENDING' : 'PAID'),
+            paymentMethod: (!isDraftMode && paid > 0) ? [{ type: paymentType, amount: paid }] : null,
             createdAt,
         };
+
         try {
             setIsConfirmingPurchase(true);
-            await purchaseRepository.confirm({ purchase, supplier: selectedSupplier, products });
-            setItems([]); setPayment('0'); setShowReview(false); setMessage(`Compra ${docId} confirmada.`); await loadData();
+            if (isDraftMode) {
+                if (editingPurchaseId) {
+                    await purchaseRepository.updateDraft({ purchase });
+                    setMessage(`Pedido ${docId} actualizado.`);
+                } else {
+                    await purchaseRepository.saveDraft({ purchase });
+                    setMessage(`Pedido ${docId} guardado como borrador (no sumó stock ni deuda).`);
+                }
+                setItems([]);
+                setPayment('0');
+                setEditingPurchaseId(null);
+                setShowReview(false);
+            } else {
+                if (editingPurchaseId) {
+                    await purchaseRepository.receiveOrder({ purchase, supplier: selectedSupplier, products });
+                    setMessage(`Pedido ${docId} confirmado e ingresado al stock.`);
+                } else {
+                    await purchaseRepository.confirm({ purchase, supplier: selectedSupplier, products });
+                    setMessage(`Compra ${docId} confirmada e ingresada al stock.`);
+                }
+                setItems([]);
+                setPayment('0');
+                setEditingPurchaseId(null);
+                setShowReview(false);
+            }
+            await loadData();
             setHistory(await purchaseRepository.getBySupplier(selectedSupplier.id));
         } catch (error) {
-            setMessage(error instanceof Error ? error.message : 'No se pudo confirmar la compra.');
+            setMessage(error instanceof Error ? error.message : 'No se pudo procesar la operación.');
         } finally {
             setIsConfirmingPurchase(false);
         }
+    };
+
+    const openCurrentDraftPreview = () => {
+        if (!selectedSupplier || !items.length) return;
+        const tempPurchase: Purchase = {
+            docId: `PEDIDO-${Date.now()}`,
+            supplierId: selectedSupplier.id,
+            status: 'DRAFT',
+            items: items.map((item) => ({
+                productId: item.productId,
+                branch: item.branch,
+                article: item.article,
+                quantity: item.quantity,
+                saleWeight: item.saleWeight,
+                bulks: item.bulks,
+                unitsPerBulk: item.unitsPerBulk,
+                purchaseType: item.purchaseType,
+                unitCost: item.unitCost,
+                bulkCost: item.bulkCost,
+                subtotal: item.subtotal
+            })),
+            total,
+            payed: 0,
+            debt: total,
+            payStatus: 'PENDING',
+            paymentMethod: null,
+            createdAt: Date.now(),
+        };
+        setQuotePreviewPurchase(tempPurchase);
     };
 
     if (isInitialLoading) {
@@ -283,8 +436,8 @@ export default function PurchasesScreen() {
         <div style={{ minHeight: '100vh', padding: '36px 28px', color: 'white', background: '#0F1115' }}>
             <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28 }}>
                 <div>
-                    <h1 style={{ margin: 0, fontSize: '1.6rem', fontWeight: 700, letterSpacing: '-0.5px' }}>Compras y reposición</h1>
-                    <p style={{ opacity: .55, margin: '6px 0 0', fontSize: '0.9rem' }}>Ingreso de mercadería, proveedores y cuentas pendientes</p>
+                    <h1 style={{ margin: 0, fontSize: '1.6rem', fontWeight: 700, letterSpacing: '-0.5px' }}>Compras y Pedidos</h1>
+                    <p style={{ opacity: .55, margin: '6px 0 0', fontSize: '0.9rem' }}>Gestión de pedidos a proveedores, cotizaciones, ingreso de mercadería y saldos</p>
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
                     <button style={{ ...ghostButtonStyle, color: '#54C4F0' }} onClick={openProductModal}>+ Artículo</button>
@@ -292,6 +445,34 @@ export default function PurchasesScreen() {
                 </div>
             </header>
             {message && <div style={{ ...panelStyle, color: '#80E0B0', marginBottom: 16, borderLeft: '3px solid #80E0B0' }}>✓ {message}</div>}
+
+            {editingPurchaseId && (
+                <div style={{
+                    ...panelStyle,
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: 16,
+                    background: 'rgba(255,171,64,.08)',
+                    border: '1px solid rgba(255,171,64,.4)',
+                    color: 'white',
+                    padding: '14px 20px',
+                }}>
+                    <div>
+                        <strong style={{ color: '#FFAB40', fontSize: '1rem' }}>✏️ Editando Pedido: {editingPurchaseId}</strong>
+                        <p style={{ margin: '4px 0 0', opacity: .7, fontSize: '0.85rem' }}>
+                            Modifica productos, bultos, cantidades o precios como si cargaras una compra nueva. Al finalizar, haz clic en guardar.
+                        </p>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={handleCancelEditing}
+                        style={{ ...ghostButtonStyle, borderColor: 'rgba(255,171,64,.5)', color: '#FFAB40' }}
+                    >
+                        ✕ Cancelar Edición
+                    </button>
+                </div>
+            )}
 
             {showSupplierForm &&
                 <form onSubmit={saveSupplier} style={{ ...panelStyle, display: 'flex', gap: 10, marginBottom: 16, alignItems: 'center' }}>
@@ -303,7 +484,7 @@ export default function PurchasesScreen() {
             <div style={{ display: 'grid', gridTemplateColumns: 'minmax(280px, 1.4fr) minmax(280px, .8fr)', gap: 8 }}>
                 <section style={panelStyle}>
                     <div style={cardHeaderStyle}>
-                        <span style={{ ...sectionLabelStyle, }}>Proveedor</span>
+                        <span style={{ ...sectionLabelStyle }}>Proveedor y Carga</span>
                     </div>
                     <select
                         style={{ ...inputStyle, width: '100%', marginBottom: 8 }}
@@ -323,8 +504,8 @@ export default function PurchasesScreen() {
                                 style={{ border: '1px solid rgba(255,255,255,.08)', borderRadius: 8, padding: '14px 16px', marginBottom: 12, background: '#16191F' }}>
 
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
-                                    <div >
-                                        <strong style={{ fontSize: '0.95rem', display: 'flex', alignItems: 'start' }}>{item.branch.toUpperCase()}</strong>
+                                    <div>
+                                        {item.branch && <strong style={{ fontSize: '0.8rem', opacity: .6, textTransform: 'uppercase' }}>{item.branch}</strong>}
                                         <strong style={{ fontSize: '0.95rem', display: 'flex', alignItems: 'start' }}>{item.article}</strong>
                                         <small style={{ display: 'block', opacity: .5, marginTop: 2 }}>{item.saleWeight ? `${item.quantity} kg` : `${item.quantity} unidades`} · costo anterior {formatCurrency(item.productCost)}</small>
                                     </div>
@@ -448,10 +629,31 @@ export default function PurchasesScreen() {
                     </div>
                 </section>
                 <aside style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-                    <section style={{ ...panelStyle, borderColor: 'rgba(84,196,240,.25)' }}>
+                    <section style={{ ...panelStyle, borderColor: isDraftMode ? 'rgba(255,171,64,.4)' : 'rgba(84,196,240,.25)' }}>
                         <div style={cardHeaderStyle}>
-                            <span style={sectionLabelStyle}>Resumen</span>
+                            <span style={sectionLabelStyle}>Resumen y Tipo</span>
                         </div>
+
+                        {/* 🆕 SWITCH: PEDIDO BORRADOR VS INGRESO DIRECTO */}
+                        <div style={{ background: '#12151b', padding: '12px', borderRadius: 8, border: '1px solid rgba(255,255,255,.08)', marginBottom: 16 }}>
+                            <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}>
+                                <div>
+                                    <strong style={{ fontSize: '0.85rem', color: isDraftMode ? '#FFAB40' : '#54C4F0' }}>
+                                        {isDraftMode ? '📝 Modo: Pedido / Borrador' : '📥 Modo: Compra / Ingreso Inmediato'}
+                                    </strong>
+                                    <p style={{ margin: '3px 0 0', opacity: .55, fontSize: '0.72rem' }}>
+                                        {isDraftMode ? 'No suma stock ni deuda hasta que llegue la mercadería.' : 'Suma stock, actualiza costos y deuda al confirmar.'}
+                                    </p>
+                                </div>
+                                <input
+                                    type="checkbox"
+                                    checked={isDraftMode}
+                                    onChange={(e) => setIsDraftMode(e.target.checked)}
+                                    style={{ transform: 'scale(1.2)', cursor: 'pointer', marginLeft: 10 }}
+                                />
+                            </label>
+                        </div>
+
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                             <span style={{ opacity: .65 }}>Subtotal</span>
                             <strong style={monoStyle}>{formatCurrency(itemsSubtotal)}</strong>
@@ -463,54 +665,226 @@ export default function PurchasesScreen() {
                             <input style={{ ...inputStyle, flex: 1, width: '100%' }} type="number" min="0" step={totalDiscountType === 'PERCENT' ? '1' : '0.01'} value={totalDiscountValue} onChange={(event) => setTotalDiscountValue(event.target.value)} />
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 16 }}>
-                            <span style={{ opacity: .65 }}>Total</span>
-                            <strong style={{ ...monoStyle, fontSize: 26, color: '#54C4F0' }}>{formatCurrency(total)}</strong>
+                            <span style={{ opacity: .65 }}>Total Estimado</span>
+                            <strong style={{ ...monoStyle, fontSize: 26, color: isDraftMode ? '#FFAB40' : '#54C4F0' }}>{formatCurrency(total)}</strong>
                         </div>
-                        <label style={{ ...sectionLabelStyle, marginTop: 20 }}>Pago realizado</label>
-                        <input style={{ ...inputStyle, width: '100%' }} type="number" min="0" max={total} step="0.01" value={payment} onChange={(event) => setPayment(event.target.value)} />
-                        <select style={{ ...inputStyle, width: '100%', marginTop: 8 }} value={paymentType || 'CASH'} onChange={(event) => setPaymentType(event.target.value as PaymentMethod['type'])}>
-                            <option value="CASH">Efectivo</option>
-                            <option value="TRANSFER">Transferencia</option>
-                            <option value="CARD">Tarjeta</option>
-                            <option value="QR">QR</option>
-                        </select>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '16px 0' }}>
-                            <span style={{ opacity: .65 }}>Saldo a cuenta</span>
-                            <strong style={{ ...monoStyle, color: debt > 0 ? '#FF9A9A' : '#80E0B0' }}>{formatCurrency(debt)}</strong>
+
+                        {!isDraftMode && (
+                            <>
+                                <label style={{ ...sectionLabelStyle, marginTop: 20 }}>Pago realizado</label>
+                                <input style={{ ...inputStyle, width: '100%' }} type="number" min="0" max={total} step="0.01" value={payment} onChange={(event) => setPayment(event.target.value)} />
+                                <select style={{ ...inputStyle, width: '100%', marginTop: 8 }} value={paymentType || 'CASH'} onChange={(event) => setPaymentType(event.target.value as PaymentMethod['type'])}>
+                                    <option value="CASH">Efectivo</option>
+                                    <option value="TRANSFER">Transferencia</option>
+                                    <option value="CARD">Tarjeta</option>
+                                    <option value="QR">QR</option>
+                                </select>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '16px 0' }}>
+                                    <span style={{ opacity: .65 }}>Saldo que irá a deuda</span>
+                                    <strong style={{ ...monoStyle, color: debt > 0 ? '#FF9A9A' : '#80E0B0' }}>{formatCurrency(debt)}</strong>
+                                </div>
+                            </>
+                        )}
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 16 }}>
+                            {items.length > 0 && (
+                                <button
+                                    type="button"
+                                    onClick={openCurrentDraftPreview}
+                                    style={secondaryButtonStyle}
+                                >
+                                    📋 Vista Previa / Compartir con Proveedor
+                                </button>
+                            )}
+
+                            <button
+                                disabled={!selectedSupplier || !items.length || isConfirmingPurchase}
+                                onClick={() => {
+                                    if (isDraftMode) {
+                                        void handleMainAction();
+                                    } else {
+                                        setShowReview(true);
+                                    }
+                                }}
+                                style={{
+                                    width: '100%',
+                                    ...primaryButtonStyle,
+                                    background: isDraftMode ? '#FFAB40' : '#54C4F0',
+                                    opacity: (!selectedSupplier || !items.length || isConfirmingPurchase) ? .4 : 1,
+                                    cursor: (!selectedSupplier || !items.length || isConfirmingPurchase) ? 'not-allowed' : 'pointer',
+                                }}
+                            >
+                                {isConfirmingPurchase
+                                    ? 'Procesando...'
+                                    : editingPurchaseId
+                                        ? (isDraftMode ? '💾 Guardar Cambios en Pedido' : '📥 Confirmar e Ingresar a Stock')
+                                        : (isDraftMode ? 'Guardar Pedido / Borrador' : 'Revisar y confirmar ingreso')}
+                            </button>
                         </div>
-                        <button disabled={!selectedSupplier || !items.length || isConfirmingPurchase} onClick={() => setShowReview(true)} style={{ width: '100%', ...primaryButtonStyle, opacity: (!selectedSupplier || !items.length || isConfirmingPurchase) ? .4 : 1, cursor: (!selectedSupplier || !items.length || isConfirmingPurchase) ? 'not-allowed' : 'pointer' }}>Revisar y confirmar</button>
                     </section>
-                    <section style={panelStyle}>
+
+                    <section style={{ ...panelStyle, display: 'flex', flexDirection: 'column' }}>
                         <div style={cardHeaderStyle}>
-                            <span style={sectionLabelStyle}>Cuenta e historial</span>
+                            <div>
+                                <span style={sectionLabelStyle}>Historial y Pedidos</span>
+                                <small style={{ opacity: .5, fontSize: '0.72rem' }}>
+                                    {history.length} {history.length === 1 ? 'registro' : 'registros'}
+                                </small>
+                            </div>
                             {isHistoryLoading && <small style={{ opacity: .5 }}>Cargando...</small>}
                         </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 16 }}>
-                            <span style={{ opacity: .65 }}>Deuda actual</span>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 14 }}>
+                            <span style={{ opacity: .65, fontSize: '0.85rem' }}>Deuda actual con proveedor</span>
                             <strong style={{ ...monoStyle, color: '#FF9A9A', fontSize: '1.1rem' }}>{formatCurrency(selectedSupplier?.currentBalance || 0)}</strong>
                         </div>
-                        {!isHistoryLoading && history.slice(0, 6).map((purchase) =>
-                            <button type="button" key={purchase.docId} onClick={() => purchase.payStatus === 'PENDING' && setSelectedPurchase(purchase)} style={{ width: '100%', textAlign: 'left', color: 'white', background: 'transparent', border: 0, borderBottom: '1px solid rgba(255,255,255,.08)', padding: '10px 0', cursor: purchase.payStatus === 'PENDING' ? 'pointer' : 'default' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                    <span style={{ fontSize: '0.9rem' }}>{new Date(purchase.createdAt).toLocaleDateString('es-AR')}
-                                        <small style={{ display: 'block', opacity: .5, ...monoStyle }}>{purchase.docId}</small>
-                                    </span>
-                                    <span style={{ textAlign: 'right' }}>
-                                        <strong style={monoStyle}>{formatCurrency(purchase.total)}</strong>
-                                        <small style={{ display: 'block', marginTop: 4 }}>
-                                            <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 999, fontSize: '0.65rem', fontWeight: 700, background: purchase.payStatus === 'PENDING' ? 'rgba(255,171,64,.15)' : 'rgba(128,224,176,.15)', color: purchase.payStatus === 'PENDING' ? '#FFAB40' : '#80E0B0' }}>
-                                                {purchase.payStatus === 'PENDING' ? `Pendiente · ${formatCurrency(purchase.debt)}` : 'Pagada'}
-                                            </span>
-                                        </small>
-                                    </span>
-                                </div>
-                                <small style={{ opacity: .55, display: 'block', marginTop: 6 }}>{purchase.items.map((item) => `${item.article}: ${formatCurrency(item.unitCost)}/u`).join(' · ')}</small>
-                            </button>)}
-                        {!isHistoryLoading && !history.length && <p style={{ opacity: .45, textAlign: 'center', padding: '20px 0' }}>Sin compras registradas.</p>}
+
+                        {/* Listado con scroll vertical dedicado y tarjetas limpias */}
+                        <div style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 8,
+                            maxHeight: '440px',
+                            overflowY: 'auto',
+                            paddingRight: 4,
+                        }}>
+                            {!isHistoryLoading && history.map((purchase) => {
+                                const isDraft = purchase.status === 'DRAFT';
+                                const isBeingEdited = editingPurchaseId === purchase.docId;
+                                const itemCount = purchase.items.reduce((sum, item) => sum + (item.quantity || 0), 0);
+
+                                return (
+                                    <div
+                                        key={purchase.docId}
+                                        style={{
+                                            background: isBeingEdited ? 'rgba(255,171,64,.08)' : '#16191F',
+                                            border: `1px solid ${isBeingEdited ? 'rgba(255,171,64,.4)' : 'rgba(255,255,255,.07)'}`,
+                                            borderRadius: 8,
+                                            padding: '12px 14px',
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            gap: 8,
+                                            transition: 'border-color 0.2s',
+                                        }}
+                                    >
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                            <div>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                    <strong style={{ fontSize: '0.9rem' }}>
+                                                        {new Date(purchase.createdAt).toLocaleDateString('es-AR')}
+                                                    </strong>
+                                                    <span style={{ opacity: .4, fontSize: '0.75rem' }}>• {purchase.items.length} art. ({itemCount} {purchase.items.some(i => i.saleWeight) ? 'kg/u' : 'uds'})</span>
+                                                </div>
+                                                <small style={{ display: 'block', opacity: .45, ...monoStyle, fontSize: '0.75rem', marginTop: 2 }}>
+                                                    {purchase.docId}
+                                                </small>
+                                            </div>
+
+                                            <div style={{ textAlign: 'right' }}>
+                                                <strong style={{ ...monoStyle, fontSize: '0.95rem', color: isDraft ? '#FFAB40' : 'white' }}>
+                                                    {formatCurrency(purchase.total)}
+                                                </strong>
+                                                <div style={{ marginTop: 3 }}>
+                                                    {isDraft ? (
+                                                        <span style={{ display: 'inline-block', padding: '2px 7px', borderRadius: 999, fontSize: '0.62rem', fontWeight: 700, background: 'rgba(255,171,64,.15)', color: '#FFAB40', border: '1px solid rgba(255,171,64,.3)' }}>
+                                                            {isBeingEdited ? '✏️ Editando' : '📝 Pedido Borrador'}
+                                                        </span>
+                                                    ) : (
+                                                        <span style={{ display: 'inline-block', padding: '2px 7px', borderRadius: 999, fontSize: '0.62rem', fontWeight: 700, background: purchase.payStatus === 'PENDING' ? 'rgba(255,126,126,.15)' : 'rgba(128,224,176,.15)', color: purchase.payStatus === 'PENDING' ? '#FF7E7E' : '#80E0B0' }}>
+                                                            {purchase.payStatus === 'PENDING' ? `Deuda ${formatCurrency(purchase.debt)}` : '✓ Pagada'}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6, paddingTop: 6, borderTop: '1px solid rgba(255,255,255,.05)' }}>
+                                            {isDraft ? (
+                                                <>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setQuotePreviewPurchase(purchase)}
+                                                        style={{ ...ghostButtonStyle, padding: '4px 8px', fontSize: '0.72rem', color: '#54C4F0' }}
+                                                    >
+                                                        👁️ Ver Pedido
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleEditInScreen(purchase)}
+                                                        style={{ ...secondaryButtonStyle, padding: '4px 8px', fontSize: '0.72rem' }}
+                                                    >
+                                                        ✏️ Editar
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setSelectedPurchase(purchase)}
+                                                        style={{ ...primaryButtonStyle, padding: '4px 8px', fontSize: '0.72rem' }}
+                                                    >
+                                                        📥 Recepcionar
+                                                    </button>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setQuotePreviewPurchase(purchase)}
+                                                        style={{ ...ghostButtonStyle, padding: '4px 8px', fontSize: '0.72rem', opacity: .8 }}
+                                                    >
+                                                        👁️ Ver Detalle
+                                                    </button>
+                                                    {purchase.payStatus === 'PENDING' && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setSelectedPurchase(purchase)}
+                                                            style={{ ...secondaryButtonStyle, padding: '4px 8px', fontSize: '0.72rem' }}
+                                                        >
+                                                            💳 Abonar
+                                                        </button>
+                                                    )}
+                                                </>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                            {!isHistoryLoading && !history.length && (
+                                <p style={{ opacity: .45, textAlign: 'center', padding: '30px 0', fontSize: '0.85rem' }}>
+                                    Sin compras ni pedidos registrados para este proveedor.
+                                </p>
+                            )}
+                        </div>
                     </section>
                 </aside>
             </div>
-            {selectedPurchase && <PurchaseDetailModal purchase={selectedPurchase} onClose={() => setSelectedPurchase(null)} onConfirm={handlePurchasePayment} isProcessing={isProcessingPayment} />}
+
+            {/* Modal de Detalle / Recepción / Pago */}
+            {selectedPurchase && (
+                <PurchaseDetailModal
+                    purchase={selectedPurchase}
+                    onClose={() => setSelectedPurchase(null)}
+                    onConfirm={handlePurchasePayment}
+                    onConfirmReceive={handleReceiveOrder}
+                    onEditInScreen={handleEditInScreen}
+                    isProcessing={isProcessingPayment}
+                />
+            )}
+
+            {/* Modal de Cotización / Compartir Pedido con Proveedor */}
+            {quotePreviewPurchase && (
+                <PurchaseQuoteModal
+                    purchase={quotePreviewPurchase}
+                    supplier={selectedSupplier}
+                    onClose={() => setQuotePreviewPurchase(null)}
+                    onEditInScreen={quotePreviewPurchase.status === 'DRAFT' ? handleEditInScreen : undefined}
+                    onDeleteDraft={quotePreviewPurchase.status === 'DRAFT' && history.some((h) => h.docId === quotePreviewPurchase.docId) ? handleDeleteDraft : undefined}
+                    onOpenReceive={quotePreviewPurchase.status === 'DRAFT' ? (p) => {
+                        setQuotePreviewPurchase(null);
+                        setSelectedPurchase(p);
+                    } : undefined}
+                    isSaving={isUpdatingDraft}
+                />
+            )}
+
+            {/* Modal de Creación de Producto */}
             {isProductModalOpen && editingProduct && <StockModal
                 isEditingMode={false}
                 product={editingProduct}
@@ -526,7 +900,7 @@ export default function PurchasesScreen() {
                 isSaving={isSavingProduct}
             />}
 
-            {showReview && reviewModal({ changedCosts, setShowReview, isConfirmingPurchase, confirmPurchase })}
+            {showReview && reviewModal({ changedCosts, setShowReview, isConfirmingPurchase, confirmPurchase: handleMainAction })}
 
         </div>);
 }

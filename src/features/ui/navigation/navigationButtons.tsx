@@ -2,12 +2,52 @@ import {
     ChartBarIcon,
     WalletIcon,
     UserGroupIcon,
-    BuildingStorefrontIcon
-    , TruckIcon
+    BuildingStorefrontIcon,
+    TruckIcon,
+    BellIcon
 } from "@heroicons/react/24/solid";
 
 interface Props {
     onClick: () => void;
+}
+
+interface NotificationButtonProps {
+    onClick: () => void;
+    unreadCount: number;
+}
+
+export function NotificationsButton({ onClick, unreadCount }: NotificationButtonProps) {
+    return (
+        <button
+            onClick={onClick}
+            style={{
+                ...buttonStyles,
+                justifyContent: 'space-between',
+                position: 'relative'
+            }}
+            onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#252a33'}
+            onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#1A1D23'}
+        >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <BellIcon style={iconStyle} />
+                Notificaciones
+            </div>
+
+            {unreadCount > 0 && (
+                <span style={{
+                    backgroundColor: '#FF5252',
+                    color: 'white',
+                    borderRadius: '10px',
+                    padding: '2px 8px',
+                    fontSize: '0.7rem',
+                    fontWeight: 700,
+                    lineHeight: '1.2'
+                }}>
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                </span>
+            )}
+        </button>
+    );
 }
 
 export function SaleDashboardButton({ onClick }: Props) {
