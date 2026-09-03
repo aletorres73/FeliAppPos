@@ -634,23 +634,43 @@ export default function PurchasesScreen() {
                             <span style={sectionLabelStyle}>Resumen y Tipo</span>
                         </div>
 
-                        {/* 🆕 SWITCH: PEDIDO BORRADOR VS INGRESO DIRECTO */}
-                        <div style={{ background: '#12151b', padding: '12px', borderRadius: 8, border: '1px solid rgba(255,255,255,.08)', marginBottom: 16 }}>
-                            <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}>
-                                <div>
-                                    <strong style={{ fontSize: '0.85rem', color: isDraftMode ? '#FFAB40' : '#54C4F0' }}>
-                                        {isDraftMode ? '📝 Modo: Pedido / Borrador' : '📥 Modo: Compra / Ingreso Inmediato'}
-                                    </strong>
-                                    <p style={{ margin: '3px 0 0', opacity: .55, fontSize: '0.72rem' }}>
-                                        {isDraftMode ? 'No suma stock ni deuda hasta que llegue la mercadería.' : 'Suma stock, actualiza costos y deuda al confirmar.'}
-                                    </p>
+                        {/* SWITCH: PEDIDO BORRADOR VS INGRESO DIRECTO */}
+                        <div style={{ background: '#12151b', padding: '10px 14px', borderRadius: 8, border: '1px solid rgba(255,255,255,.08)', marginBottom: 16 }}>
+                            <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', userSelect: 'none' }}>
+                                <span style={{ fontSize: '0.85rem', fontWeight: 600, color: isDraftMode ? '#FFAB40' : '#54C4F0' }}>
+                                    {isDraftMode ? '📝 Pedido' : '📥 Ingreso'}
+                                </span>
+                                <div
+                                    style={{
+                                        position: 'relative',
+                                        width: 42,
+                                        height: 24,
+                                        background: isDraftMode ? '#FFAB40' : 'rgba(84,196,240,0.3)',
+                                        borderRadius: 12,
+                                        transition: 'background 0.2s ease',
+                                        cursor: 'pointer',
+                                    }}
+                                >
+                                    <input
+                                        type="checkbox"
+                                        checked={isDraftMode}
+                                        onChange={(e) => setIsDraftMode(e.target.checked)}
+                                        style={{ position: 'absolute', opacity: 0, width: 0, height: 0, margin: 0 }}
+                                    />
+                                    <span
+                                        style={{
+                                            position: 'absolute',
+                                            top: 3,
+                                            left: isDraftMode ? 21 : 3,
+                                            width: 18,
+                                            height: 18,
+                                            borderRadius: '50%',
+                                            background: '#FFFFFF',
+                                            transition: 'left 0.2s ease',
+                                            boxShadow: '0 1px 3px rgba(0,0,0,0.4)',
+                                        }}
+                                    />
                                 </div>
-                                <input
-                                    type="checkbox"
-                                    checked={isDraftMode}
-                                    onChange={(e) => setIsDraftMode(e.target.checked)}
-                                    style={{ transform: 'scale(1.2)', cursor: 'pointer', marginLeft: 10 }}
-                                />
                             </label>
                         </div>
 
