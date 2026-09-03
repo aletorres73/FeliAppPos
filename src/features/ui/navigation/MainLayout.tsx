@@ -29,6 +29,7 @@ export default function MainLayout() {
       ["--sidebar-width" as any]: isSidebarOpen ? "260px" : "0px"
     }}>
       <aside
+        aria-label="Navegación principal"
         style={{
           ...styles.sidebar,
           ...(!isSidebarOpen ? styles.sidebarClosed : {})
@@ -36,19 +37,20 @@ export default function MainLayout() {
       >
         <div style={styles.sidebarLogoWrapper}>
           <div style={styles.logoAndText}>
-            <img src={feliLogo} alt="Logo" style={styles.sidebarLogo} />
-            <span style={styles.sidebarBrandText}>Feli App</span>
+            <img src={feliLogo} alt="Feli App Logo" width={40} height={40} style={styles.sidebarLogo} />
+            <span translate="no" style={styles.sidebarBrandText}>Feli App</span>
           </div>
           <button
             onClick={() => setIsSidebarOpen(false)}
             style={styles.toggleCloseButton}
             title="Ocultar barra lateral"
+            aria-label="Ocultar barra lateral"
           >
             ◀
           </button>
         </div>
 
-        <nav style={styles.sidebarNav}>
+        <nav style={styles.sidebarNav} aria-label="Secciones del sistema">
           <button
             onClick={() => navigate('/')}
             style={{
@@ -56,7 +58,7 @@ export default function MainLayout() {
               ...(isActive('/') ? styles.sidebarButtonActive : {})
             }}
           >
-            <ShoppingCartIcon style={iconStyle} />
+            <ShoppingCartIcon style={iconStyle} aria-hidden="true" />
             Nueva Venta
           </button>
 
@@ -95,6 +97,7 @@ export default function MainLayout() {
             onClick={() => setIsSidebarOpen(true)}
             style={styles.toggleOpenButton}
             title="Mostrar barra lateral"
+            aria-label="Mostrar barra lateral"
           >
             ☰
           </button>

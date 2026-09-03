@@ -1,0 +1,501 @@
+/**
+ * FeliApp POS - Design Tokens System
+ * 
+ * This file defines the complete design system using CSS custom properties.
+ * Colors can be customized by updating the --brand-* values to match the logo palette.
+ * 
+ * Usage: Import this file in index.css or individual component styles.
+ * 
+ * To customize with logo colors:
+ * 1. Extract primary/secondary colors from logo-feli.webp
+ * 2. Update --brand-primary, --brand-secondary, --brand-accent values
+ * 3. The rest of the system adapts automatically
+ */
+
+/* ==========================================================================
+   BRAND COLORS - CUSTOMIZE THESE TO MATCH LOGO PALETTE
+   ========================================================================== */
+:root {
+  /* Primary brand color - Electric Cyan from Feli logo (buttons, links, focus rings) */
+  --brand-primary: #54C4F0;
+  --brand-primary-hover: #3DB8E0;
+  --brand-primary-active: #2AA8D0;
+  --brand-primary-light: rgba(84, 196, 240, 0.12);
+  --brand-primary-medium: rgba(84, 196, 240, 0.22);
+  --brand-primary-strong: rgba(84, 196, 240, 0.45);
+
+  /* Secondary brand color - Warm Amber/Golden Yellow from logo accents */
+  --brand-secondary: #F5BA31;
+  --brand-secondary-hover: #E2A721;
+  --brand-secondary-active: #CA9216;
+  --brand-secondary-light: rgba(245, 186, 49, 0.12);
+  --brand-secondary-medium: rgba(245, 186, 49, 0.22);
+
+  /* Accent color - Neon Purple/Magenta from logo */
+  --brand-accent: #A855F7;
+  --brand-accent-hover: #9333EA;
+  --brand-accent-light: rgba(168, 85, 247, 0.12);
+  --brand-accent-medium: rgba(168, 85, 247, 0.22);
+
+  /* Semantic colors - Derived from brand & UI guidelines for consistency */
+  --color-success: #10B981;
+  --color-success-hover: #059669;
+  --color-success-light: rgba(16, 185, 129, 0.12);
+  --color-success-medium: rgba(16, 185, 129, 0.22);
+
+  --color-warning: #F59E0B;
+  --color-warning-hover: #D97706;
+  --color-warning-light: rgba(245, 158, 11, 0.12);
+  --color-warning-medium: rgba(245, 158, 11, 0.22);
+
+  --color-error: #EF4444;
+  --color-error-hover: #DC2626;
+  --color-error-light: rgba(239, 68, 68, 0.12);
+  --color-error-medium: rgba(239, 68, 68, 0.22);
+
+  --color-info: #54C4F0;
+  --color-info-light: rgba(84, 196, 240, 0.12);
+  --color-info-medium: rgba(84, 196, 240, 0.22);
+}
+
+/* ==========================================================================
+   NEUTRAL COLOR SCALE - Light Theme
+   ========================================================================== */
+:root {
+  --neutral-0: #FFFFFF;
+  --neutral-50: #FAFAFA;
+  --neutral-100: #F4F4F5;
+  --neutral-200: #E4E4E7;
+  --neutral-300: #D4D4D8;
+  --neutral-400: #A1A1AA;
+  --neutral-500: #71717A;
+  --neutral-600: #52525B;
+  --neutral-700: #3F3F46;
+  --neutral-800: #27272A;
+  --neutral-900: #18181B;
+  --neutral-950: #09090B;
+
+  /* Light theme surface colors */
+  --surface-primary: var(--neutral-0);
+  --surface-secondary: var(--neutral-50);
+  --surface-tertiary: var(--neutral-100);
+  --surface-hover: var(--neutral-100);
+  --surface-active: var(--neutral-200);
+  --surface-border: var(--neutral-200);
+  --surface-border-strong: var(--neutral-300);
+
+  /* Light theme text colors */
+  --text-primary: var(--neutral-900);
+  --text-secondary: var(--neutral-600);
+  --text-tertiary: var(--neutral-400);
+  --text-inverse: var(--neutral-0);
+  --text-link: var(--brand-primary);
+  --text-link-hover: var(--brand-primary-hover);
+
+  /* Light theme shadow */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  --shadow-focus: 0 0 0 3px var(--brand-primary-light);
+}
+
+/* ==========================================================================
+   DARK THEME - POS Optimized (Default for POS applications)
+   ========================================================================== */
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* Dark theme surface colors - Optimized for POS/dark environments */
+    --surface-primary: #0F1115;
+    --surface-secondary: #161920;
+    --surface-tertiary: #1A1D23;
+    --surface-hover: #252A33;
+    --surface-active: #2D323C;
+    --surface-border: rgba(255, 255, 255, 0.06);
+    --surface-border-strong: rgba(255, 255, 255, 0.12);
+
+    /* Dark theme text colors */
+    --text-primary: rgba(255, 255, 255, 0.92);
+    --text-secondary: rgba(255, 255, 255, 0.6);
+    --text-tertiary: rgba(255, 255, 255, 0.35);
+    --text-inverse: var(--neutral-900);
+    --text-link: var(--brand-primary);
+    --text-link-hover: var(--brand-primary-hover);
+
+    /* Dark theme shadows - More pronounced for depth perception */
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -4px rgba(0, 0, 0, 0.4);
+    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.6), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
+    --shadow-focus: 0 0 0 3px var(--brand-primary-medium);
+  }
+}
+
+/* Force dark theme for POS (override system preference) */
+[data-theme="dark"] {
+  --surface-primary: #0F1115;
+  --surface-secondary: #161920;
+  --surface-tertiary: #1A1D23;
+  --surface-hover: #252A33;
+  --surface-active: #2D323C;
+  --surface-border: rgba(255, 255, 255, 0.06);
+  --surface-border-strong: rgba(255, 255, 255, 0.12);
+  --text-primary: rgba(255, 255, 255, 0.92);
+  --text-secondary: rgba(255, 255, 255, 0.6);
+  --text-tertiary: rgba(255, 255, 255, 0.35);
+  --text-inverse: var(--neutral-900);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -4px rgba(0, 0, 0, 0.4);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.6), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
+  --shadow-focus: 0 0 0 3px var(--brand-primary-medium);
+}
+
+/* Light theme override */
+[data-theme="light"] {
+  --surface-primary: var(--neutral-0);
+  --surface-secondary: var(--neutral-50);
+  --surface-tertiary: var(--neutral-100);
+  --surface-hover: var(--neutral-100);
+  --surface-active: var(--neutral-200);
+  --surface-border: var(--neutral-200);
+  --surface-border-strong: var(--neutral-300);
+  --text-primary: var(--neutral-900);
+  --text-secondary: var(--neutral-600);
+  --text-tertiary: var(--neutral-400);
+  --text-inverse: var(--neutral-0);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  --shadow-focus: 0 0 0 3px var(--brand-primary-light);
+}
+
+/* ==========================================================================
+   TYPOGRAPHY SYSTEM
+   ========================================================================== */
+:root {
+  /* Font Families */
+  --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --font-display: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+  /* Font Sizes - Fluid scaling with clamp() */
+  --text-xs: 0.7rem;      /* 11.2px */
+  --text-sm: 0.8125rem;   /* 13px */
+  --text-base: 0.9375rem; /* 15px */
+  --text-lg: 1.0625rem;   /* 17px */
+  --text-xl: 1.25rem;     /* 20px */
+  --text-2xl: 1.5rem;     /* 24px */
+  --text-3xl: 1.875rem;   /* 30px */
+  --text-4xl: 2.25rem;    /* 36px */
+  --text-5xl: 3rem;       /* 48px */
+
+  /* Fluid font sizes for responsive headings */
+  --text-h1: clamp(1.75rem, 4vw + 1rem, 2.5rem);      /* 28-40px */
+  --text-h2: clamp(1.375rem, 3vw + 0.875rem, 2rem);   /* 22-32px */
+  --text-h3: clamp(1.125rem, 2vw + 0.75rem, 1.5rem);  /* 18-24px */
+  --text-h4: clamp(1rem, 1.5vw + 0.625rem, 1.25rem);  /* 16-20px */
+
+  /* Font Weights */
+  --font-normal: 400;
+  --font-medium: 500;
+  --font-semibold: 600;
+  --font-bold: 700;
+
+  /* Line Heights */
+  --leading-tight: 1.1;
+  --leading-snug: 1.375;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.625;
+
+  /* Letter Spacing */
+  --tracking-tight: -0.02em;
+  --tracking-normal: 0;
+  --tracking-wide: 0.02em;
+  --tracking-wider: 0.04em;
+  --tracking-tabular: 0.1em; /* For tabular numbers */
+}
+
+/* ==========================================================================
+   SPACING SYSTEM - 4px base unit
+   ========================================================================== */
+:root {
+  --space-0: 0;
+  --space-1: 0.25rem;   /* 4px */
+  --space-2: 0.5rem;    /* 8px */
+  --space-3: 0.75rem;   /* 12px */
+  --space-4: 1rem;      /* 16px */
+  --space-5: 1.25rem;   /* 20px */
+  --space-6: 1.5rem;    /* 24px */
+  --space-8: 2rem;      /* 32px */
+  --space-10: 2.5rem;   /* 40px */
+  --space-12: 3rem;     /* 48px */
+  --space-16: 4rem;     /* 64px */
+  --space-20: 5rem;     /* 80px */
+  --space-24: 6rem;     /* 96px */
+
+  /* Component-specific spacing */
+  --space-component-xs: var(--space-1);
+  --space-component-sm: var(--space-2);
+  --space-component-md: var(--space-3);
+  --space-component-lg: var(--space-4);
+  --space-component-xl: var(--space-6);
+  --space-layout-sm: var(--space-4);
+  --space-layout-md: var(--space-6);
+  --space-layout-lg: var(--space-8);
+  --space-layout-xl: var(--space-12);
+}
+
+/* ==========================================================================
+   BORDER RADIUS SYSTEM
+   ========================================================================== */
+:root {
+  --radius-none: 0;
+  --radius-xs: 0.125rem;   /* 2px */
+  --radius-sm: 0.25rem;    /* 4px */
+  --radius-md: 0.375rem;   /* 6px */
+  --radius-lg: 0.5rem;     /* 8px */
+  --radius-xl: 0.75rem;    /* 12px */
+  --radius-2xl: 1rem;      /* 16px */
+  --radius-3xl: 1.5rem;    /* 24px */
+  --radius-full: 9999px;
+
+  /* Component radius */
+  --radius-button: var(--radius-lg);
+  --radius-input: var(--radius-md);
+  --radius-card: var(--radius-xl);
+  --radius-modal: var(--radius-2xl);
+  --radius-badge: var(--radius-full);
+}
+
+/* ==========================================================================
+   TRANSITION & ANIMATION SYSTEM
+   ========================================================================== */
+:root {
+  /* Durations */
+  --duration-instant: 0ms;
+  --duration-fast: 100ms;
+  --duration-normal: 200ms;
+  --duration-slow: 300ms;
+  --duration-slower: 500ms;
+
+  /* Easings */
+  --ease-linear: linear;
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* Transitions */
+  --transition-fast: var(--duration-fast) var(--ease-out);
+  --transition-normal: var(--duration-normal) var(--ease-in-out);
+  --transition-slow: var(--duration-slow) var(--ease-in-out);
+  --transition-colors: color var(--duration-fast) var(--ease-out),
+                       background-color var(--duration-fast) var(--ease-out),
+                       border-color var(--duration-fast) var(--ease-out),
+                       fill var(--duration-fast) var(--ease-out),
+                       stroke var(--duration-fast) var(--ease-out);
+  --transition-shadow: box-shadow var(--duration-normal) var(--ease-out);
+  --transition-transform: transform var(--duration-normal) var(--ease-out);
+  --transition-all: var(--transition-colors), var(--transition-shadow), var(--transition-transform);
+
+  /* Reduced motion */
+  --transition-reduced: 0.01ms var(--ease-linear);
+}
+
+/* ==========================================================================
+   Z-INDEX SYSTEM
+   ========================================================================== */
+:root {
+  --z-base: 0;
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-fixed: 300;
+  --z-modal-backdrop: 400;
+  --z-modal: 500;
+  --z-popover: 600;
+  --z-tooltip: 700;
+  --z-toast: 800;
+  --z-max: 9999;
+}
+
+/* ==========================================================================
+   BREAKPOINTS
+   ========================================================================== */
+:root {
+  --bp-sm: 640px;
+  --bp-md: 768px;
+  --bp-lg: 1024px;
+  --bp-xl: 1280px;
+  --bp-2xl: 1536px;
+
+  /* Container max widths */
+  --container-sm: 640px;
+  --container-md: 768px;
+  --container-lg: 1024px;
+  --container-xl: 1280px;
+  --container-2xl: 1536px;
+  --container-full: 100%;
+}
+
+/* ==========================================================================
+   POS-SPECIFIC TOKENS
+   ========================================================================== */
+:root {
+  /* Sidebar */
+  --sidebar-width: 260px;
+  --sidebar-width-collapsed: 0px;
+  --sidebar-transition: var(--transition-slow);
+
+  /* Header/Toolbar */
+  --header-height: 56px;
+  --header-height-mobile: 48px;
+
+  /* Footer (POS fixed footer) */
+  --footer-height: 120px;
+  --footer-height-mobile: 100px;
+
+  /* Scanner input */
+  --scanner-height: 48px;
+  --scanner-height-mobile: 44px;
+
+  /* Touch targets - Minimum 44x44px for accessibility */
+  --touch-target-min: 44px;
+  --touch-target-comfortable: 48px;
+
+  /* Grid */
+  --grid-gap: var(--space-4);
+  --grid-gap-sm: var(--space-2);
+}
+
+/* ==========================================================================
+   FOCUS RING SYSTEM - Accessibility compliant
+   ========================================================================== */
+:root {
+  --focus-ring-width: 2px;
+  --focus-ring-offset: 2px;
+  --focus-ring-color: var(--brand-primary);
+  --focus-ring: var(--focus-ring-width) solid var(--focus-ring-color);
+  --focus-ring-offset-ring: var(--focus-ring-offset) solid var(--surface-primary);
+}
+
+/* ==========================================================================
+   UTILITY CLASSES - For use in inline styles or CSS modules
+   ========================================================================== */
+
+/* Focus visible - Only show focus ring on keyboard navigation */
+.focus-visible-ring:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 var(--focus-ring-width) var(--surface-primary),
+              0 0 0 calc(var(--focus-ring-width) + var(--focus-ring-offset)) var(--focus-ring-color);
+}
+
+/* Skip link for accessibility */
+.skip-link {
+  position: absolute;
+  top: -100%;
+  left: var(--space-4);
+  z-index: var(--z-max);
+  padding: var(--space-2) var(--space-4);
+  background: var(--brand-primary);
+  color: var(--text-inverse);
+  border-radius: var(--radius-md);
+  font-weight: var(--font-semibold);
+  text-decoration: none;
+  transition: top var(--duration-fast) var(--ease-out);
+}
+
+.skip-link:focus {
+  top: var(--space-4);
+}
+
+/* Screen reader only */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Text truncation utilities */
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Tabular numbers for financial data */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-mono);
+}
+
+/* Text balance for headings */
+.text-balance {
+  text-wrap: balance;
+}
+
+.text-pretty {
+  text-wrap: pretty;
+}
+
+/* Safe area insets for notched devices */
+.safe-area-inset-top {
+  padding-top: env(safe-area-inset-top);
+}
+
+.safe-area-inset-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.safe-area-inset-left {
+  padding-left: env(safe-area-inset-left);
+}
+
+.safe-area-inset-right {
+  padding-right: env(safe-area-inset-right);
+}
+
+/* Touch action manipulation for interactive elements */
+.touch-manipulation {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Overscroll containment for modals/drawers */
+.overscroll-contain {
+  overscroll-behavior: contain;
+}
+
+/* Hardware accelerated transforms */
+.gpu-accelerated {
+  transform: translateZ(0);
+  will-change: transform;
+}
+
+/* Print styles */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+}
